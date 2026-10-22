@@ -1,0 +1,9 @@
+.workspace-main #editor #transcript{font-size:15px;line-height:1.85;padding:26px 30px;white-space:pre-wrap;overflow-wrap:anywhere}
+.transcript-turn{display:block;clear:both;position:relative}
+#memoSource .transcript-turn{font-size:15px;line-height:1.85}#memoSource{white-space:pre-wrap;overflow-wrap:anywhere}
+.transcript-speaker{display:block;float:left;width:7em;font-weight:650;color:#17313d;white-space:normal;line-height:1.85;padding-right:12px}
+.transcript-speech{display:block;margin-left:7em;white-space:pre-wrap;line-height:1.85}
+.workspace-header #optimizeBtn,.workspace-header #goAnalysisBtn{color:#17313d;background:white;border-color:#dbe5e9;border-radius:7px;gap:7px}
+.workspace-header #optimizeBtn>.ai-ring{display:none}.workspace-header #optimizeBtn>svg,.workspace-header #goAnalysisBtn>svg{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.workspace-header #optimizeBtn.is-loading>.ai-ring{display:inline-block}.workspace-header #optimizeBtn.is-loading>svg{display:none}
+@media(max-width:700px){.workspace-main #editor #transcript{padding:18px 16px}.transcript-speaker{width:6em}.transcript-speech{margin-left:6em}}
+.transcript-turn-unindented>.transcript-speech{margin-left:0}

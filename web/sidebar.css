@@ -1,0 +1,45 @@
+.shell{grid-template-columns:282px minmax(0,1fr)}
+.sidebar{padding:26px 14px 18px;background:linear-gradient(150deg,#0c3035 0%,#09292e 70%);color:#e8f1f1}
+.side-top{gap:18px;margin:2px 10px 34px;position:relative;min-height:54px}
+.sidebar-logo{width:48px;height:48px;flex:none;color:#24bcb5}
+.brand b{font-size:24px;line-height:1.35;font-weight:650}.brand small{font-size:13px;color:#87a5aa;margin-top:3px}
+.side-top>#sideToggle{position:absolute;right:-9px;top:-23px;width:22px;height:22px;font-size:18px;opacity:0}.side-top:hover>#sideToggle,.side-top>#sideToggle:focus-visible{opacity:1}
+.sidebar nav{display:block}.sidebar .nav-group{margin-bottom:10px}
+.sidebar .nav-parent,.sidebar .nav-item{display:flex;align-items:center;gap:18px;width:100%;min-height:57px;padding:12px 17px;border:0;border-radius:12px;background:transparent;color:#acc6cb;text-align:left;font-size:18px;line-height:1.5}
+.sidebar .nav-parent{color:#e4efef;font-weight:600}.sidebar .nav-parent em,.sidebar .nav-item em{font-style:normal;flex:1}.sidebar .nav-parent b{font-size:18px;font-weight:400;color:#a1bec3;transition:transform .2s}.sidebar .nav-group.open .nav-parent b{transform:rotate(180deg)}
+.sidebar .nav-children{padding:0;margin-top:4px}.sidebar .nav-item{padding-left:31px;gap:19px;margin:3px 0;font-weight:400}.sidebar .nav-icon{width:26px;height:26px;flex:none;stroke-width:1.65}
+.sidebar .nav-item.active{background:#13535a;color:#f3fbfa}.sidebar .nav-item:hover,.sidebar .nav-parent:hover{background:#124249}.sidebar .nav-item.active:hover{background:#155c61}
+.sidebar .system-card{margin-top:auto;padding:23px 10px 0;border-top:1px solid #2c4c50;flex:none}.sidebar .system-card>div{display:flex;gap:14px;align-items:center;font-size:16px}.sidebar #readyDot{width:19px;height:19px;flex:none}.sidebar #readyDot.ready{background:#2ac181}.sidebar #gpuState,.sidebar #aiState{display:none}
+.sidebar-settings{display:flex;align-items:center;gap:15px;width:100%;margin-top:16px;padding:9px 0;border:0;background:none;color:#b4cacc;font-size:16px;cursor:pointer;text-align:left}.sidebar-settings svg{width:23px;height:23px}.sidebar-settings:hover{color:#fff}
+.sidebar-settings-dialog{padding:24px}.sidebar-settings-dialog p{line-height:1.7;color:#6c8588}.sidebar-settings-dialog h3{font-size:15px;margin-bottom:5px}
+.shell.collapsed .sidebar{padding:18px 8px}.shell.collapsed .side-top{margin:0 0 22px;min-height:42px}.shell.collapsed .sidebar-logo{width:38px;height:38px}.shell.collapsed .side-top>#sideToggle{position:static;opacity:1}.shell.collapsed .sidebar-logo,.shell.collapsed .brand,.shell.collapsed .nav-parent em,.shell.collapsed .nav-parent b,.shell.collapsed .nav-item em,.shell.collapsed .system-card span{display:none}.shell.collapsed .nav-parent,.shell.collapsed .nav-item{justify-content:center;padding:12px 0}.shell.collapsed .system-card{padding:18px 10px 0}.shell.collapsed .sidebar-settings{justify-content:center}
+@media(max-width:850px){.shell,.shell.collapsed{grid-template-columns:1fr}.sidebar{padding:10px;height:auto}.sidebar nav{display:grid;grid-template-columns:1fr 1fr}.sidebar .nav-parent,.sidebar .nav-item{font-size:15px;min-height:42px;padding:8px;gap:10px}.sidebar .nav-icon{width:21px;height:21px}}
+/* Preserve the pre-redesign typography sizes. */
+.sidebar .brand b{font-size:18px}
+.sidebar .brand small{font-size:11px}
+.sidebar .nav-parent,.sidebar .nav-item,.sidebar .nav-parent b,.sidebar .system-card>div,.sidebar .sidebar-settings{font-size:15px}
+.sidebar .side-top>#sideToggle{font-size:23px}
+/* Original compact desktop proportions with the refreshed visual treatment. */
+@media(min-width:851px){
+  .shell{grid-template-columns:238px minmax(0,1fr)}
+  .shell.collapsed{grid-template-columns:66px minmax(0,1fr)}
+  .sidebar{padding:18px}
+  .sidebar .side-top{gap:10px;margin:0 0 32px;min-height:0}
+  .sidebar-logo{width:34px;height:34px}
+  .sidebar nav{display:grid;gap:8px}
+  .sidebar .nav-group{margin-bottom:0}
+  .sidebar .nav-parent{min-height:0;padding:12px;gap:11px;font-size:15px;border-radius:9px;line-height:normal}
+  .sidebar .nav-parent em{font-weight:700}
+  .sidebar .nav-parent b{font-size:15px}
+  .sidebar .nav-children{padding:2px 0 5px 12px;margin-top:0}
+  .sidebar .nav-group.open .nav-children{display:grid;gap:3px}
+  .sidebar .nav-children .nav-item{min-height:0;padding:9px 12px;margin:0;gap:11px;font-size:14px;line-height:normal;border-radius:10px}
+  .sidebar .nav-icon{width:19px;height:19px;flex:0 0 19px}
+  .sidebar .system-card{padding:18px 6px 0}
+  .sidebar .system-card>div{gap:8px;font-size:15px}
+  .sidebar #readyDot{width:8px;height:8px}
+  .sidebar .sidebar-settings{gap:11px;margin-top:10px;padding:9px 0;font-size:14px}
+  .sidebar-settings svg{width:19px;height:19px}
+  .shell.collapsed .sidebar{padding:18px 10px}
+  .shell.collapsed .nav-parent,.shell.collapsed .nav-children .nav-item{padding:12px 4px}
+}

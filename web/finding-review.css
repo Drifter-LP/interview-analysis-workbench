@@ -1,0 +1,35 @@
+.fr-toolbar{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:14px}.fr-toolbar>span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fr-toolbar button,.fr-save{white-space:nowrap;padding:6px 10px;font-size:14px}.fr-note{font-size:12px;color:#70868b;margin:4px 0 10px}.fr-grid{display:grid;grid-template-columns:190px minmax(320px,1fr) minmax(260px,.8fr);height:calc(100dvh - 330px);min-height:340px;border:1px solid #e0e9e9}.fr-list,.fr-items,.fr-context{overflow:auto;min-height:0}.fr-list{border-right:1px solid #e0e9e9}.fr-list button{display:block;width:100%;border:0;border-bottom:1px solid #edf2f2;text-align:left;background:white;padding:10px;font:13px/1.6 'Microsoft YaHei',sans-serif;color:#294951}.fr-list button.active,.fr-filters button.active{background:#e0f4ef;color:#008e86}.fr-evidence{display:flex;flex-direction:column;min-height:0;min-width:0}.fr-filters{display:flex;gap:4px;flex-wrap:wrap;padding:6px;border-bottom:1px solid #e0e9e9}.fr-filters button{border:0;border-radius:5px;padding:6px 8px;font-size:13px;background:white;color:#536e76}.fr-items{flex:1}.fr-items article{padding:12px;border-bottom:1px solid #e0e9e9;font-size:13px;line-height:1.7}.fr-items article header,.fr-items article footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.fr-items blockquote{margin:8px 0;padding-left:10px;border-left:3px solid #83d4c9;white-space:pre-wrap;max-height:180px;overflow:auto}.fr-items select{font:inherit;max-width:110px;padding:4px;border:1px solid #dce7e8;border-radius:5px}.fr-items small{color:#70868b}.fr-items footer button{border:0;background:none;color:#009d94;font:inherit;cursor:pointer}.fr-context{border-left:1px solid #e0e9e9;padding:12px;font-size:13px;display:flex;flex-direction:column}.fr-original{overflow:auto;min-height:0;flex:1;white-space:pre-wrap;line-height:1.9;position:relative}.fr-original mark{background:#cceee8;color:inherit;box-decoration-break:clone}.fr-revision{display:flex;align-items:center;gap:12px;padding-top:10px;font-size:13px}.fr-revision label{flex:1}.fr-revision textarea{display:block;width:100%;box-sizing:border-box;margin-top:5px;min-height:58px;border:1px solid #dce7e8;border-radius:6px;padding:8px;font:inherit}.fr-status{font-size:12px;color:#008c83}.fr-empty{padding:12px;color:#70868b;font-size:13px}@media(max-width:1150px){.fr-grid{grid-template-columns:150px minmax(260px,1fr)}.fr-context{grid-column:1/-1;height:230px;border-top:1px solid #e0e9e9}.fr-grid{height:auto}.fr-list,.fr-evidence{height:420px}.fr-revision{flex-wrap:wrap}}
+.workspace-main #focused:has(.fr-grid){padding-top:0!important}
+#focused #comparisonPanel:has(.fr-grid){padding:10px 0 12px!important}
+#comparisonWorkspace:has(.fr-grid){padding-top:0!important}
+.fr-toolbar{justify-content:flex-start;flex-wrap:wrap;gap:10px;padding:0 0 10px;margin:0;min-height:34px}
+.fr-toolbar>strong{font-size:14px;white-space:nowrap}
+.fr-toolbar .fr-picker{width:clamp(260px,34vw,560px);max-width:100%;min-width:0;flex:0 1 auto;height:34px;padding:0 28px 0 10px;border:1px solid #dce7e8;border-radius:7px;background:#fff;color:#294951;font:14px 'Microsoft YaHei',sans-serif;text-overflow:ellipsis}
+.fr-toolbar .fr-run{margin:0;height:34px;padding:0 12px;background:#009e96;color:white;border:1px solid #009e96;border-radius:7px;font-size:14px}
+.fr-toolbar .fr-picker,.fr-toolbar .fr-run{margin:0!important;box-sizing:border-box;min-height:34px;max-height:34px;align-self:center}
+.fr-toolbar>.fr-inline-note{flex:0 0 auto;display:inline-flex;gap:7px;align-items:center;font-size:12px;color:#70868b;white-space:normal;overflow:visible}
+.fr-toolbar .fr-info{width:18px;height:18px;min-height:0;padding:0;border:1px solid #adc3c6;border-radius:50%;background:#f5f9f9;color:#71888d;font:12px Georgia,serif;cursor:help}
+.fr-grid{gap:10px;border:0;grid-template-columns:190px minmax(340px,1fr) minmax(260px,.7fr);height:calc(100dvh - 280px);min-height:320px}
+.fr-list,.fr-evidence,.fr-context{border:1px solid #e0e9e9;border-radius:7px;min-width:0}
+.fr-list button{padding:9px 10px;font-size:13px}
+.fr-list button.active{box-shadow:inset 3px 0 #009e96}
+.fr-filters{padding:5px 8px;gap:2px;min-height:32px;align-items:center}
+.fr-filters button{padding:5px 8px;font-size:13px;white-space:nowrap}
+.fr-items article{padding:10px 12px;line-height:1.65}
+.fr-items article p{margin:6px 0}
+.fr-items blockquote{margin:6px 0;max-height:120px;font-size:13px}
+.fr-context{padding:10px 12px}
+.fr-context>p{margin:0 0 8px;font-weight:600}
+.fr-revision{gap:10px;padding-top:8px;align-items:center}
+.fr-revision textarea{min-height:54px;max-height:110px;padding:7px;margin-top:4px}
+@media(max-width:1150px){.fr-grid{grid-template-columns:160px minmax(260px,1fr);height:auto}.fr-context{height:230px}.fr-toolbar .fr-picker{width:min(460px,55vw)}.fr-toolbar>.fr-inline-note{flex-basis:auto}.fr-list,.fr-evidence{height:420px}}
+@media(max-width:650px){.fr-grid{grid-template-columns:1fr}.fr-list{display:none}.fr-context{grid-column:auto}.fr-toolbar .fr-picker{width:100%;flex-basis:calc(100% - 100px)}.fr-toolbar>.fr-inline-note{font-size:11px}.fr-evidence{height:430px}.fr-revision label{min-width:220px}}
+@media(min-width:1151px){.fr-grid{grid-template-columns:190px minmax(0,1fr)}}
+.fr-list button[contenteditable="true"]{outline:2px solid #6bc8bb;outline-offset:-2px;background:#f1fbf8;cursor:text;user-select:text;white-space:pre-wrap}
+.fr-toolbar .fr-save{margin-left:auto;height:32px;padding:0 10px;font-size:13px}
+.workspace-main #focused:has(.fr-grid){padding-bottom:8px!important;min-height:0}
+#focused #comparisonWorkspace:has(.fr-grid){display:flex;flex-direction:column;overflow:hidden;min-height:0;height:auto}
+#focused #comparisonPanel:has(.fr-grid){display:flex;flex-direction:column;flex:1;min-height:0;height:100%;box-sizing:border-box;padding:10px 0 0!important;overflow:hidden}
+.fr-toolbar{flex-shrink:0}
+#comparisonPanel .fr-grid{flex:1;min-height:0;height:auto}
+#comparisonPanel .fr-list,#comparisonPanel .fr-evidence{height:auto;min-height:0}

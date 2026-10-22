@@ -1,0 +1,28 @@
+#themeDialog.theme-picker-dialog{box-sizing:border-box;width:560px;max-width:calc(100vw - 32px);max-height:85dvh;padding:22px 24px 18px;border:1px solid #e0e9e9;border-radius:12px;background:#fff;color:#19333c;overflow:auto;box-shadow:0 12px 40px #163b3324}
+#themeDialog::backdrop{background:#193a3540}
+#themeDialog [hidden]{display:none!important}
+#themeDialog form{margin:0;padding:0;min-width:0}
+#themeDialog .dialog-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px;gap:12px}
+#themeDialog .dialog-head h2{margin:0;font-size:18px;line-height:28px;font-weight:600;color:#18323c}
+#themeDialog .icon-btn{width:28px;height:28px;padding:0;border:0;border-radius:6px;background:transparent;color:#78908d;font-size:22px;line-height:28px}
+#themeDialog .icon-btn:hover{background:#f0f6f5}
+#themeDialog .theme-picker-step{font-size:12px;color:#7c908d;line-height:20px;margin:0 0 14px;overflow-wrap:anywhere}
+#themeDialog .theme-project-choices{max-height:48dvh;overflow:auto;min-height:0;border-top:1px solid #edf1f2}
+#themeDialog .theme-project-row{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:12px 8px;text-align:left;border:0;border-bottom:1px solid #edf1f2;border-radius:0;background:#fff;color:#29464d;cursor:pointer}
+#themeDialog .theme-project-row:hover,#themeDialog .theme-project-row:focus-visible{background:#edf8f5;color:#13897d}
+#themeDialog .theme-project-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:14px;line-height:22px}
+#themeDialog .theme-project-size{flex:none;font-size:12px;color:#839793}
+#themeDialog .theme-project-arrow{flex:none;color:#89aca3;font-size:20px;font-weight:400}
+#themeDialog .theme-picker-back{border:0;background:none;padding:0;margin:2px 0 8px;color:#228d80;font-size:12px;cursor:pointer}
+#themeDialog .theme-label{display:block;margin-bottom:14px;font-size:12px;color:#67847d}
+#themeDialog .theme-label input{box-sizing:border-box;width:100%;height:36px;margin-top:6px;padding:8px 10px;font-size:14px;border:1px solid #dce7e5;border-radius:7px}
+#themeDialog .comparison-picker{display:block;max-height:38dvh;overflow:auto;padding:0;border-top:1px solid #edf1f2}
+#themeDialog .comparison-choice{display:flex;align-items:center;gap:10px;min-height:44px;padding:10px 8px;margin:0;border:0;border-bottom:1px solid #edf1f2;border-radius:0;background:#fff;font-size:14px;color:#29464d;cursor:pointer}
+#themeDialog .comparison-choice:hover,#themeDialog .comparison-choice:has(input:checked){background:#f0f9f6}
+#themeDialog .comparison-choice input{width:16px;height:16px;flex:none;margin:0;accent-color:#15998c}
+#themeDialog .comparison-choice span{min-width:0;overflow-wrap:anywhere;line-height:22px}
+#themeDialog .dialog-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:16px 0 0;padding:0}
+#themeDialog .dialog-actions button{height:34px;padding:0 14px;font-size:13px;border-radius:7px}
+#themeDialog .theme-picker-count{margin-right:auto;color:#76928b;font-size:12px}
+#themeDialog button:focus-visible{outline:2px solid #4ab9a5;outline-offset:2px}
+@media(max-width:600px){#themeDialog.theme-picker-dialog{padding:18px 16px}.theme-project-size{display:none}}

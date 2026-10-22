@@ -1,0 +1,10 @@
+.wc-chord-feedback{flex:none;height:60px;padding:7px 12px;font-size:12px;line-height:1.55;color:#607e82;background:#f7fbfa;border-bottom:1px solid #e4eeeb;overflow-wrap:anywhere;overflow:auto;box-sizing:border-box}
+.wc-chord-node,.wc-chord-ribbon,.wc-chord-label{cursor:pointer;outline:none}
+.wc-chord-node:focus-visible{stroke:#007b74!important;stroke-width:3!important}
+.wc-chord-ribbon:focus-visible{stroke:#007b74!important;stroke-width:2!important}
+.wc-chord-label:focus-visible text{fill:#007b74;font-weight:700}
+.wc-chord-label text{pointer-events:none;paint-order:stroke;stroke:#fff;stroke-width:2px;stroke-linejoin:round}
+.wc-chord-workspace .wn-stage{min-height:480px}
+@media(min-width:761px){#wordCooccurrence .wc-chord-workspace .wn-layout{align-items:stretch}#wordCooccurrence .wc-chord-workspace .wn-layout>.wn-details{position:absolute;top:0;bottom:0;right:0;width:280px;height:auto!important;min-height:0;max-height:none;box-sizing:border-box;overflow:hidden}#wordCooccurrence .wc-chord-workspace .wn-detail-content{min-height:0;flex:1 1 0}}
+@media(min-width:761px) and (max-width:1000px){#wordCooccurrence .wc-chord-workspace .wn-layout>.wn-details{width:240px}}
+.wc-chord-workspace .wn-note{margin-top:8px}

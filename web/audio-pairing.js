@@ -1,0 +1,31 @@
+(()=>{
+ const toggle=document.querySelector('#audioFollowToggle'),wrap=document.createElement('div');wrap.className='audio-menu';document.querySelector('.editor-actions').append(wrap);wrap.append(toggle);
+ const arrow=document.createElement('button');arrow.type='button';arrow.textContent='⌄';arrow.setAttribute('aria-label','录音菜单');arrow.setAttribute('aria-expanded','false');wrap.append(arrow);
+ const menu=document.createElement('div');menu.className='audio-pair-menu';menu.hidden=true;menu.innerHTML='<button type="button" data-link>关联录音…</button><button type="button" data-settings>录音设置</button>';wrap.append(menu);
+ arrow.onclick=()=>{menu.hidden=!menu.hidden;arrow.setAttribute('aria-expanded',String(!menu.hidden));};
+ document.addEventListener('click',e=>{if(!wrap.contains(e.target)){menu.hidden=true;arrow.setAttribute('aria-expanded','false');}});
+ const dialog=document.createElement('dialog');dialog.className='audio-pair-dialog';dialog.innerHTML=`<div class="ap-head"><h2>关联录音</h2><button type="button" data-close aria-label="关闭录音设置">×</button></div><p data-title></p><div data-manage hidden><p data-current></p><p data-status role="status"></p><div class="ap-manage"><button type="button" data-replace>更换录音</button><button type="button" data-retry>重新对齐</button><button type="button" data-detach>解除关联</button></div></div><div data-select><div class="ap-tabs"><button type="button" data-computer>从电脑选择</button><button type="button" data-existing>已有录音</button></div><label class="ap-upload">选择录音文件<input type="file" accept="audio/*,.m4a,.mp4" aria-label="选择关联录音"><small>MP3 / M4A / WAV 等，最大 2GB</small></label><select data-list aria-label="选择已有录音" hidden><option value="">请选择已有录音</option></select><p data-file></p></div><audio controls preload="metadata"></audio><p data-message role="status"></p><div class="ap-footer"><button type="button" data-cancel>取消</button><button type="button" data-submit class="primary" disabled>关联并开始对齐</button></div>`;document.body.append(dialog);
+ const q=s=>dialog.querySelector(s),player=q('audio'),file=q('input[type=file]'),submit=q('[data-submit]');let project=null,blob=null,list=[],mode='computer',poll=null;
+ const labels={queued:'等待对齐',running:'正在对齐，可继续校订',completed:'对齐完成',completed_with_fallback:'对齐完成，部分位置使用粗定位',error:'对齐失败，可重试',partial:'已完成部分对齐',not_aligned:'尚未对齐',detached:'未关联录音'};
+ const endpoint=()=>`/api/projects/${encodeURIComponent(project)}/recording`;
+ function message(text){q('[data-message]').textContent=text;}
+ function revoke(){if(blob){URL.revokeObjectURL(blob);blob=null;}}
+ function ready(){submit.disabled=!((mode==='computer'?file.files.length:q('[data-list]').value));}
+ function choose(src,name){revoke();player.src=src;q('[data-file]').textContent=name;ready();}
+ file.onchange=()=>{const f=file.files[0];if(!f)return;revoke();blob=URL.createObjectURL(f);player.src=blob;q('[data-file]').textContent=f.name+' · '+(f.size/1024/1024).toFixed(1)+' MB';ready();};
+
+ q('[data-computer]').onclick=()=>{mode='computer';q('.ap-upload').hidden=false;q('[data-list]').hidden=true;player.pause();player.removeAttribute('src');ready();};
+ q('[data-existing]').onclick=async()=>{mode='existing';q('.ap-upload').hidden=true;q('[data-list]').hidden=false;ready();try{list=await api('/api/recordings');q('[data-list]').replaceChildren(new Option('请选择已有录音',''),...list.map(x=>new Option(x.name,x.id)));}catch(e){message(e.message);}};
+ q('[data-list]').onchange=()=>{const id=q('[data-list]').value;if(id)choose(`/api/projects/${encodeURIComponent(id)}/source-audio`,list.find(x=>x.id===id)?.name||'录音');};
+ async function status(){const state=await api(endpoint());q('[data-current]').textContent=state.linked?state.name+' · '+(state.bytes/1024/1024).toFixed(1)+' MB':'尚未关联录音';q('[data-status]').textContent=state.error||labels[state.status]||state.status;q('[data-retry]').disabled=!state.linked||['running','queued'].includes(state.status);q('[data-detach]').disabled=!state.linked||['running','queued'].includes(state.status);q('[data-replace]').disabled=['running','queued'].includes(state.status);return state;}
+ function selecting(){mode='computer';q('.ap-upload').hidden=false;q('[data-list]').hidden=true;q('[data-manage]').hidden=true;q('[data-select]').hidden=false;q('[data-submit]').hidden=false;q('.ap-footer [data-cancel]').textContent='取消';player.removeAttribute('src');ready();}
+ async function open(settings){if(!selected){toast('请先选择访谈');return;}menu.hidden=true;project=String(selected);message('');file.value='';q('[data-file]').textContent='';revoke();q('h2').textContent=settings?'录音设置':'关联录音';q('[data-title]').textContent=`为「${document.querySelector('#editorTitle').textContent}」管理对应录音`;selecting();dialog.showModal();if(settings){try{const state=await status();q('[data-manage]').hidden=false;q('[data-select]').hidden=true;submit.hidden=true;if(state.linked)player.src=`/api/projects/${encodeURIComponent(project)}/source-audio?v=${Date.now()}`;poll=setInterval(()=>status().catch(e=>message(e.message)),5000);}catch(e){message(e.message);}}}
+ menu.querySelector('[data-link]').onclick=()=>open(false);menu.querySelector('[data-settings]').onclick=()=>open(true);
+ q('[data-replace]').onclick=selecting;
+ function close(){player.pause();revoke();clearInterval(poll);poll=null;dialog.close();}
+ q('[data-close]').onclick=q('[data-cancel]').onclick=close;dialog.addEventListener('close',()=>{player.pause();revoke();clearInterval(poll);});
+ submit.onclick=async()=>{if(submit.disabled)return;submit.disabled=true;const data=new FormData();if(mode==='computer')data.append('audio',file.files[0]);else data.append('existing',q('[data-list]').value);message('正在关联录音…');try{await api(endpoint(),{method:'POST',body:data});window.dispatchEvent(new CustomEvent('recordingchanged',{detail:{project}}));close();toast('录音已关联，后台对齐中，可继续校订');}catch(e){message(e.message);ready();}};
+ q('[data-retry]').onclick=async()=>{try{await api(endpoint()+'/retry',{method:'POST'});await status();}catch(e){message(e.message);}};
+ q('[data-detach]').onclick=async()=>{if(!confirm('解除录音关联？录音文件和访谈稿都会保留。'))return;try{await api(endpoint(),{method:'DELETE'});window.dispatchEvent(new CustomEvent('recordingchanged',{detail:{project}}));await status();player.pause();player.removeAttribute('src');}catch(e){message(e.message);}};
+ window.workspaceHeader?.refresh();
+})();

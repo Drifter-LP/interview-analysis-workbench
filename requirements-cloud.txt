@@ -1,0 +1,12 @@
+# Text-only runtime; tested dependency versions from the current workbench.
+fastapi==0.141.1
+starlette==1.6.0
+uvicorn==0.53.0
+httpx==0.28.1
+pydantic==2.13.5
+python-multipart==0.0.32
+openai==3.14.1
+jieba==0.42.1
+networkx==3.6.1
+numpy==2.5.3
+scipy==1.18.1

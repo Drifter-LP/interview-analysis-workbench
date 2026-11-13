@@ -31,7 +31,8 @@
   if($('#projectManage')?.classList.contains('active'))showResearchList();
   renderMemoSwitcher();toast('项目已移除，访谈稿已保留');
  }catch(e){toast('未完成项目移除：'+e.message);}finally{deleting.delete(id);}};
- const create=document.createElement('button');create.type='button';create.className='soft';create.textContent='＋ 新建项目';create.onclick=()=>openResearchDialog('create');
+ const create=document.createElement('button');create.type='button';create.id='libraryCreateResearch';create.className='soft';create.textContent=window.WORKBENCH_GUEST?'新建项目':'＋ 新建项目';
+ if(!window.WORKBENCH_GUEST)create.onclick=()=>openResearchDialog('create');
  let queued=false;function sync(){queued=false;const active=$('#workspace')?.classList.contains('active');if(create.hidden!==!active)create.hidden=!active;const slot=document.querySelector('.workspace-action-slot');if(slot&&create.parentNode!==slot)slot.prepend(create);
   document.querySelectorAll('#projectList .library-group').forEach(group=>{const id=group.dataset.groupId;if(id==='unassigned'||group.querySelector('.library-project-actions'))return;const wrap=document.createElement('div');wrap.className='library-project-actions';const b=document.createElement('button');b.type='button';b.className='library-project-dots';b.textContent='⋯';b.setAttribute('aria-label','项目操作：'+(researchProjects.find(p=>p.id===id)?.name||''));b.setAttribute('aria-expanded','false');b.setAttribute('aria-haspopup','true');const menu=document.createElement('div');menu.className='library-project-menu';menu.hidden=true;const remove=document.createElement('button');remove.type='button';remove.textContent='删除项目';remove.onclick=e=>{e.stopPropagation();closeProjectMenus();deleteResearchProject(id);};menu.append(remove);b.onclick=e=>{e.stopPropagation();const opening=menu.hidden;closeProjectMenus();menu.hidden=!opening;b.setAttribute('aria-expanded',String(opening));};wrap.append(b,menu);group.append(wrap);});
  }

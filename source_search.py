@@ -2,6 +2,7 @@
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -17,7 +18,7 @@ PROMPT = (
 )
 logger = logging.getLogger('source_search')
 if not logger.handlers:
-    handler = logging.FileHandler(Path(__file__).with_name('source-search-diagnostics.log'), encoding='utf-8')
+    handler = logging.FileHandler(Path(os.environ.get('WORKBENCH_DATA_DIR',str(Path(__file__).resolve().parent)))/'source-search-diagnostics.log', encoding='utf-8')
     handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)

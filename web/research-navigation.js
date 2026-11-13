@@ -1,5 +1,6 @@
 /* Task navigation over existing analysis records. No migration or AI generation. */
 (() => {
+ if(window.WORKBENCH_GUEST)return;
  const $ = s => document.querySelector(s);
  const make = (tag,cls,text) => {const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
  const button = (text,fn) => {const n=make('button','',text);n.type='button';n.onclick=fn;return n;};
@@ -34,7 +35,7 @@
  const search=button('查找原文',()=>window.openSourceSearch?.({materials:searchMaterials()}));search.className='research-source-search';
  const newAnalysis=button('新建分析',()=>openThemeDialog());newAnalysis.className='research-source-search';
  const scopeText=make('div','research-record-scope');
- window.createEvidenceDrawer=function(titleText){
+ window.createEvidenceDrawer=window.createEvidenceDrawer||function(titleText){
   const drawer=make('dialog','wc-source-drawer'),head=make('header'),title=make('strong','',titleText),close=button('×',()=>drawer.close()),note=make('p','wc-source-note'),body=make('div','wc-source-body');close.setAttribute('aria-label','关闭原文');head.append(title,close);drawer.append(head,note,body);document.body.append(drawer);drawer.onclose=()=>drawer.remove();drawer.showModal();return{drawer,note,body};
  };
  const previousEvidence=openThemeEvidence;
@@ -86,7 +87,7 @@
     $('#themeQuickInput').closest('.focused-input').hidden=true;$('#themeQuickInput').closest('.focused-input').style.display='none';
     refreshCodes();
    }else choosePresentation(presentation);
-  }finally{rendering=false;window.workspaceHeader?.refresh();window.animateWorkspaceTransition?.(page);}
+  }finally{rendering=false;window.workspaceHeader?.refresh();}
  }
  function choosePresentation(next){
   if(task!=='theme')return;

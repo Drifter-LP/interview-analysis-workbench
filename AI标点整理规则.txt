@@ -58,10 +58,10 @@
 1. 原则上避免连续超过15个汉字没有标点，但不得破坏完整语义结构。
 2. 保留现有段落和空行，不得重新分段或合并段落。
 3. from和to必须不同；from必须逐字存在于对应发言单元的输入正文中；from与to包含的汉字、字母和数字必须完全相同且顺序一致，只能改变标点。
-4. 如果from在同一发言单元中出现多次，必须提供occurrence（从1开始计数），并提供包含该处from的source_excerpt；无法准确定位时不要提出修改，加入uncertain。
+4. occurrence表示from在当前输入发言单元中第几次出现（从1开始计数）。无法确定或无法准确定位的内容保留原文，不提出修改。
 
 ## 输出
 只返回JSON，不输出解释或Markdown。不得返回original、revised、changed或完整正文。顶层必须是：
-{"units":[{"unit_id":1,"speaker":"说话人1","suggestions":[{"from":"原文中的最小片段","to":"只改变标点后的片段","source_excerpt":"含该片段的短小原文上下文","occurrence":1,"type":"标点","reason":"断句依据","confidence":"中"}],"uncertain":[]}]}
+{"units":[{"unit_id":1,"suggestions":[{"from":"原文中的最小片段","to":"只改变标点后的片段","occurrence":1}]}]}
 
-type只能是“标点”或“断句”。不得返回ASR错词或语句润色。没有修改时suggestions为空数组。每个输入发言单元都必须返回一个对应对象，unit_id、speaker、数量和顺序不得改变。
+只返回unit_id、suggestions及其中的from、to、occurrence；不输出speaker、source_excerpt、type、reason、confidence、uncertain或其他说明字段。不得返回ASR错词或语句润色。没有修改时suggestions为空数组。每个输入发言单元都必须返回一个对应对象，unit_id、数量和顺序不得改变。

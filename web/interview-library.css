@@ -2,6 +2,7 @@
 #workspace .overview-grid strong{font-size:17px;color:#142d36;margin-left:10px}
 #workspace .library-activity{margin-left:auto;display:flex;align-items:center;gap:8px}
 #workspace .library-activity i{width:8px;height:8px;border-radius:50%;background:#12c78a}
+#workspace .library-activity.is-busy i{background:#f59e0b}
 #workspace .section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 #workspace .section-head h2{font-size:24px;margin:0}
 #workspace .library-tools{display:flex;gap:10px;flex-wrap:wrap}
@@ -46,6 +47,13 @@
 .library-delete-dialog{max-width:460px;padding:24px;border:0;border-radius:16px;color:#17333e}
 .library-delete-dialog p{line-height:1.65;color:#667b85;overflow-wrap:anywhere}
 .library-delete-dialog .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
-.library-delete-dialog .danger{background:#b74444;color:white;border:0;border-radius:8px;padding:9px 18px}
+.library-delete-dialog .danger{background:#fbe8e8;color:#9e3333;border:0;border-radius:8px;padding:9px 18px}
+.library-delete-dialog .danger:is(:hover,:focus-visible){background:#b74444;color:white}
+.library-delete-dialog .danger:focus-visible{outline:2px solid #9e3333;outline-offset:3px}
+.library-delete-dialog .danger:active{background:#963535;color:white}
 @media(max-width:1000px){.library-columns,.library-row{grid-template-columns:minmax(120px,1fr) 100px 90px 90px;gap:8px}.library-tools{width:100%}.library-group-head{padding:16px}.library-table{padding:0 14px 12px}}
 @media(max-width:700px){.library-columns,.library-row{grid-template-columns:minmax(100px,1fr) 85px 80px}.library-columns>:nth-child(2),.library-row>time{display:none}#workspace .overview-grid{gap:12px;flex-wrap:wrap}#workspace .library-activity{margin-left:0}}
+.library-row-actions button[hidden]{display:none!important}
+.library-row-status.interrupted{color:#b77a23}
+.library-row-actions [data-resume]{white-space:nowrap;color:#087d76}
+.library-resume-error{grid-column:1/-1;color:#a64b41;font-size:13px;line-height:1.6;padding:4px 0;overflow-wrap:anywhere}

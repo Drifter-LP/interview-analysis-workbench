@@ -30,10 +30,12 @@
 .ai-change.low { background: #ffead9; }
 .ai-change.accepted { background: #dff3e7; }
 .change-popover { display: none; position: absolute; z-index: 20; left: 50%; top: calc(100% - 1px); transform: translateX(-50%); min-width: 150px; max-width: 280px; padding: 9px; border: 1px solid #e3e9e7; border-radius: 9px; background: #fff; color: #263a3e; box-shadow: 0 8px 24px rgba(10,41,47,.12); white-space: normal; font: 13px/1.5 inherit; }
-.ai-change:hover .change-popover,.ai-change:focus-within .change-popover { display: flex; align-items: center; gap: 9px; }
-.change-original { flex: 1; overflow-wrap: anywhere; }
+.ai-change:hover .change-popover,.ai-change:focus-within .change-popover { display: grid; grid-template-columns: max-content max-content; align-items: center; gap: 8px; width: 240px; font-size: 13px; line-height: 1.5; }
+.change-original { grid-column: 1 / -1; overflow-wrap: anywhere; }
 .change-popover button { flex: none; border: 0; border-radius: 7px; padding: 5px 9px; background: #0d716d; color: #fff; cursor: pointer; font: 600 12px inherit; }
 .accepted-label { flex: none; color: #347558; font-size: 12px; }
+.change-popover button.reject-change{background:#fff;color:#9a5148;border:1px solid #e2c9c5}
+.ai-change.rejected{background:transparent;color:inherit;border-bottom:1px dotted #a9b7b5}
 
 .nav-group { display: grid; }
 .nav-parent { display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; padding: 12px; border: 0; border-radius: 9px; background: transparent; color: #eef7f5; text-align: left; cursor: pointer; font: inherit; }

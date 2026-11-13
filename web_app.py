@@ -10,11 +10,11 @@ import threading
 import time
 import uuid
 import webbrowser
-import winreg
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from theme_file_io import read_json as read_theme_json
+from correction_speed import select_paragraphs, restore_paragraphs, RULES as PUNCTUATION_SCREEN_RULES
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -24,16 +24,17 @@ from concurrent.futures import ThreadPoolExecutor
 from interview_facts import limited_create
 
 
-APP_DIR = Path(__file__).resolve().parent
-STATIC_DIR = APP_DIR / "web"
+CODE_DIR = Path(__file__).resolve().parent
+APP_DIR = Path(os.environ.get('WORKBENCH_DATA_DIR', str(CODE_DIR))).resolve()
+STATIC_DIR = CODE_DIR / "web"
 PROJECTS_DIR = APP_DIR / "projects"
 RESEARCH_PROJECTS_DIR = APP_DIR / "research_projects"
 RESEARCH_FILES_DIR = APP_DIR / "research_project_files"
-QWEN_DIR = APP_DIR / "Qwen3-ASR"
+QWEN_DIR = CODE_DIR / "Qwen3-ASR"
 QWEN_MODEL = QWEN_DIR / "Qwen3-ASR-0.6B"
 PYTHON = QWEN_DIR / "venv312" / "Scripts" / "python.exe"
 TRANSCRIBER = QWEN_DIR / "qwen_transcribe.py"
-HOTWORDS = APP_DIR / "基层医疗热词.txt"
+HOTWORDS = CODE_DIR / "基层医疗热词.txt"
 SUPPORTED = {".m4a", ".mp3", ".wav", ".aac", ".flac", ".ogg", ".wma"}
 MAX_AI_SUGGESTION_CHARS = 80
 LOCAL_DIRECT_REPLACEMENTS = {
@@ -53,12 +54,14 @@ LOCAL_DIRECT_REPLACEMENTS = {
 active_lock = threading.Lock()
 active_project: str | None = None
 
-os.environ.setdefault("MODELSCOPE_CACHE", str(APP_DIR / "models"))
-os.environ.setdefault("HF_HOME", str(APP_DIR / "models" / "huggingface"))
+os.environ.setdefault("MODELSCOPE_CACHE", str(CODE_DIR / "models"))
+os.environ.setdefault("HF_HOME", str(CODE_DIR / "models" / "huggingface"))
 os.environ.setdefault("TEMP", str(APP_DIR / "temp"))
 os.environ.setdefault("TMP", str(APP_DIR / "temp"))
 
 app = FastAPI(title="访谈分析工作台")
+from site_boundary import protect_worker
+protect_worker(app)
 app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 
 
@@ -128,10 +131,11 @@ def read_deepseek_key() -> str:
     if key:
         return key
     try:
+        import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment") as registry_key:
             value, _ = winreg.QueryValueEx(registry_key, "DEEPSEEK_API_KEY")
             return str(value).strip()
-    except (FileNotFoundError, OSError):
+    except (ImportError, OSError):
         return ""
 
 
@@ -222,7 +226,7 @@ def build_review_annotations(text: str, changes: list[dict]) -> list[dict]:
     for change in changes:
         confidence = str(change.get("confidence", "")).strip()
         revised = str(change.get("to", ""))
-        if not change.get("applied") or change.get("stage") != "word" or confidence not in {"中", "低"} or not revised:
+        if change.get('rejected') or not change.get("applied") or change.get("stage") != "word" or not revised:
             continue
         start = text.find(revised, cursors.get(revised, 0))
         while start >= 0 and any(not (start + len(revised) <= left or start >= right) for left, right in occupied):
@@ -241,11 +245,12 @@ def build_review_annotations(text: str, changes: list[dict]) -> list[dict]:
     return sorted(annotations, key=lambda item: item["start"])
 
 
-def run_transcription(project_id: str, audio_path: Path) -> None:
+def run_transcription(project_id: str, audio_path: Path, resume: bool = False) -> None:
     global active_project
     directory = project_dir(project_id)
     meta = read_metadata(project_id)
-    meta.update(status="running", started_at=time.time(), message="正在加载模型并转录")
+    meta.update(status="running", message="正在从检查点继续转录" if resume else "正在加载模型并转录")
+    meta['resumed_at' if resume else 'started_at']=time.time()
     write_metadata(project_id, meta)
     log_path = directory / "运行记录.txt"
     command = [
@@ -255,6 +260,7 @@ def run_transcription(project_id: str, audio_path: Path) -> None:
         "--output-dir",
         str(directory),
     ]
+    if resume:command.append('--resume')
     try:
         completed = subprocess.run(
             command,
@@ -265,9 +271,9 @@ def run_transcription(project_id: str, audio_path: Path) -> None:
             errors="replace",
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
-        log_path.write_text(
-            (completed.stdout or "") + "\n" + (completed.stderr or ""), encoding="utf-8"
-        )
+        with log_path.open('a' if resume else 'w',encoding='utf8') as log:
+            if resume:log.write('\n【从检查点继续转录】\n')
+            log.write((completed.stdout or '')+'\n'+(completed.stderr or ''))
         meta = read_metadata(project_id)
         if completed.returncode == 0:
             meta.update(
@@ -284,12 +290,13 @@ def run_transcription(project_id: str, audio_path: Path) -> None:
         write_metadata(project_id, meta)
     finally:
         with active_lock:
-            active_project = None
+            if active_project==project_id:active_project = None
 
 
 class TranscriptUpdate(BaseModel):
     text: str
     accepted_change_ids: list[str] = []
+    rejected_change_ids: list[str] = []
 
 
 class ChangeDecision(BaseModel):
@@ -355,6 +362,8 @@ def read_uploaded_transcript(upload: UploadFile) -> str:
     if suffix == ".docx":
         try:
             with zipfile.ZipFile(upload.file) as archive:
+                if os.environ.get('SITE_USER_ID') and (len(archive.infolist()) > 2000 or sum(i.file_size for i in archive.infolist()) > 20*1024*1024):
+                    raise HTTPException(413, 'Word解压内容超过20MB限制')
                 xml_data = archive.read("word/document.xml")
         except (KeyError, zipfile.BadZipFile, OSError) as exc:
             raise HTTPException(400, "Word文件无法读取，请确认它是有效的DOCX文件") from exc
@@ -392,6 +401,9 @@ def index():
 
 @app.get("/api/status")
 def status():
+    if os.environ.get('WORKBENCH_TEXT_ONLY') == '1':
+        return {"ready": False, "gpu": None, "model_count": 0, "engine": None,
+                "speaker_engine": None, "active_project": None, "text_only": True}
     ready = PYTHON.exists() and TRANSCRIBER.exists() and (QWEN_MODEL / "config.json").exists()
     return {
         "ready": ready,
@@ -415,6 +427,8 @@ def list_projects():
         if path.is_dir() and meta.exists():
             try:
                 item = json.loads(meta.read_text(encoding="utf-8"))
+                from transcription_recovery import presentation
+                item=presentation(item,path,active_project)
                 item["hidden_in_library"] = bool(item.get("hidden_at") or item.get("deleted_at"))
                 projects.append(item)
             except Exception:
@@ -481,8 +495,12 @@ def research_project_path(project_id: str) -> Path:
 
 @app.get("/api/research-projects")
 def list_research_projects(summaries: bool = False):
+    return research_project_list(list_projects(), summaries)
+
+
+def research_project_list(projects, summaries):
     RESEARCH_PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
-    interview_names = {item.get("id"): item.get("name", "") for item in list_projects()}
+    interview_names = {item.get("id"): item.get("name", "") for item in projects}
     items = []
     for path in RESEARCH_PROJECTS_DIR.glob("*.json"):
         try:
@@ -512,6 +530,17 @@ def list_research_projects(summaries: bool = False):
         except Exception:
             continue
     return sorted(items, key=lambda item: item.get("last_opened_at", item.get("created_at", 0)), reverse=True)
+
+
+@app.get('/api/library-bootstrap')
+def library_bootstrap():
+    projects = list_projects()
+    return {'projects': projects, 'research': research_project_list(projects, True), 'status': status()}
+
+
+@app.get('/api/library-bootstrap-guest')
+def guest_library_bootstrap():
+    return {'projects': list_projects(), 'research': [], 'status': status()}
 
 
 @app.get('/api/research-projects/{project_id}/theme-analysis-records/{record_index}')
@@ -844,9 +873,59 @@ def create_transcript_project(name: str = Form(""), transcript: UploadFile = Fil
 @app.get("/api/projects/{project_id}")
 def get_project(project_id: str):
     meta = read_metadata(project_id)
+    from transcription_recovery import presentation
+    meta=presentation(meta,project_dir(project_id),active_project)
     path = transcript_path(project_id)
     meta["has_transcript"] = bool(path)
     return meta
+
+
+@app.post('/api/projects/{project_id}/resume-transcription')
+def resume_transcription(project_id: str):
+    global active_project
+    from transcription_recovery import preflight,presentation,ensure_worker_stopped
+    with active_lock:
+        if active_project:
+            raise HTTPException(409,'已有录音正在转录，请勿重复启动')
+        original=read_metadata(project_id);directory=project_dir(project_id)
+        state=presentation(original,directory,active_project)
+        if state.get('status') not in {'interrupted','failed'}:
+            raise HTTPException(409,'该访谈不处于可继续的中断状态')
+        try:
+            ensure_worker_stopped()
+            audio,completed,total=preflight(APP_DIR,directory)
+        except (ValueError,OSError) as exc:
+            raise HTTPException(409,str(exc)) from exc
+        except (KeyError,TypeError,AttributeError) as exc:
+            raise HTTPException(409,'检查点结构不完整或已损坏，不能继续；已有结果未覆盖') from exc
+        active_project=project_id
+        meta=dict(original)
+        meta.update(status='queued',message=f'校验通过，准备从第{completed+1}/{total}段继续' if completed<total else '校验通过，准备保存最终结果')
+        meta['resume_requests']=[*meta.get('resume_requests',[]),{'requested_at':time.time(),'completed_chunks':completed,'total_chunks':total}]
+        try:
+            write_metadata(project_id,meta)
+            threading.Thread(target=run_transcription,args=(project_id,audio,True),daemon=True).start()
+        except Exception:
+            active_project=None;write_metadata(project_id,original);raise
+    return {'started':True,'completed_chunks':completed,'total_chunks':total,'next_chunk':completed+1 if completed<total else None}
+
+
+@app.get("/api/projects/{project_id}/transcription-progress")
+def get_transcription_progress(project_id: str):
+    meta = read_metadata(project_id)
+    directory = project_dir(project_id)
+    progress_path = directory / "转录进度.json"
+    checkpoint_path = directory / "转录检查点.json"
+    progress = json.loads(progress_path.read_text(encoding="utf-8")) if progress_path.exists() else {}
+    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8")) if checkpoint_path.exists() else {}
+    from transcription_recovery import presentation
+    state=presentation({**meta,'id':project_id},directory,active_project)
+    return {**progress, 'status':state['status'], "task_status": state['status'], 'resume_available':state['resume_available'],
+            "checkpoint_available": bool(checkpoint),
+            "completed_chunks": checkpoint.get("completed_chunks", 0),
+            "total_chunks": checkpoint.get("total_chunks", 0),
+            "partial_available": (directory / "转录部分结果.txt").exists(),
+            "partial_is_final": False}
 
 
 @app.get("/api/projects/{project_id}/transcript")
@@ -860,7 +939,7 @@ def get_transcript(project_id: str):
     if path.name in {"DeepSeek自动校订稿.txt", "校订稿.txt"} and record_path.exists():
         try:
             record = json.loads(record_path.read_text(encoding="utf-8"))
-            annotations = record.get("annotations") or build_review_annotations(text, record.get("changes", []))
+            annotations = record.get("annotations") if "annotations" in record else build_review_annotations(text, record.get("changes", []))
             if "annotations" not in record:
                 record["annotations"] = annotations
                 record_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -868,8 +947,16 @@ def get_transcript(project_id: str):
             annotations = []
     return {"text": text, "edited": path.name in {"校订稿.txt", "DeepSeek自动校订稿.txt"}, "annotations": annotations}
 
+
+@app.get("/api/projects/{project_id}/open-transcript")
+def open_transcript(project_id: str):
+    meta = get_project(project_id)
+    return {"project": meta, "transcript": get_transcript(project_id) if meta["status"] == "completed" else None}
+
 from audio_pairing import install as install_audio_pairing
 install_audio_pairing(app, APP_DIR, project_dir)
+from interview_trash_api import install as install_interview_trash
+install_interview_trash(app, APP_DIR, PROJECTS_DIR, RESEARCH_PROJECTS_DIR, RESEARCH_FILES_DIR)
 
 @app.post('/api/projects/{project_id}/audio-alignment')
 def get_audio_alignment(project_id: str, body: dict):
@@ -893,6 +980,8 @@ def accept_transcript_change(project_id: str, body: ChangeDecision):
     found = False
     for item in record.get("annotations", []):
         if item.get("change_id") == body.change_id:
+            if item.get('rejected'):
+                raise HTTPException(409, '这条建议已拒绝，不能批量重新接受')
             item["accepted"] = True; found = True
     for item in record.get("changes", []):
         if item.get("change_id") == body.change_id:
@@ -909,18 +998,20 @@ def save_transcript(project_id: str, body: TranscriptUpdate):
     if not directory.exists():
         raise HTTPException(404, "项目不存在")
     target = directory / "校订稿.txt"
-    target.write_text(body.text, encoding="utf-8-sig")
     record_path = directory / "DeepSeek修改记录.json"
-    if body.accepted_change_ids and record_path.exists():
+    if record_path.exists():
+        from transcript_review import save_decisions
+        from theme_file_io import write_json
         record = json.loads(record_path.read_text(encoding="utf-8"))
-        accepted = set(body.accepted_change_ids)
-        for item in record.get("annotations", []):
-            if item.get("change_id") in accepted:
-                item["accepted"] = True
-        for item in record.get("changes", []):
-            if item.get("change_id") in accepted:
-                item["accepted"] = True
-        record_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+        previous = transcript_path(project_id)
+        old_text = previous.read_text(encoding='utf-8-sig') if previous else ''
+        try:
+            record = save_decisions(record, old_text, body.text,
+                                    body.accepted_change_ids, body.rejected_change_ids, time.time())
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        write_json(record_path, record)
+    target.write_text(body.text, encoding="utf-8-sig")
     meta = read_metadata(project_id)
     meta["edited_at"] = time.time()
     write_metadata(project_id, meta)
@@ -928,7 +1019,9 @@ def save_transcript(project_id: str, body: TranscriptUpdate):
 
 
 @app.post("/api/projects/{project_id}/optimize-transcript")
-def optimize_transcript(project_id: str):
+def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
+    if punctuation_mode not in {"filtered", "full"}:
+        raise HTTPException(400, "标点检查模式无效")
     path = transcript_path(project_id)
     if not path:
         raise HTTPException(404, "没有找到可校订的访谈稿")
@@ -941,10 +1034,14 @@ def optimize_transcript(project_id: str):
     raw_dir.mkdir(parents=True, exist_ok=True)
     log_path = directory / "DeepSeek调用日志.jsonl"
     key_fingerprint = hashlib.sha256(key.encode("utf-8")).hexdigest()[:12].upper()
+    result_lock = threading.RLock()
+    input_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    manual_path = directory / "校订稿.txt"
+    manual_hash = hashlib.sha256(manual_path.read_bytes()).hexdigest() if manual_path.exists() else None
 
     def write_call_log(data: dict) -> None:
         entry = {"run_id": run_id, "logged_at": time.time(), **data}
-        with log_path.open("a", encoding="utf-8") as log_file:
+        with result_lock, log_path.open("a", encoding="utf-8") as log_file:
             log_file.write(json.dumps(entry, ensure_ascii=False) + "\n")
     text = path.read_text(encoding="utf-8-sig")
     blocks = [block.strip() for block in re.split(r"\n\s*\n", text) if block.strip()]
@@ -969,7 +1066,10 @@ def optimize_transcript(project_id: str):
             merged_units.append({"speaker": unit["speaker"], "text": unit["text"]})
     units = [{"unit_id": index, **unit} for index, unit in enumerate(merged_units, 1)]
     local_output = "\n\n".join((f"{item['speaker']}：" if item["speaker"] else "") + item["text"] for item in units)
-    (directory / "本地自动整理稿.txt").write_text(local_output, encoding="utf-8-sig")
+    local_target = directory / '本地自动整理稿.txt'
+    if path.resolve() == local_target.resolve():
+        local_target = raw_dir / '本地整理输入快照.txt'
+    local_target.write_text(local_output, encoding="utf-8-sig")
     (directory / "本地自动整理修改记录.json").write_text(json.dumps({"created_at": time.time(), "counts": local_counts, "units": local_records}, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def make_chunks(source_units: list[dict], max_chars: int = 8500) -> list[list[dict]]:
@@ -995,6 +1095,8 @@ def optimize_transcript(project_id: str):
             if not old or old == new:
                 continue
             record = {**suggestion, "stage": stage, "applied": False}
+            if len(old) > MAX_AI_SUGGESTION_CHARS or len(new) > MAX_AI_SUGGESTION_CHARS:
+                record['skip_reason'] = '局部建议超过80字符'; records.append(record); continue
             if stage == "punctuation" and visible_characters(old) != visible_characters(new):
                 record["skip_reason"] = "标点阶段改变了文字、字母或数字"; records.append(record); continue
             try:
@@ -1020,8 +1122,8 @@ def optimize_transcript(project_id: str):
             revised_text = revised_text[:begin] + new + revised_text[end:]
         return revised_text, records
 
-    content_rules = (APP_DIR / "AI文字校订规则.txt").read_text(encoding="utf-8-sig") if (APP_DIR / "AI文字校订规则.txt").exists() else ""
-    punctuation_rules = (APP_DIR / "AI标点整理规则.txt").read_text(encoding="utf-8-sig") if (APP_DIR / "AI标点整理规则.txt").exists() else ""
+    content_rules = (CODE_DIR / "AI文字校订规则.txt").read_text(encoding="utf-8-sig") if (CODE_DIR / "AI文字校订规则.txt").exists() else ""
+    punctuation_rules = (CODE_DIR / "AI标点整理规则.txt").read_text(encoding="utf-8-sig") if (CODE_DIR / "AI标点整理规则.txt").exists() else ""
     suggestion_limit_rule = f"\n\n强制长度限制：每条建议的from和to分别不得超过{MAX_AI_SUGGESTION_CHARS}个字符；一处建议只能包含一个局部修改；多处修改必须拆成多条建议。"
     no_op_rule = "\n仅返回会实际改变原文的建议。from与to必须不同；原文无需修改时suggestions必须为空数组；禁止解释为什么不修改。"
     content_rules += suggestion_limit_rule + no_op_rule
@@ -1033,7 +1135,7 @@ def optimize_transcript(project_id: str):
     )
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=240.0)
+        client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=240.0, max_retries=0)
         all_records = []
         failed_batches = []
         checkpoint_dir = directory / "DeepSeek校订检查点" / run_id
@@ -1051,23 +1153,27 @@ def optimize_transcript(project_id: str):
                 "revised_units": revised_chunk or [], "records": records or [],
                 "error": error[:1000],
             }
-            (checkpoint_dir / f"{stage}-{safe_label}.json").write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+            with result_lock:
+                save_checkpoint_locked(stage, safe_label, label, status, source_chunk, payload, error)
+
+        def save_checkpoint_locked(stage, safe_label, label, status, source_chunk, payload, error):
+            from theme_file_io import write_json
+            # Serialize manifest read/modify/write across the two workers.
+            write_json(checkpoint_dir / f"{stage}-{safe_label}.json",payload)
             summary = {"stage": stage, "batch": label, "unit_count": len(source_chunk), "saved_at": payload["saved_at"]}
             target = "completed_batches" if status == "completed" else "failed_batches"
             checkpoint_manifest[target] = [item for item in checkpoint_manifest[target] if not (item["stage"] == stage and item["batch"] == label)]
             checkpoint_manifest[target].append({**summary, **({"error": error[:500]} if error else {})})
-            (checkpoint_dir / "manifest.json").write_text(
-                json.dumps(checkpoint_manifest, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+            write_json(checkpoint_dir / "manifest.json",checkpoint_manifest)
 
         total_batches = len(make_chunks(units, 8500)) + len(make_chunks(units, 2500))
-        write_call_log({"event": "run_started", "model": "deepseek-v4-pro", "batch_count": total_batches, "unit_count": len(units), "key_fingerprint": key_fingerprint, "local_preprocessing": local_counts, "max_suggestion_chars": MAX_AI_SUGGESTION_CHARS})
+        write_call_log({"event": "run_started", "model": "deepseek-flash", "batch_count": total_batches, "unit_count": len(units), "key_fingerprint": key_fingerprint, "local_preprocessing": local_counts, "max_suggestion_chars": MAX_AI_SUGGESTION_CHARS, "max_concurrent_batches":2, "punctuation_mode":punctuation_mode})
 
         def run_stage(source_units: list[dict], stage: str, rules: str) -> list[dict]:
+            # DeepSeek's structured-response mode requires an explicit JSON instruction.
+            rules += '\n请按以上字段和规则，仅返回一个有效的 JSON 对象。'
             max_chars = 2500 if stage == "punctuation" else 8500
-            max_split_depth = 4
+            max_split_depth = 1
 
             def split_chunk(chunk: list[dict]) -> tuple[list[dict], list[dict]] | None:
                 if len(chunk) > 1:
@@ -1092,11 +1198,11 @@ def optimize_transcript(project_id: str):
                 right = {**source, "text": text_value[cut + 1:]}
                 return [left], [right]
 
-            def process_chunk(chunk: list[dict], label: str, depth: int = 0) -> list[dict]:
+            def process_chunk(chunk: list[dict], label: str, depth: int = 0, retry: int = 0) -> list[dict]:
                 started_at = time.time()
                 try:
                     response = client.chat.completions.create(
-                        model="deepseek-v4-pro", temperature=0, max_tokens=12000,
+                        model="deepseek-flash", temperature=0, max_tokens=12000,
                         response_format={"type": "json_object"}, extra_body={"thinking": {"type": "disabled"}},
                         messages=[{"role": "system", "content": rules}, {"role": "user", "content": json.dumps({"units": chunk}, ensure_ascii=False)}],
                     )
@@ -1104,17 +1210,26 @@ def optimize_transcript(project_id: str):
                     raw_name = re.sub(r"[^0-9A-Za-z_-]+", "-", label)
                     (raw_dir / f"{stage}-{raw_name}.json").write_text(raw_content, encoding="utf-8")
                     parsed = json.loads(raw_content)
+                    if getattr(response.choices[0], 'finish_reason', None) == 'length':
+                        raise RuntimeError('模型返回因长度限制截断')
                     returned = parsed.get("units", [])
                     if len(returned) != len(chunk):
                         raise RuntimeError(f"{stage}阶段返回的发言单元数量不一致")
+                    if [r.get('unit_id') for r in returned] != [u['unit_id'] for u in chunk]:
+                        raise RuntimeError(f'{stage}阶段发言单元编号或顺序不一致')
                     revised_chunk, batch_records, applied_count = [], [], 0
                     for source, result in zip(chunk, returned):
-                        revised_text, records = apply_suggestions(source["text"], result.get("suggestions", []), stage)
+                        if 'speaker' in result and result['speaker'] != source['speaker']:
+                            raise RuntimeError('模型改变了说话人标签')
+                        allowed = {'from','to','occurrence','source_excerpt','type'} if stage=='word' else {'from','to','occurrence'}
+                        suggestions=[{k:v for k,v in s.items() if k in allowed} for s in result.get('suggestions',[]) if isinstance(s,dict)]
+                        revised_text, records = apply_suggestions(source["text"], suggestions, stage)
                         enriched = [{"unit_id": source["unit_id"], "speaker": source["speaker"], **item} for item in records]
                         applied_count += sum(bool(item.get("applied")) for item in records)
                         batch_records.extend(enriched)
                         revised_chunk.append({"unit_id": source["unit_id"], "speaker": source["speaker"], "text": revised_text})
-                    all_records.extend(batch_records)
+                    with result_lock:
+                        all_records.extend(batch_records)
                     save_checkpoint(stage, label, "completed", chunk, revised_chunk, batch_records)
                     usage = response.usage.model_dump() if getattr(response, "usage", None) else {}
                     finish_reason = getattr(response.choices[0], "finish_reason", None)
@@ -1122,7 +1237,7 @@ def optimize_transcript(project_id: str):
                     return revised_chunk
                 except (json.JSONDecodeError, RuntimeError) as batch_exc:
                     error_text = str(batch_exc).replace(key, "***")[:1000]
-                    parts = split_chunk(chunk) if depth < max_split_depth else None
+                    parts = split_chunk(chunk) if depth < max_split_depth and retry == 0 else None
                     write_call_log({"event": "batch_parse_failed", "stage": stage, "batch": label, "depth": depth, "elapsed_seconds": round(time.time() - started_at, 3), "error": error_text, "will_split": bool(parts)})
                     if parts:
                         left_result = process_chunk(parts[0], label + "A", depth + 1)
@@ -1137,18 +1252,37 @@ def optimize_transcript(project_id: str):
                 except Exception as batch_exc:
                     error_text = str(batch_exc).replace(key, "***")[:1000]
                     write_call_log({"event": "batch_failed", "stage": stage, "batch": label, "elapsed_seconds": round(time.time() - started_at, 3), "error": error_text})
+                    status = getattr(batch_exc, 'status_code', None)
+                    retryable = status is None or status in {408, 409, 429} or status >= 500
+                    if depth == 0 and retry < 2 and retryable:
+                        time.sleep(min(2 ** retry, 4))
+                        write_call_log({'event':'batch_retry','stage':stage,'batch':label,'attempt':retry+1})
+                        return process_chunk(chunk,label,depth,retry+1)
                     save_checkpoint(stage, label, "failed", chunk, error=error_text)
                     failed_batches.append({"stage": stage, "batch": label, "unit_ids": [item["unit_id"] for item in chunk], "error": error_text})
                     return [dict(item) for item in chunk]
 
-            revised_units = []
-            for batch_index, chunk in enumerate(make_chunks(source_units, max_chars), 1):
-                revised_units.extend(process_chunk(chunk, f"第{batch_index:03d}批"))
+            batches = make_chunks(source_units,max_chars)
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures=[pool.submit(process_chunk,chunk,f'第{i:03d}批') for i,chunk in enumerate(batches,1)]
+                # Collect in original order, not completion order.
+                revised_units=[unit for future in futures for unit in future.result()]
             return revised_units
 
         revised = run_stage(units, "word", content_rules)
-        revised = run_stage(revised, "punctuation", punctuation_rules)
+        if punctuation_mode == 'filtered':
+            candidates,mapping,skipped = select_paragraphs(revised)
+            write_call_log({'event':'punctuation_selection','selected_paragraphs':len(candidates),
+                            'skipped_paragraphs':skipped,'rules':PUNCTUATION_SCREEN_RULES})
+            (checkpoint_dir/'punctuation-selection.json').write_text(json.dumps({'mapping':mapping,'skipped':skipped},ensure_ascii=False,indent=2),encoding='utf8')
+            checked = run_stage(candidates,'punctuation',punctuation_rules)
+            revised = restore_paragraphs(revised,checked,mapping)
+        else:
+            revised = run_stage(revised, "punctuation", punctuation_rules)
+        all_records.sort(key=lambda r:(0 if r['stage']=='word' else 1,r['unit_id'],r.get('start',0)))
         output = "\n\n".join((f"{item['speaker']}：" if item["speaker"] else "") + item["text"] for item in revised)
+        if hashlib.sha256(path.read_bytes()).hexdigest()!=input_hash or (hashlib.sha256(manual_path.read_bytes()).hexdigest() if manual_path.exists() else None)!=manual_hash:
+            raise RuntimeError('运行期间原稿或人工校订稿已改变，结果仅保存在检查点，未覆盖当前稿件')
         (project_dir(project_id) / "DeepSeek自动校订稿.txt").write_text(output, encoding="utf-8-sig")
         annotations = build_review_annotations(output, all_records)
         (directory / "DeepSeek修改记录.json").write_text(json.dumps({"run_id": run_id, "changes": all_records, "annotations": annotations, "failed_batches": failed_batches}, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1235,7 +1369,7 @@ def coding_suggestions(project_id: str, body: CodingRequest):
         client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=180.0)
         def call(prompt, payload):
             response = limited_create(client,
-                model="deepseek-v4-pro", temperature=0, max_tokens=6000,
+                model="deepseek-flash", temperature=0, max_tokens=6000,
                 response_format={"type": "json_object"}, extra_body={"thinking": {"type": "disabled"}},
                 messages=[{"role": "system", "content": prompt}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
             )
@@ -1287,7 +1421,7 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
         partials = []
         for index, chunk in enumerate(chunks, 1):
             response = limited_create(client,
-                model="deepseek-v4-pro", temperature=0, max_tokens=8000,
+                model="deepseek-flash", temperature=0, max_tokens=8000,
                 response_format={"type": "json_object"},
                 extra_body={"thinking": {"type": "disabled"}},
                 messages=[
@@ -1300,7 +1434,7 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
             merged = partials[0]
         else:
             response = limited_create(client,
-                model="deepseek-v4-pro", temperature=0, max_tokens=8000,
+                model="deepseek-flash", temperature=0, max_tokens=8000,
                 response_format={"type": "json_object"},
                 extra_body={"thinking": {"type": "disabled"}},
                 messages=[
@@ -1368,7 +1502,7 @@ def generate_familiarity_summary(project_id: str):
         from openai import OpenAI
         client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=240.0)
         response = client.chat.completions.create(
-            model="deepseek-v4-pro", temperature=0, max_tokens=800,
+            model="deepseek-flash", temperature=0, max_tokens=800,
             response_format={"type": "json_object"}, extra_body={"thinking": {"type": "disabled"}},
             messages=[
                 {"role": "system", "content": "你是中文社会科学访谈摘要助手。仅根据输入的访谈纪要，用一段120至200字概括访谈主要讨论了什么、受访者的核心判断及重要条件。不要逐条罗列观点，不要加入输入中没有的信息。只返回JSON：{\"summary\":\"一段话摘要\"}。"},
@@ -1823,12 +1957,16 @@ register_theme_network(app, research_project_path, RESEARCH_FILES_DIR, read_anal
 from word_cooccurrence import register_word_cooccurrence
 register_word_cooccurrence(app, research_project_path, transcript_path, read_deepseek_key, prepare_uploaded_research_material, read_metadata)
 from ai_coding_demo import register as register_ai_coding_demo
-register_ai_coding_demo(app,research_project_path,transcript_path,read_metadata,RESEARCH_FILES_DIR)
+register_ai_coding_demo(app,research_project_path,transcript_path,read_metadata,RESEARCH_FILES_DIR,project_dir)
 
 from finding_review import install as install_finding_review
 install_finding_review(app, research_project_path, read_deepseek_key, RESEARCH_FILES_DIR)
 
 if __name__ == "__main__":
+    if (CODE_DIR / '.site-data' / 'enabled.json').exists():
+        from run_accounts import main
+        main()
+        raise SystemExit(0)
     import uvicorn
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:

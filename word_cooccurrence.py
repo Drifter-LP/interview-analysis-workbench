@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import urllib.request
+import os
 from fastapi import HTTPException
 
 SEGMENT_PROMPT = '''你是访谈话题边界助手。输入是按原文顺序编号的句段（保留说话人标签），只返回边界，不改写原文。一个块尽量一个话题或一个案例，同一案例连续追问不切碎。问题仅作语境，不当作回答证据。不猜说话人身份。纯接话单独interaction，一般背景background；拿不准保留content。没有最低字数要求，超过500字仅是复核线，不能机械截断。每个句段连续覆盖一次，不遗漏不重叠。只输出JSON：{"blocks":[["首句ID","尾句ID","content|background|interaction","边界理由"]],"review":[["句ID","待核对事项"]]}。'''
@@ -184,7 +185,11 @@ def register_word_cooccurrence(app, research_path, transcript_path, read_key, pr
     def call(prompt,payload,key):
         body={'model':'deepseek-v4-flash','temperature':0,'thinking':{'type':'disabled'},'response_format':{'type':'json_object'},'max_tokens':8192,'messages':[{'role':'system','content':prompt},{'role':'user','content':json.dumps(payload,ensure_ascii=False)}]}
         req=urllib.request.Request('https://api.deepseek.com/chat/completions',data=json.dumps(body).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
-        with urllib.request.urlopen(req,timeout=240) as response: raw=json.load(response)
+        if os.environ.get('SITE_USER_ID'):
+            from site_ai_guard import request_json
+            raw=request_json(req,body)
+        else:
+            with urllib.request.urlopen(req,timeout=240) as response: raw=json.load(response)
         if raw['choices'][0]['finish_reason']!='stop': raise ValueError('AI输出不完整，未替换原文或保存不完整切块')
         return json.loads(raw['choices'][0]['message']['content']),raw
     def process(t,key):

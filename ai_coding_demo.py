@@ -93,9 +93,12 @@ def validate_codes(reply, units, text):
         result.append({k:item[k].strip() for k in ('name','definition','reason')}|{'references':refs})
     return result
 
-def register(app,research_path,transcript_path,read_metadata,files_dir):
+def register(app,research_path,transcript_path,read_metadata,files_dir,project_dir=None):
     root=Path(files_dir)/'_ai_coding_demo';jobs=set();job_lock=threading.Lock();organizer_busy=lambda pid,tid:False
     def location(pid,tid):
+        if pid is None:
+            if not transcript_path(tid):raise HTTPException(404,'访谈原文不存在')
+            return project_dir(tid)/'manual-coding.json'
         if not research_path(pid).exists():raise HTTPException(404,'研究项目不存在')
         project=read_json(research_path(pid));allowed=set(project.get('interview_ids',[]))|{x.get('workspace_project_id') for x in project.get('uploaded_transcripts',[])}
         if tid not in allowed:raise HTTPException(404,'访谈不属于该研究项目')
@@ -287,6 +290,20 @@ def register(app,research_path,transcript_path,read_metadata,files_dir):
                 item=removed.pop();code['references'].insert(min(item['index'],len(code['references'])),item['reference'])
             code['updated_at']=now();code['revision']+=1
             save(pid,tid,d);return d
+
+    if project_dir is not None:
+        # Standalone manual workspace: same validation and review, no AI or organizer routes.
+        @app.get('/api/projects/{tid}/manual-coding')
+        def manual_get(tid: str):
+            return get(None,tid)
+
+        @app.post('/api/projects/{tid}/manual-coding/codes')
+        def manual_edit(tid: str, body: dict):
+            return edit(None,tid,body)
+
+        @app.post('/api/projects/{tid}/manual-coding/codes/{code_id}/actions')
+        def manual_action(tid: str, code_id: str, body: dict):
+            return code_action(None,tid,code_id,body)
 
     from coding_organizer import register_organizer
     organizer_busy=register_organizer(app,location,load,save,lambda pid,tid:(pid,tid) in jobs,job_lock)

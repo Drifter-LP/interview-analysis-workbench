@@ -1,12 +1,12 @@
 """Researcher-led review. AI suggestions and human revisions remain separate."""
-import json,time,uuid,logging
+import json,time,uuid,logging,os
 from pathlib import Path
 from fastapi import HTTPException
 from pydantic import BaseModel
 from statement_comparison import prepare
 from review_storage import PROJECT_LOCK, atomic_json, indexes, read_record, store
 
-CALL_LOG_DIR=Path(__file__).resolve().parent/'outputs'/'finding-review-calls'
+CALL_LOG_DIR=Path(os.environ.get('WORKBENCH_DATA_DIR',str(Path(__file__).resolve().parent)))/'outputs'/'finding-review-calls'
 
 def write_call_log(record):
     CALL_LOG_DIR.mkdir(parents=True,exist_ok=True)

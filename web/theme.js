@@ -30,6 +30,11 @@ themePicker.addEventListener('close',()=>{if(themePickerOriginal){selectedResear
 function openThemeEvidence(projectId, number, sourceOverride=null) {
   const source=sourceOverride||(currentThemeAnalysis?.dimensions||[]).flatMap(d=>(d.findings||[]).flatMap(f=>(f.facts||[]).flatMap(fact=>fact.sources||[]))).find(s=>s.project_id===projectId&&Number(s.number)===number);
   if(!source||source.source_type!=='transcript')return openComparisonEvidence(projectId,number);
+  if(window.createEvidenceDrawer){
+    const {note,body}=window.createEvidenceDrawer(`${source.material_name||projectId} · 原文上下文`);
+    note.textContent=`分析时保存的原文证据 · 字符位置 ${source.start}—${source.end} · 尚未核对最新版本`;
+    body.textContent=source.context_quote||source.quote||'';return;
+  }
   const dialog=document.createElement('dialog');dialog.style.cssText='width:min(800px,90vw);max-height:85vh;overflow:auto;padding:24px;border:1px solid #dce7e8;border-radius:10px';
   const heading=document.createElement('h3'),note=document.createElement('p'),text=document.createElement('pre'),close=document.createElement('button');
   heading.textContent=`${source.material_name||projectId} · 原文 ${number}`;note.textContent=`分析时的原文证据，字符位置 ${source.start}—${source.end}（不是纪要编号）`;
@@ -316,7 +321,7 @@ const findingReviewScript=document.createElement('script');findingReviewScript.s
 sharedComparisonScript.addEventListener('load', () => {
   const networkScript = document.createElement('script');
   networkScript.src = '/assets/network-view.js?v=20261013-focus-curves-4';
-networkScript.addEventListener('load',()=>{const script=document.createElement('script');script.src='/assets/coding-tree.js?v=20261018-boundary-review';script.addEventListener('load',()=>{const navigation=document.createElement('script');navigation.src='/assets/research-navigation.js?v=20261020-cleanpicker-6';document.body.append(navigation);});document.body.append(script);});
+networkScript.addEventListener('load',()=>{const script=document.createElement('script');script.src='/assets/coding-tree.js?v=20261018-boundary-review';script.addEventListener('load',()=>{const navigation=document.createElement('script');navigation.src='/assets/research-navigation.js?v=20261104-slide-7';document.body.append(navigation);});document.body.append(script);});
   document.body.append(networkScript);
 });
 document.body.append(sharedComparisonScript);

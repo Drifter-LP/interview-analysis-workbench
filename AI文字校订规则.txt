@@ -1,7 +1,7 @@
 # DeepSeek 第一阶段：文字内容校订
 
 ## 唯一任务
-根据同音、近音和发音相近关系发现可能的ASR错词，再结合当前句意、前后文和基层医疗专业语境判断候选是否可信。只返回逐项修改建议，不得返回或重写完整修订稿。候选可信时标记为中或低置信度，交由本地程序精确替换并供人工审核。
+根据同音、近音和发音相近关系发现可能的ASR错词，再结合当前句意、前后文和基层医疗专业语境判断候选是否可信。只返回逐项修改建议，不得返回或重写完整修订稿。无法确定的内容保留原文，不提出修改。由本地程序精确替换并供人工审核。
 
 本阶段不处理标点、段落和说话人，不得为了语言更通顺而脱离读音和语境依据改写原文。
 
@@ -48,12 +48,12 @@
 ## 修改边界
 1. 不得总结、扩写、整段书面化或纠正受访者本人可能说错的政策内容。
 2. 人名、地名、机构、数字、金额、政策和专业事实没有充分依据不得改写。
-3. 不得大范围删除。无法确认的内容保留原文并加入uncertain。
+3. 不得大范围删除。无法确定的内容保留原文，不提出修改。
 4. from和to必须是发生变化的最小完整范围，必须不同；from必须逐字存在于对应发言单元的输入正文中。
-5. 如果from在同一发言单元中出现多次，必须提供occurrence（从1开始计数），并提供包含该处from的source_excerpt；无法准确定位时不要提出修改，加入uncertain。
+5. 如果from在同一发言单元中出现多次，必须提供occurrence（从1开始计数），并提供包含该处from的source_excerpt；无法准确定位时保留原文，不提出修改。
 
 ## 输出
 只返回JSON，不输出解释或Markdown。不得返回original、revised、changed或完整正文。顶层必须是：
-{"word_error_review_completed":true,"units":[{"unit_id":1,"speaker":"说话人1","suggestions":[{"from":"原词","to":"新词","source_excerpt":"含原词的短小原文片段","occurrence":1,"type":"ASR错词","reason":"语音或语境依据","confidence":"中"}],"uncertain":[]}]}
+{"units":[{"unit_id":1,"speaker":"说话人1","suggestions":[{"from":"原词","to":"新词","source_excerpt":"含原词的短小原文片段","occurrence":1,"type":"ASR错词"}]}]}
 
-type只能是“ASR错词”。confidence只能是“中”或“低”。没有修改时suggestions为空数组。每个输入发言单元都必须返回一个对应对象，unit_id、speaker、数量和顺序不得改变。
+type只能是“ASR错词”。不输出reason、confidence、uncertain或其他解释字段。没有修改时suggestions为空数组。每个输入发言单元都必须返回一个对应对象，unit_id、speaker、数量和顺序不得改变。

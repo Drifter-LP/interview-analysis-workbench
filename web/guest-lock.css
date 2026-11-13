@@ -1,0 +1,24 @@
+/* Only requested by the guest variant of the shared workbench. */
+:root {
+  --guest-lock-on-dark: #94a7ac;
+  --guest-lock-on-light: #607278;
+  --guest-lock-surface: #eff3f3;
+  --guest-lock-border: #dbe4e4;
+  --guest-tip-border: #d7e4e5;
+}
+.sidebar .nav-item[data-tab="focused"] {color:var(--guest-lock-on-dark)!important;opacity:1;cursor:default}
+.sidebar .nav-item[data-tab="focused"]:hover {background:rgba(255,255,255,.045)!important}
+.guest-feature-locked {cursor:default!important}
+.guest-feature-locked:focus-visible {outline:2px solid #608c95;outline-offset:-2px}
+.sidebar .guest-feature-locked:focus-visible {outline-color:#a6c2c9}
+.guest-lock-icon {height:14px;width:14px;margin-inline-start:auto;flex:none;color:currentColor}
+.sidebar .nav-item .guest-lock-icon {width:14px;height:14px}
+#libraryCreateResearch, .rail-panel .guest-feature-locked {color:var(--guest-lock-on-light)!important;background:var(--guest-lock-surface)!important;border-color:var(--guest-lock-border)!important}
+#libraryCreateResearch:not([hidden]) {display:inline-flex;align-items:center;gap:7px}
+.guest-feature-tip {position:fixed;z-index:1030;background:#fff;color:#17373f;min-width:0;max-width:min(255px,calc(100vw - 24px));padding:11px 14px;border:1px solid var(--guest-tip-border);border-radius:9px;box-shadow:0 8px 22px rgba(14,45,51,.13);font-size:13px;line-height:1.5}
+.guest-feature-tip strong {font-size:13px;font-weight:650;display:block}
+.guest-feature-tip span {display:block;margin-top:3px;color:#526b72;font-size:12px}
+.guest-feature-tip::before {content:'';width:8px;height:8px;background:#fff;border-left:1px solid var(--guest-tip-border);border-bottom:1px solid var(--guest-tip-border);position:absolute;left:-5px;top:calc(50% - 4px);transform:rotate(45deg)}
+.guest-feature-tip[data-side="below"]::before,.guest-feature-tip[data-side="above"]::before {left:var(--guest-tip-arrow);top:-5px;transform:rotate(135deg)}
+.guest-feature-tip[data-side="above"]::before {top:auto;bottom:-5px;transform:rotate(-45deg)}
+.guest-feature-tip[hidden],.guest-feature-tip [hidden] {display:none!important}

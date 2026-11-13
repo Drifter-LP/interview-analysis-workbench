@@ -12,7 +12,7 @@
   const undo = bar.querySelector('#undoTranscriptBtn'), redo = bar.querySelector('#redoTranscriptBtn');
   let owner = null, states = [], index = -1, restoring = false, opening = 0, composing = false;
   let lastTime = 0, lastType = '', before = null;
-  const snapshot = () => ({html: editor.innerHTML, accepted: [...pendingAccepted]});
+  const snapshot = () => ({html: editor.innerHTML, accepted: [...pendingAccepted], rejected: [...pendingRejected]});
   const sync = () => {
     undo.disabled = !selected || opening > 0 || index <= 0;
     redo.disabled = !selected || opening > 0 || index >= states.length - 1;
@@ -41,9 +41,8 @@
     restoring = true;
     index = next; editor.innerHTML = states[index].html;
     pendingAccepted.clear(); states[index].accepted.forEach(id => pendingAccepted.add(id));
-    editor.querySelectorAll('[data-accept-change]').forEach(button => {
-      button.onclick = () => acceptTranscriptChange(button);
-    });
+    pendingRejected.clear(); states[index].rejected.forEach(id => pendingRejected.add(id));
+    bindTranscriptReviewButtons();
     updateAcceptAllButton();
     editor.focus();
     const range = document.createRange(); range.selectNodeContents(editor); range.collapse(false);

@@ -27,6 +27,12 @@ def read_json(path):
 
 
 def write_json(path, value):
+    from interview_reference_index import write_guard
+    with write_guard(path):
+        return _write_json(path,value)
+
+
+def _write_json(path, value):
     path = Path(path)
     with file_lock(path):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -35,6 +41,8 @@ def write_json(path, value):
         for attempt in range(len(RETRY_DELAYS) + 1):
             try:
                 os.replace(temporary, path)
+                from interview_reference_index import notify_saved
+                notify_saved(path,value)
                 return
             except OSError as exc:
                 # Do not mask disk-full, invalid paths, or permanent denial.

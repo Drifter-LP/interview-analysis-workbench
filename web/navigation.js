@@ -33,7 +33,7 @@
   document.querySelectorAll('.nav-parent, .nav-item').forEach(button => {
     const key = button.dataset.group || button.dataset.tab || button.dataset.view;
     const name = button.dataset.group ? button.querySelector('em')?.textContent : labels[key];
-    if (icons[key]) button.innerHTML = icon(icons[key]) + `<em>${escapeHtml(name || '')}</em>` + (button.dataset.group ? '<b>⌄</b>' : '');
+    if (icons[key] && !button.querySelector('.nav-icon')) button.innerHTML = icon(icons[key]) + `<em>${escapeHtml(name || '')}</em>` + (button.dataset.group ? '<b>⌄</b>' : '');
   });
 
   const focused = $('#focused'), head = focused.querySelector('.focused-head');

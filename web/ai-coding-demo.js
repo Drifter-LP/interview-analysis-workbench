@@ -1,10 +1,12 @@
 /* Source offsets are Unicode code points, matching Python, not UTF-16 indices. */
 (() => {
+ const guest=!!window.WORKBENCH_GUEST,guestNotice='登录后可使用 AI 编码';
  const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;},btn=(text,fn)=>{const b=el('button','',text);b.type='button';b.onclick=fn;return b;};
  const icons={more:'M5 12h.01M12 12h.01M19 12h.01',trash:'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',unlink:'M10 13a5 5 0 0 1-1-7l3-3a5 5 0 0 1 7 7l-1 1M14 11a5 5 0 0 1 1 7l-3 3a5 5 0 0 1-7-7l1-1M3 3l18 18',undo:'M4 10h9a6 6 0 0 1 0 12M4 10l5-5M4 10l5 5',save:'M5 3h12l4 4v14H3V3h2M7 3v6h10V3M7 21v-8h10v8',range:'M4 4h6M4 4v6M20 20h-6M20 20v-6M8 16l8-8M14 5l5 5',locate:'M12 3v3M12 18v3M3 12h3M18 12h3M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0',help:'M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4M12 17h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0'};
  function iconButton(name,kind,fn){const b=btn('',fn);b.className='ac-icon-button';b.title=name;b.setAttribute('aria-label',name);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',icons[kind]);svg.append(path);b.append(svg);return b;}
  const host=document.querySelector('#coding'),legacy=el('div','ac-legacy-coding');legacy.hidden=true;legacy.append(...host.childNodes);const page=el('section','ac-page');page.id='aiCodingDemo';host.append(legacy,page);
  const project=el('select'),status=el('span'),start=btn('开始AI编码',()=>run(false)),resume=btn('继续未完成批次',()=>run(true)),refresh=btn('刷新',()=>load());
+ if(guest){start.disabled=true;start.title=guestNotice;status.id='guestCodingNotice';start.setAttribute('aria-describedby',status.id);}
  project.setAttribute('aria-label','AI编码研究项目');resume.hidden=true;
  const progress=el('div','ac-progress');
  const grid=el('div','ac-grid'),left=el('aside','ac-list'),middle=el('section','ac-middle'),reviewCard=el('aside','ac-review'),reviewHeader=el('div','ac-review-head'),right=el('div','ac-review-body'),reviewFooter=el('div','ac-review-fixed-footer');reviewFooter.hidden=true;reviewHeader.append(el('h3','','编码审核'));reviewCard.append(reviewHeader,right,reviewFooter);
@@ -20,10 +22,11 @@
  function closeCodeMenus(){for(const m of reviewCard.querySelectorAll('.ac-more-menu'))m.hidden=true;for(const b of reviewCard.querySelectorAll('.ac-more-box>button'))b.setAttribute('aria-expanded','false');}
  selectionMenu.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[manual,attach].filter(b=>!b.disabled),i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:buttons.length-1))%buttons.length].focus();}});
  document.addEventListener('scroll',closeSelectionMenu,true);window.addEventListener('resize',closeSelectionMenu);
- source.tabIndex=0;source.setAttribute('aria-label','AI编码完整原文');middle.append(sourceTitle,source);grid.append(left,middle,reviewCard);page.append(grid);
+ if(guest){organizeButton.title='登录后可使用 AI 整理编码';acceptAll.hidden=true;}
+ source.tabIndex=0;source.setAttribute('aria-label','编码访谈原文');middle.append(sourceTitle,source);grid.append(left,middle,reviewCard);page.append(grid);
  let state=null,pid='',tid='',selected='',editing=null,dirty=false,range=null,shownHash='',token=0,timer=null,busy=false,referenceIndex=0,peers=[],scopeChoices=[],activation=0,previousFilter='all';
  const statusLabels={pending:'待审核',accepted:'已接受',modified:'已修改',rejected:'已拒绝'};
- const endpoint=()=>`/api/research-projects/${encodeURIComponent(pid)}/ai-coding/${encodeURIComponent(tid)}`;
+ const endpoint=()=>guest?`/api/projects/${encodeURIComponent(tid)}/manual-coding`:`/api/research-projects/${encodeURIComponent(pid)}/ai-coding/${encodeURIComponent(tid)}`;
  async function request(path,method='GET',body){const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.detail||'请求失败');return d;}
  function warn(e){toast(e.message||String(e));}
  function checkDirty(){return !dirty||confirm('当前编码修改尚未保存，放弃这些修改？');}
@@ -32,11 +35,12 @@
 function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=true;clearTimeout(timer);++token;state=null;selected='';editing=null;dirty=false;range=null;referenceIndex=0;closeSelectionMenu();list.replaceChildren();source.replaceChildren();sourceInfo.textContent='';right.replaceChildren();reviewFooter.replaceChildren();reviewFooter.hidden=true;reviewHeader.replaceChildren(el('h3','','编码审核'));progress.textContent=message;status.textContent=message;start.disabled=true;resume.hidden=true;}
  async function activateCurrent(){
   const context=window.singleInterviewCodingContext.get(),sourceId=String(context.sourceId||'');
-  if(state&&sourceId===tid&&(!context.researchProjectId||context.researchProjectId===pid)){render();return;}
+  if(state&&sourceId===tid&&(guest||!context.researchProjectId||context.researchProjectId===pid)){render();return;}
   if(!checkDirty())return;
   const serial=++activation,previousPid=pid;resetContext(sourceId?'正在读取当前访谈的编码…':'请先选择一篇访谈');pid='';tid=sourceId;scopeChoices=[];
   window.workspaceHeader?.refresh();if(!sourceId)return;
   try{
+   if(guest){await load();return;}
    peers=window.singleInterviewCodingContext.projects?.()||[];
    if(!window.aiCodingContext.resolve(peers,sourceId,context.researchProjectId,previousPid).project)peers=await request('/api/research-projects?summaries=true');
    if(serial!==activation)return;
@@ -57,10 +61,10 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   try{const d=await request(owner+'/accept-all','POST',{confirmed:true,revision:state.revision});if(owner!==endpoint()||version!==token)return;state=d.coding;editing=null;dirty=false;busy=false;render();toast(`已接受 ${d.accepted_count} 个AI编码，结果已保存。`);}catch(e){warn(e);}finally{busy=false;if(state)renderList();}
  }
  function activate(){if(!checkDirty())return;switchView('analysis','coding');}
- async function load(){if(!pid||!tid)return;const version=++token;clearTimeout(timer);try{const d=await request(endpoint());if(version!==token)return;state=d;if(!dirty)editing=null;render();if(d.runs.some(r=>r.status==='running'))timer=setTimeout(()=>load(),1800);}catch(e){if(version===token){warn(e);status.textContent='读取失败';window.workspaceHeader?.refresh();}}}
+ async function load(){if(!tid||(!guest&&!pid))return;const version=++token;clearTimeout(timer);try{const d=await request(endpoint());if(version!==token)return;state=d;if(!dirty)editing=null;render();if(d.runs.some(r=>r.status==='running'))timer=setTimeout(()=>load(),1800);}catch(e){if(version===token){warn(e);status.textContent='读取失败';window.workspaceHeader?.refresh();}}}
  project.onchange=async()=>{if(!checkDirty()){project.value=pid;return;}const next=project.value;resetContext('正在读取此项目下的编码…');pid=next;window.singleInterviewCodingContext.setScope?.(pid);await load();};
  filter.onchange=()=>{if(!checkDirty()){filter.value=previousFilter;return;}previousFilter=filter.value;selected='';editing=null;dirty=false;range=null;render();};
- async function run(continuing){if(busy||!state||!checkDirty())return;const last=state.runs.at(-1);if(!continuing&&state.codes.length&&!confirm('重新编码将新增一轮待审核建议，已有编码和人工判断全部保留。继续？'))return;busy=true;start.disabled=resume.disabled=true;try{await request(endpoint()+'/run','POST',continuing?{resume_run_id:last?.id}:{});editing=null;dirty=false;await load();}catch(e){warn(e);}finally{busy=false;start.disabled=resume.disabled=false;}}
+ async function run(continuing){if(guest||busy||!state||!checkDirty())return;const last=state.runs.at(-1);if(!continuing&&state.codes.length&&!confirm('重新编码将新增一轮待审核建议，已有编码和人工判断全部保留。继续？'))return;busy=true;start.disabled=resume.disabled=true;try{await request(endpoint()+'/run','POST',continuing?{resume_run_id:last?.id}:{});editing=null;dirty=false;await load();}catch(e){warn(e);}finally{busy=false;start.disabled=resume.disabled=false;}}
  function choose(id){if(!checkDirty())return;selected=id;editing=null;dirty=false;referenceIndex=0;range=null;render();scrollToRef();}
  function nextCode(){const codes=state?.codes||[],index=codes.findIndex(c=>c.id===selected);return index<0?null:codes.slice(index+1).find(c=>filter.value==='all'||c.status===filter.value)||null;}
  function advanceCode(){if(busy)return;const next=nextCode();if(next)choose(next.id);else toast('当前列表已无下一处编码。');}
@@ -69,12 +73,13 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
  function render(){closeSelectionMenu();if(!state)return;const run=state.runs.at(-1),running=run?.status==='running',pending=state.codes.filter(c=>c.status==='pending').length,unresolved=state.codes.flatMap(c=>c.references).filter(r=>r.validation!=='valid').length;
   const indexStage=run?.index_preparation;status.textContent=running?(indexStage&&indexStage.status!=='completed'?'正在准备话题索引…':'正在编码'):indexStage?.status==='failed'?'话题索引准备失败，可继续':run&&run.status!=='completed'?'编码部分完成或失败':pending?'编码完成 · 存在待审核建议':state.codes.length?'编码及审核已完成':'尚未开始编码';
   status.title=run?.error||(indexStage?.status==='completed'?(indexStage.reused?'已复用共享话题索引':'已建立并保存共享话题索引'):'');
-  start.disabled=!!running;resume.hidden=!run||!['failed','partial'].includes(run.status);resume.disabled=!!running;project.disabled=false;
+  start.disabled=guest||!!running;resume.hidden=guest||!run||!['failed','partial'].includes(run.status);resume.disabled=guest||!!running;project.disabled=false;
+  if(guest)status.textContent=guestNotice;
   progress.textContent=run?`本轮 ${run.batches.filter(b=>b.status==='completed').length}/${run.batches.length} 批完成 · ${state.codes.length} 个编码 · ${pending} 个待审核 · ${unresolved} 处引用需处理${run.error?' · '+run.error:''}`:'请选择访谈后开始；也可直接选中原文手动编码。';
   for(const b of run?.batches||[]){if(b.status==='failed'){const info=el('span','ac-error',' 批次失败：'+(b.attempts.at(-1)?.error||'可继续'));progress.append(info);}}
   renderList();renderSource();renderReview();window.workspaceHeader?.refresh();
  }
- function renderList(){organizeButton.disabled=!state||!state.codes.some(c=>c.status!=='rejected');acceptAll.disabled=busy||!state||state.runs.some(r=>r.status==='running')||!state.codes.some(acceptCandidate);list.replaceChildren();for(const c of (filter.value==='deleted'?state?.deleted_codes:state?.codes)||[]){if(filter.value!=='deleted'&&filter.value!=='all'&&c.status!==filter.value)continue;const b=btn('',()=>choose(c.id));b.className='ac-code'+(selected===c.id?' active':'');b.append(el('strong','',c.name),el('small','',`${c.references.length} 处引用 · ${c.deleted_at?'已删除':statusLabels[c.status]}${c.references.some(r=>r.validation!=='valid')?' · 需处理':''}`));list.append(b);}if(!list.childElementCount)list.append(el('p','ac-note','暂无编码。'));}
+ function renderList(){organizeButton.disabled=guest||!state||!state.codes.some(c=>c.status!=='rejected');acceptAll.disabled=guest||busy||!state||state.runs.some(r=>r.status==='running')||!state.codes.some(acceptCandidate);list.replaceChildren();for(const c of (filter.value==='deleted'?state?.deleted_codes:state?.codes)||[]){if(filter.value!=='deleted'&&filter.value!=='all'&&c.status!==filter.value)continue;const b=btn('',()=>choose(c.id));b.className='ac-code'+(selected===c.id?' active':'');b.append(el('strong','',c.name),el('small','',`${c.references.length} 处引用 · ${c.deleted_at?'已删除':statusLabels[c.status]}${c.references.some(r=>r.validation!=='valid')?' · 需处理':''}`));list.append(b);}if(!list.childElementCount)list.append(el('p','ac-note',guest?'选中原文即可添加手动编码。':'暂无编码。'));}
  function renderSource(){const c=current();shownHash=c?.source_hash||state.current_hash;const text=state.sources[shownHash]?.text||'',chars=Array.from(text),bindings=[];sourceInfo.textContent=`${shownHash===state.current_hash?'当前原文':'历史原文快照（原文已更新）'} · 版本 ${shownHash.slice(0,12)} · 字符范围从0开始、末位不包含`;
   for(const code of state.codes){if(code.source_hash!==shownHash||code.status==='rejected')continue;for(const ref of code.references)if(ref.validation==='valid')bindings.push({start:ref.start,end:ref.end,id:code.id,name:code.name});}
   if(editing&&!editing.deleted_at){for(let i=bindings.length-1;i>=0;i--)if(bindings[i].id===editing.id)bindings.splice(i,1);for(const ref of editing.references)if(ref.validation==='valid')bindings.push({...ref,id:editing.id,name:editing.name});}
@@ -197,7 +202,7 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
  async function persist(statusValue){if(busy||!editing)return;busy=true;try{const owner=endpoint(),payload={...editing,status:statusValue};const d=await request(owner+'/codes','POST',payload);if(owner!==endpoint())return;state=d;selected=d.codes.find(c=>c.id===payload.id)?.id||d.codes.at(-1)?.id||'';editing=null;dirty=false;busy=false;render();toast('编码已保存');}catch(e){warn(e);}finally{busy=false;updateReviewStatus();}}
 
  function openOrganizer(){
-  if(!state)return;
+  if(guest||!state)return;
   if(dirty)return toast('请先保存当前编码修改，再整理编码。');
   const owner=endpoint();
   window.aiCodingOrganizer.open({

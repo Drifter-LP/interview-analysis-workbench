@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>登录工作台 · 访谈工作台</title>
+<style>
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;color:#173b40;background:#f5f8f8;font:15px/1.5 "Microsoft YaHei UI",sans-serif}
+.preview{position:fixed;inset:-6px;display:grid;grid-template-columns:238px minmax(0,1fr);filter:blur(4px);pointer-events:none;user-select:none}
+.preview-side{background:linear-gradient(150deg,#0c3035,#09292e);padding:24px 22px;color:#e8f2f2}
+.brand{display:flex;align-items:center;gap:12px}.brand svg{width:32px;height:32px;flex:none;color:#24bcb5}.brand b{font-size:18px}.brand small{display:block;color:#87a5aa;font-size:11px}
+.preview-nav{margin-top:48px}.preview-nav p{margin:10px 0;padding:10px 12px;display:flex;gap:14px;align-items:center}.preview-nav .sub{padding-left:28px;color:#acc6cb}.preview-nav .selected{background:#13535a;border-radius:8px}.preview-nav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}.preview-nav .research{margin-top:30px}
+.preview-main{min-width:0}.preview-top{height:55px;background:#fff;border-bottom:1px solid #dbe6e5;display:flex;align-items:center;justify-content:space-between;padding:0 24px}.preview-tools{display:flex;gap:12px}.preview-tools span{padding:6px 14px;border:1px solid #dbe6e5;border-radius:6px;color:#008b81}.preview-tools .solid{background:#008b81;color:white}
+.preview-content{padding:24px}.preview-summary{font-size:14px;color:#60797e}.preview-section{display:flex;justify-content:space-between;align-items:center;margin:24px 0}.preview-section h2{font-size:22px;margin:0}.preview-search{width:260px;height:36px;border:1px solid #dbe6e5;border-radius:6px;background:#fff}
+.skeleton-head{background:#edf4f2;border:1px solid #dbe6e5;border-radius:8px;display:flex;gap:16px;align-items:center;padding:18px}
+.skeleton-icon{width:38px;height:38px;background:#dceae6;border-radius:6px}.skeleton-line{width:160px;height:11px;background:#c4d6d0;border-radius:4px}.skeleton-line.small{width:88px;height:8px;background:#e2ebe7;margin-top:10px}
+.skeleton-table{margin-top:14px;background:#fff;border:1px solid #dbe6e5;border-radius:8px;padding:0 20px}.skeleton-row{display:flex;align-items:center;justify-content:space-between;height:75px;border-bottom:1px solid #dbe6e5}.skeleton-row:last-child{border:0}.skeleton-row .skeleton-line{background:#e1eae6}.preview-foot{position:absolute;bottom:25px;left:28px;color:#a8c1c4}
+.login-overlay{position:relative;min-height:100dvh;padding:24px;display:grid;place-items:center;background:rgba(27,58,59,.14)}
+.login-card{width:min(420px,100%);padding:30px 34px 32px;background:white;border:1px solid #d5e3df;border-radius:14px;box-shadow:0 14px 44px #0d2b2a24}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px;font-size:17px;font-weight:700}.login-brand svg{width:27px;height:27px;color:#008b81}
+h1{font-size:20px;line-height:1.4;margin:0 0 12px;font-weight:700}.intro{font-size:13px;color:#60797e;margin:0 0 24px}
+form{margin:0}label{display:grid;gap:8px;margin-bottom:16px}
+input{font:inherit;font-size:14px;width:100%;height:40px;padding:0 12px;color:#173b40;background:#fff;border:1px solid #cbdcda;border-radius:6px}
+input::placeholder{color:#8b9c9f}input:focus{border-color:#008b81;outline:2px solid #008b8122;outline-offset:1px}
+button{font:inherit;font-weight:700;cursor:pointer;width:100%;min-height:40px;margin-top:4px;border:0;border-radius:6px;background:#008b81;color:white}
+button:disabled{cursor:wait;opacity:.65}button:focus-visible,a:focus-visible{outline:2px solid #008b81;outline-offset:3px}
+.hint{font-size:13px;color:#60797e;margin:20px 0 0;line-height:1.65}a{color:#008b81}
+.login-help{display:flex;justify-content:flex-end;margin:-7px 0 9px}.login-link{width:auto;min-height:32px;margin:0;padding:2px 0;background:none;color:#087d74;font-size:13px;font-weight:500}.login-link:hover{text-decoration:underline}
+#passwordSuccess{font-size:13px;color:#087d74;margin:0 0 14px}
+#message{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;color:#a34830;margin:0}#message:not(:empty){margin:0 0 14px}
+@media(max-width:600px){.preview{grid-template-columns:66px minmax(0,1fr)}.preview-side{padding:24px 16px}.preview-side .brand>div,.preview-nav,.preview-foot{display:none}.preview-tools{display:none}.preview-content{padding:20px}.preview-search{width:90px}.login-overlay{padding:16px}.login-card{padding:26px 24px}}
+</style></head><body>
+<!-- Anonymous decorative shell only: never fetch interview APIs before login. -->
+<div class="preview" inert aria-hidden="true">
+<aside class="preview-side"><div class="brand"><svg viewBox="0 0 48 48"><path d="M13 32 25 14 37 32" fill="none" stroke="currentColor" stroke-width="5" opacity=".55"/><g fill="currentColor"><circle cx="25" cy="12" r="7"/><circle cx="11" cy="32" r="7"/><circle cx="37" cy="32" r="7"/></g></svg><div><b>访谈工作台</b><small>长文本分析与质性研究</small></div></div>
+<div class="preview-nav"><p><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>访谈整理</p><p class="sub selected"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v11H3zM3 7V4h7l2 3"/></svg>访谈资料</p><p class="sub"><svg viewBox="0 0 24 24"><path d="m5 19 7-15 7 15M8 13h8M4 22h16"/></svg>文字校订</p><p class="research"><svg viewBox="0 0 24 24"><path d="M5 20V13M12 20V5M19 20V9"/></svg>研究分析</p><p class="sub">单篇访谈分析</p><p class="sub">跨访谈分析</p></div><div class="preview-foot">设置</div></aside>
+<div class="preview-main"><div class="preview-top"><span>访谈整理　/　全部访谈</span><div class="preview-tools"><span>导入文本</span><span class="solid">导入录音</span></div></div><div class="preview-content"><div class="preview-summary">全部访谈　—　 |　 待校订　—</div><div class="preview-section"><h2>访谈资料</h2><div class="preview-search"></div></div><div class="skeleton-head"><div class="skeleton-icon"></div><div><div class="skeleton-line"></div><div class="skeleton-line small"></div></div></div><div class="skeleton-table">
+<div class="skeleton-row"><div><div class="skeleton-line"></div><div class="skeleton-line small"></div></div><div class="skeleton-line small"></div></div>
+<div class="skeleton-row"><div><div class="skeleton-line"></div><div class="skeleton-line small"></div></div><div class="skeleton-line small"></div></div>
+<div class="skeleton-row"><div><div class="skeleton-line"></div><div class="skeleton-line small"></div></div><div class="skeleton-line small"></div></div>
+<div class="skeleton-row"><div><div class="skeleton-line"></div><div class="skeleton-line small"></div></div><div class="skeleton-line small"></div></div>
+</div></div></div></div>
+<main class="login-overlay"><section class="login-card" aria-labelledby="entryTitle">
+<div class="login-brand"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 32 25 14 37 32" fill="none" stroke="currentColor" stroke-width="4" opacity=".65"/><g fill="currentColor"><circle cx="25" cy="12" r="6"/><circle cx="11" cy="32" r="6"/><circle cx="37" cy="32" r="6"/></g></svg><span>访谈工作台</span></div>
+<h1 id="entryTitle">登录工作台</h1><p class="intro" id="intro">登录后继续你的访谈整理与研究分析。</p>
+<p id="message" role="alert"></p>
+<p id="passwordSuccess" role="status" hidden>密码已更新，请使用新密码登录。</p>
+<form id="login"><label id="nameLabel" for="username">账号<input id="username" name="username" placeholder="请输入账号" autocomplete="username" required maxlength="32" autocapitalize="none" spellcheck="false"></label>
+<label for="password"><span id="passwordLabel">密码</span><input id="password" name="password" type="password" placeholder="请输入密码" autocomplete="current-password" minlength="12" maxlength="128" required></label>
+<label for="passwordConfirm" id="passwordConfirmLabel" hidden>确认新密码<input id="passwordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128"></label>
+<div class="login-help" id="forgotEntry" hidden><button type="button" class="login-link" id="forgotPassword">忘记密码？</button></div>
+<button id="submit" disabled>正在检查登录…</button></form>
+<section id="recoveryHelp" hidden><p class="intro">如果你是唯一的管理员，可在运行工作台的电脑或服务器上生成管理员重设链接。</p><button type="button" id="recoveryBack">返回登录</button></section>
+<p class="hint" id="hint" hidden></p>
+<div id="guestEntry"><button type="button" id="guestStart" style="background:#edf7f4;color:#008b81;margin-top:18px">先试用一下</button></div>
+</section></main>
+<script>
+const $=id=>document.getElementById(id),msg=s=>$('message').textContent=s;
+const fragment=new URLSearchParams(location.hash.slice(1)),params=new URLSearchParams(location.search),resetToken=fragment.get('reset'),token=resetToken||fragment.get('invite');
+const preserve=params.has('preserve'),passwordChanged=params.get('password')==='updated';
+history.replaceState(null,'','/account');
+async function api(path,body){
+ const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+ let data;try{data=await r.json()}catch{throw Error('服务暂时不可用，请稍后重试。')}
+ if(!r.ok)throw Object.assign(Error(data.detail||'请求失败，请稍后重试'),{status:r.status});
+ return data;
+}
+function ready(){$('submit').disabled=false;$('submit').textContent=resetToken?'保存新密码':token?'设置密码并进入工作台':'登录并进入工作台';$('forgotEntry').hidden=!!token}
+$('login').onsubmit=async e=>{
+ e.preventDefault();if($('submit').disabled)return;msg('');$('passwordSuccess').hidden=true;
+ if(resetToken&&$('password').value!==$('passwordConfirm').value){msg('两次输入的新密码不一致。');$('passwordConfirm').focus();return}
+ $('submit').disabled=true;$('submit').textContent=resetToken?'正在保存…':token?'正在激活…':'正在登录…';
+ try{const result=await api(resetToken?'/auth/reset-password':token?'/auth/redeem':'/auth/login',token?{token,password:$('password').value}:{username:$('username').value,password:$('password').value});if(resetToken){location.replace('/account?password=updated');return}if(result.has_guest&&confirm('是否将访客资料保留到刚登录的账号？取消则不合并，临时资料仍按原期限清理。')){const me=await api('/auth/me');const r=await fetch('/auth/guest-transfer',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':me.csrf},body:'{}'});if(!r.ok){const error=await r.json();throw Error((error.detail||'保留失败')+'；请勿清除浏览器数据，可重试登录后保留。')}}location.replace('/')}
+ catch(err){msg(err.message);ready()}
+};
+async function init(){
+ if(token||preserve)$('guestEntry').hidden=true;
+ if(token){$('entryTitle').textContent=resetToken?'重设密码':'设置密码，开始使用';$('intro').textContent=resetToken?'请设置 12–128 个字符的新密码。保存后，请重新登录。':'请设置 12—128 位密码，完成后进入工作台。';$('nameLabel').hidden=true;$('username').required=false;$('password').autocomplete='new-password';if(resetToken){$('passwordLabel').textContent='新密码';$('passwordConfirmLabel').hidden=false;$('passwordConfirm').required=true}$('hint').hidden=false;$('hint').textContent=resetToken?'链接失效？请联系管理员重新获取。':'已有账号或邀请已失效？';const back=document.createElement('a');back.href='/account';back.textContent='返回登录';$('hint').append(' ',back);ready();return}
+ if(passwordChanged){$('passwordSuccess').hidden=false;$('guestEntry').hidden=true;ready();return}
+ try{const current=('workbenchLoginSession' in window)?window.workbenchLoginSession:await api('/auth/me');if(!current){ready();return}if(!preserve)location.replace('/');else if(current.role==='guest'){$('intro').textContent='登录后可选择将当前访客资料保留到账号。';ready()}else{ready();$('intro').textContent='已登录；可重新登录并重试保留访客资料。'}}
+ catch(err){if(err.status!==401)msg('暂时无法检查登录状态，可重试登录。');ready()}
+}
+$('forgotPassword').onclick=()=>{msg('');$('passwordSuccess').hidden=true;$('password').value='';$('login').hidden=$('guestEntry').hidden=true;$('entryTitle').textContent='找回密码';$('intro').textContent='请私下联系工作台管理员并告知你的账号名。管理员核验身份后会发给你一次性链接，你可以自行设置新密码。请勿发送原密码。';$('recoveryHelp').hidden=false;$('recoveryBack').focus()};
+$('recoveryBack').onclick=()=>{$('recoveryHelp').hidden=true;$('login').hidden=false;$('guestEntry').hidden=preserve||passwordChanged;$('entryTitle').textContent='登录工作台';$('intro').textContent=preserve?'登录后可选择将当前访客资料保留到账号。':'登录后继续你的访谈整理与研究分析。';$('forgotPassword').focus()};
+$('guestStart').onclick=async()=>{const b=$('guestStart');b.disabled=true;msg('');try{await api('/auth/guest',{});location.replace('/')}catch(e){msg(e.message);b.disabled=false}};
+init();window.addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
+</script></body></html>

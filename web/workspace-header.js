@@ -3,11 +3,13 @@
  const main=document.querySelector('main'),find=s=>document.querySelector(s);
  class WorkspaceHeader {
   constructor(){
-   this.element=document.createElement('header');this.element.className='workspace-header';
-   this.element.innerHTML='<div class="workspace-header-row"><div class="workspace-breadcrumb"><span></span><i>/</i><strong></strong></div><div class="workspace-header-right"><div class="workspace-selector-slot"></div><div class="workspace-status-slot"></div><div class="workspace-action-slot"></div></div></div><div class="workspace-tab-slot" hidden></div>';
+   this.element=main.querySelector(':scope > .workspace-header')||document.createElement('header');this.element.className='workspace-header';
+   if(!this.element.firstElementChild)this.element.innerHTML='<div class="workspace-header-row"><div class="workspace-breadcrumb"><span></span><i>/</i><strong></strong></div><div class="workspace-header-right"><div class="workspace-selector-slot"></div><div class="workspace-status-slot"></div><div class="workspace-action-slot"></div></div></div><div class="workspace-tab-slot" hidden></div>';
    const tools=document.createElement('div');tools.className='editor-tool-row';tools.hidden=true;tools.innerHTML='<div class="editor-tool-left"></div><div class="editor-tool-right"></div>';this.element.append(tools);this.tools=tools;
    this.slots={selector:this.element.querySelector('.workspace-selector-slot'),status:this.element.querySelector('.workspace-status-slot'),actions:this.element.querySelector('.workspace-action-slot'),tabs:this.element.querySelector('.workspace-tab-slot'),toolsLeft:tools.firstElementChild,toolsRight:tools.lastElementChild};
    this.mounted=new Map();this.parking=document.createElement('div');this.parking.hidden=true;main.append(this.parking);main.prepend(this.element);
+   // Static home controls park off-screen when another view takes over.
+   for(const node of this.slots.actions.children){const anchor=document.createComment('header-control');this.parking.append(anchor);this.mounted.set(node,anchor);}
    this.resize=new ResizeObserver(()=>main.style.setProperty('--workspace-header-height',this.element.getBoundingClientRect().height+'px'));this.resize.observe(this.element);
   }
   render({module,page,selector=[],status=[],actions=[],tabs=[],toolsLeft=[],toolsRight=[]}){
@@ -35,6 +37,12 @@
  main.classList.add('workspace-main');
  const legacy=find('main > .topbar');legacy.classList.add('workspace-legacy-topbar');
  const header=new WorkspaceHeader();
+ const exportTranscriptButton=document.createElement('button');
+ exportTranscriptButton.type='button';exportTranscriptButton.id='exportTranscriptBtn';
+ exportTranscriptButton.className='soft';exportTranscriptButton.textContent='导出 TXT';
+ exportTranscriptButton.title='导出当前文字稿，包含未保存修改；不包含审核按钮和高亮标记';
+ exportTranscriptButton.disabled=true;exportTranscriptButton.onclick=exportTranscript;
+ header.parking.append(exportTranscriptButton);
  const editorPicker=document.createElement('select');editorPicker.id='editorInterviewSelect';editorPicker.setAttribute('aria-label','选择校订访谈稿');
  const editorCascade=document.createElement('div');editorCascade.className='memo-selector-control editor-cascade-control';editorCascade.style.position='relative';
  const editorCascadeButton=document.createElement('button');editorCascadeButton.type='button';editorCascadeButton.setAttribute('aria-label','选择校订访谈稿');editorCascadeButton.setAttribute('aria-haspopup','true');editorCascadeButton.setAttribute('aria-expanded','false');
@@ -51,7 +59,7 @@
    const expand=()=>{for(const other of editorCascadeMenu.querySelectorAll('.memo-cascade-sub'))other.hidden=true;for(const other of editorCascadeMenu.querySelectorAll('.memo-cascade-parent'))other.setAttribute('aria-expanded','false');sub.hidden=false;button.setAttribute('aria-expanded','true');sub.classList.remove('open-left');sub.classList.toggle('open-left',sub.getBoundingClientRect().right>window.innerWidth-12);};button.onclick=expand;row.onmouseenter=expand;
    button.onkeydown=e=>{if(e.key==='ArrowRight'){e.preventDefault();expand();sub.querySelector('button')?.focus();}};
    for(const material of group.rows){const item=document.createElement('button');item.type='button';item.textContent=material.name;item.title=material.name;item.classList.toggle('active',material.id===String(selected));
-    item.onclick=async()=>{if(editorLoading)return;if(editorDirty.get(String(selected))&&!confirm('当前校订有未保存修改，切换将放弃这些修改。继续吗？'))return;editorCascadeMenu.hidden=true;editorCascadeButton.setAttribute('aria-expanded','false');editorLoading=true;sync();try{let id=material.id;if(!id){const result=await api(`/api/research-projects/${group.project.id}/uploaded/${material.index}/prepare`,{method:'POST'});id=result.project_id;await loadProjects();await loadResearchProjects();}await openProject(id);selectedResearchProject=group.project;editorDirty.delete(String(selected));editorSaved.delete(String(selected));}catch(error){toast(error.message);}finally{editorLoading=false;sync();}};
+    item.onclick=async()=>{if(editorLoading)return;if(editorDirty.get(String(selected))&&!confirm('当前校订有未保存修改，切换将放弃这些修改。继续吗？'))return;editorCascadeMenu.hidden=true;editorCascadeButton.setAttribute('aria-expanded','false');editorLoading=true;sync();try{let id=material.id;if(!id){const result=await api(`/api/research-projects/${group.project.id}/uploaded/${material.index}/prepare`,{method:'POST'});id=result.project_id;await loadProjects();await loadResearchProjects();}await openProject(id,null,{transcriptFirst:true});selectedResearchProject=group.project;editorDirty.delete(String(selected));editorSaved.delete(String(selected));}catch(error){toast(error.message);}finally{editorLoading=false;sync();}};
     item.onkeydown=e=>{if(e.key==='ArrowLeft'){e.preventDefault();sub.hidden=true;button.setAttribute('aria-expanded','false');button.focus();}};sub.append(item);}
    if(!group.rows.length){const empty=document.createElement('p');empty.textContent='暂无访谈稿';sub.append(empty);}row.append(button,sub);editorCascadeMenu.append(row);
   }
@@ -81,7 +89,7 @@
    const id=panel?.id||activeView?.id||'workspace';
    const config={module:['workspace','editor'].includes(id)?'访谈整理':'研究项目',page:({workspace:'全部访谈',editor:'文字校订',projectManage:'项目管理',familiarity:'单篇访谈分析',focused:'跨访谈分析',coding:'访谈编码',matrix:'比较分析',projectData:'项目资料'})[id]||'访谈分析'};
    if(id==='workspace'){
-    config.actions=[find('#importTranscriptBtn'),find('#newProjectBtn')];
+    config.actions=window.WORKBENCH_GUEST?[find('#importTranscriptBtn')]:[find('#importTranscriptBtn'),find('#newProjectBtn')];
     config.actions.forEach(n=>n.hidden=false);
     if(find('#currentProject').textContent==='全部项目')find('#currentProject').textContent='全部访谈';
    }else if(id==='editor'){
@@ -96,12 +104,14 @@
     if(editorLoading)for(const id of ['saveBtn','optimizeBtn','goAnalysisBtn'])find('#'+id).disabled=true;
     writeStatus(editorStatus,editorLoading?'正在读取…':selected?(editorDirty.get(String(selected))?'未保存':editorSaved.get(String(selected))||find('#editorHint').textContent):'');
     config.selector=[editorCascade];config.status=[editorStatus];
-    config.actions=[find('#saveBtn')];
+    exportTranscriptButton.disabled=editorLoading||!selected||!transcriptText().trim();
+    config.actions=[find('#saveBtn'),exportTranscriptButton];
     config.toolsLeft=[find('.editor-history'),find('#editorFindControl')||editorFind].filter(Boolean);
     config.toolsRight=[find('.editor-ai-split'),find('#goAnalysisBtn'),find('.audio-menu')||find('#audioFollowToggle')].filter(Boolean);
    }else if(id==='projectManage'){
     config.actions=[find('#researchBackBtn'),find('#deleteResearchBtn'),find('#createResearchBtn')];
    }else if(id==='familiarity'||id==='coding'||id==='sourceSearch'){
+    if(window.WORKBENCH_GUEST)config.module='研究分析';
     config.page='单篇访谈分析';
     const picker=find('#memoInterviewSelect');picker.hidden=!!memoSelector;
     if(memoSelector){memoSelector.classList.add('memo-selector-control');const toggle=memoSelector.querySelector('button');toggle.title=picker.selectedOptions[0]?.textContent||'请选择访谈稿';toggle.setAttribute('aria-label','选择访谈稿');}
@@ -143,13 +153,13 @@
    if(id==='coding')window.aiCodingDemo?.configure(config);
    header.render(config);
    // Promote at most one existing action, without creating a new saving/generation path.
-   const primaryId=({workspace:'newProjectBtn',editor:'saveBtn',projectManage:'createResearchBtn',familiarity:'generateMemoBtn',focused:find('#focused').classList.contains('network-active')?'':'saveThemeBtn',coding:'aiCodeBtn'})[id];
+   const primaryId=({workspace:window.WORKBENCH_GUEST?'importTranscriptBtn':'newProjectBtn',editor:'saveBtn',projectManage:'createResearchBtn',familiarity:'generateMemoBtn',focused:find('#focused').classList.contains('network-active')?'':'saveThemeBtn',coding:'aiCodeBtn'})[id];
    for(const button of header.slots.actions.querySelectorAll('button'))button.classList.toggle('workspace-primary',button.id===primaryId||button.dataset.action==='export');
    for(const b of header.slots.tabs.querySelectorAll('button')){const pressed=String(b.classList.contains('active'));if(b.getAttribute('aria-pressed')!==pressed)b.setAttribute('aria-pressed',pressed);}
   }finally{header.element.dataset.syncCount=String(Number(header.element.dataset.syncCount||0)+1);header.element.dataset.lastSyncMs=(performance.now()-syncStarted).toFixed(2);observer.observe(main,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','hidden','disabled','aria-pressed']});}
  }
  const editorDirty=new Map(),editorSaved=new Map();
- editorPicker.onchange=async()=>{if(!editorPicker.value||editorLoading)return;const id=editorPicker.value;editorLoading=true;sync();try{await openProject(id);editorDirty.delete(String(selected));editorSaved.delete(String(selected));}catch(error){toast(error.message);}finally{editorLoading=false;sync();}};
+ editorPicker.onchange=async()=>{if(!editorPicker.value||editorLoading)return;const id=editorPicker.value;editorLoading=true;sync();try{await openProject(id,null,{transcriptFirst:true});editorDirty.delete(String(selected));editorSaved.delete(String(selected));}catch(error){toast(error.message);}finally{editorLoading=false;sync();}};
  const originalSave=saveTranscript;
  find('#saveBtn').onclick=async()=>{
   if(!selected)return;const id=String(selected);writeStatus(editorStatus,'保存中…');

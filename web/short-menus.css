@@ -1,0 +1,35 @@
+/* Only short action/navigation menus. Editing popovers and dialogs are excluded. */
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu,.rail-menu,.settings-popover[data-settings-view=""]){
+  box-sizing:border-box;padding:6px;border:1px solid #dce8e5;border-radius:12px;background:#fff;color:#294b4e;
+  box-shadow:0 12px 40px #163c3a24,0 2px 8px #163c3a0a;font:15px/20px "Microsoft YaHei UI",sans-serif;
+}
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu){min-width:144px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto;z-index:1050}
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button,
+body :is(.rail-menu,.settings-popover[data-settings-view=""]) .settings-menu-item{
+  box-sizing:border-box;display:flex;align-items:center;gap:9px;width:100%;min-height:36px;margin:0;padding:6px 8px;border:0;border-radius:9px;
+  background:transparent;color:#294b4e;text-align:left;font:500 15px/20px "Microsoft YaHei UI",sans-serif;cursor:pointer;
+}
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:hover,
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:focus-visible,
+body :is(.rail-menu,.settings-popover[data-settings-view=""]) .settings-menu-item:hover{background:#edf7f4;color:#008b81}
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:focus-visible{outline:2px solid #168b84;outline-offset:-2px}
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu)>button:disabled{opacity:.45;cursor:not-allowed}
+body :is(.library-project-menu,.library-menu)>button[data-delete],
+body .library-project-menu>button:not([data-manage-project]){color:#bd444b}
+body .library-menu>button[data-delete] .wb-menu-icon,body .library-project-menu>button:not([data-manage-project]) .wb-menu-icon{stroke:currentColor}
+body :is(.library-project-menu,.library-menu)>button[data-delete]:hover,
+body .library-project-menu>button:not([data-manage-project]):hover{background:#fff0f1;color:#bd444b}
+body .research-result-menu>button[aria-checked=true]{background:#edf7f4;color:#008b81}
+body :is(.settings-popover[data-settings-view=""],.rail-menu) .settings-menu{gap:0;margin:0}
+body :is(.settings-popover[data-settings-view=""],.rail-menu) .settings-menu-item strong{font-size:15px;font-weight:500}
+body .wb-menu-icon{width:19px;height:19px;flex:0 0 19px;fill:none;stroke:#11847e;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+body .wb-menu-label{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body .wb-menu-next{width:16px;height:16px;flex:0 0 16px;fill:none;stroke:#819994;stroke-width:1.6}
+body .wb-menu-fixed{position:fixed!important;inset:auto!important;margin:0;left:var(--wb-menu-x)!important;top:var(--wb-menu-y)!important}
+body .wb-menu-fixed::backdrop{background:transparent;pointer-events:none}
+body .library-move-submenu>button{color:#294b4e!important}
+body .library-move-submenu>button:hover{color:#008b81!important}
+body .research-result-menu.wb-menu-fixed>button{height:auto;min-height:36px;padding:6px 8px;font:500 15px/20px "Microsoft YaHei UI",sans-serif;border-radius:9px;color:#294b4e}
+body .research-result-menu.wb-menu-fixed>button:focus-visible{outline:2px solid #168b84;outline-offset:-2px}
+body .research-result-menu.wb-menu-fixed>button[aria-checked=true]{background:#edf7f4;color:#008b81}
+body .workspace-header.cross-header .research-result-menu.wb-menu-fixed>button{height:36px;padding:6px 8px;font:500 15px/20px "Microsoft YaHei UI",sans-serif;justify-content:flex-start;border:0;border-radius:9px}

@@ -167,15 +167,20 @@ class Reliability(unittest.TestCase):
         (app.project_dir(self.pid)/'导入访谈稿.txt').write_text(text,encoding='utf-8')
         def raw(quotes):
             return dict(participant_identity='未说明',interview_date='未说明',interview_topic='虚构测试',summary='虚构材料概括',
-                viewpoints=[dict(title='虚构观点',summary='仅测试数据流',evidence=quotes,points=[])])
+                viewpoints=[dict(title='虚构观点',summary='仅测试数据流',evidence=quotes,points=[])] if quotes else [])
         def response(value):
             content=json.dumps(value,ensure_ascii=False)
             return types.SimpleNamespace(model_dump=lambda **kw:dict(content=content),
                 choices=[types.SimpleNamespace(finish_reason='stop',message=types.SimpleNamespace(content=content))])
+        def create(client, **request):
+            payload=json.loads(request['messages'][1]['content'])
+            if 'units' in payload:
+                return response(dict(selected_ids=[u['id'] for u in payload['units'] if u['text'] in (q1,q2)]))
+            return response(raw([u['id'] for u in payload['evidence_units']]))
         with patch.object(app,'read_deepseek_key',return_value='synthetic-key'),patch.object(app,'limited_create',
-                side_effect=[response(raw([q1])),response(raw([q2])),response(raw([q1,q2]))]) as call:
+                side_effect=create) as call:
             result=app.generate_familiarity_memo(self.pid,app.MemoRequest())
-        self.assertEqual(call.call_count,3)
+        self.assertEqual(call.call_count,5)
         self.assertIn('合并',call.call_args.kwargs['messages'][0]['content'])
         self.assertEqual([e['quote'] for e in result['memo']['evidence']],[q1,q2])
         self.assertEqual(app.read_analysis(self.pid)['familiarity_memo'],result['memo'])

@@ -49,10 +49,11 @@ def main():
     from run_cloud import read_model_keys
     from openai import OpenAI
     from analysis_contracts import validate_memo
+    from indexed_memo import IndexedMemoPipeline, MEMO_PROMPT
     from interview_coding import CODING_PROMPT,source_units,validate_reply
     from indexed_theme import INDEX_PROMPT,MODEL,BASE_URL,validate_index
     baseline=json.loads(baseline_path.read_text(encoding='utf-8'))
-    current=dict(memo=extract((ROOT/'web_app.py').read_text(encoding='utf-8'),'prompt','generate_familiarity_memo'),coding=CODING_PROMPT,index=INDEX_PROMPT)
+    current=dict(memo=MEMO_PROMPT,coding=CODING_PROMPT,index=INDEX_PROMPT)
     keys=read_model_keys(args.keys)
     clients=dict(ds=OpenAI(api_key=keys['DEEPSEEK_API_KEY'],base_url='https://api.deepseek.com',timeout=90,max_retries=0),
                  qwen=OpenAI(api_key=keys['QWEN_API_KEY'],base_url=BASE_URL,timeout=90,max_retries=0))
@@ -92,19 +93,27 @@ def main():
             response_format=dict(type='json_object'),extra_body={'enable_thinking':False} if provider=='qwen' else {'thinking':{'type':'disabled'}},
             messages=[dict(role='system',content=prompt),dict(role='user',content=json.dumps(payload,ensure_ascii=False))])
         write(folder/'input.json',dict(job=job,request=request))
-        state['attempted']+=1;write(ledger,state) # before network, including failures
         result=dict(id=label,provider=provider,model=request['model'],program_pass=False)
         started=time.monotonic()
         try:
-            response=clients[provider].chat.completions.create(**request)
-            write(folder/'response.json',response.model_dump(mode='json'))
-            result['finish_reason']=response.choices[0].finish_reason
-            result['usage']=response.usage.model_dump(mode='json') if response.usage else None
-            if result['finish_reason']!='stop':raise ValueError('incomplete output')
-            raw=json.loads(response.choices[0].message.content or '')
-            if kind=='memo':validated=validate_memo(raw,text)
-            elif kind=='coding':validated=validate_reply(raw,units,text,'synthetic')[0]
-            else:validated=validate_index(raw,lines)
+            def invoke(actual_request):
+                if state['attempted']>=state['cap']:raise RuntimeError('Synthetic call budget exhausted')
+                state['attempted']+=1;write(ledger,state) # before every network attempt
+                return clients[provider].chat.completions.create(**actual_request)
+            if kind=='memo' and not job['version'].startswith('old'):
+                pipeline=IndexedMemoPipeline(text,folder/'runs',None,invoke)
+                validated=pipeline.generate();pipeline.run.complete()
+                result['stages']='indexed_selection_summary_and_local_repair'
+            else:
+                response=invoke(request)
+                write(folder/'response.json',response.model_dump(mode='json'))
+                result['finish_reason']=response.choices[0].finish_reason
+                result['usage']=response.usage.model_dump(mode='json') if response.usage else None
+                if result['finish_reason']!='stop':raise ValueError('incomplete output')
+                raw=json.loads(response.choices[0].message.content or '')
+                if kind=='memo':validated=validate_memo(raw,text)
+                elif kind=='coding':validated=validate_reply(raw,units,text,'synthetic')[0]
+                else:validated=validate_index(raw,lines)
             write(folder/'validated.json',validated)
             result['program_pass']=True
         except Exception as error:

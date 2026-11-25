@@ -16,7 +16,7 @@
 @media(max-width:850px){.shell,.shell.collapsed{grid-template-columns:1fr}.sidebar{padding:10px;height:auto}.sidebar nav{display:grid;grid-template-columns:1fr 1fr}.sidebar .nav-parent,.sidebar .nav-item{font-size:15px;min-height:42px;padding:8px;gap:10px}.sidebar .nav-icon{width:21px;height:21px}}
 /* Preserve the pre-redesign typography sizes. */
 .sidebar .brand b{font-size:18px}
-.sidebar .brand small{font-size:11px}
+.sidebar .brand small{font-size:13px}
 .sidebar .nav-parent,.sidebar .nav-item,.sidebar .nav-parent b,.sidebar .system-card>div,.sidebar .sidebar-settings{font-size:15px}
 .sidebar .side-top>#sideToggle{font-size:23px}
 /* Original compact desktop proportions with the refreshed visual treatment. */

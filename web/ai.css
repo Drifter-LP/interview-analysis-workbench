@@ -24,7 +24,7 @@
 }
 
 .transcript-editor { overflow: auto; white-space: pre-wrap; }
-.transcript-editor:empty::before { content: attr(data-placeholder); color: #91a09f; }
+.transcript-editor:empty::before { content: attr(data-placeholder); color: #5d747d; }
 .ai-change { position: relative; padding: 1px 2px; border-radius: 4px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .ai-change.medium { background: #fff7d6; }
 .ai-change.low { background: #ffead9; }
@@ -40,7 +40,7 @@
 .nav-group { display: grid; }
 .nav-parent { display: grid; grid-template-columns: 1fr auto; align-items: center; width: 100%; padding: 12px; border: 0; border-radius: 9px; background: transparent; color: #eef7f5; text-align: left; cursor: pointer; font: inherit; }
 .nav-parent em { font-style: normal; font-weight: 700; }
-.nav-parent b { color: #8da5a8; transition: transform .15s; }
+.nav-parent b { color: #597177; transition: transform .15s; }
 .nav-group.open .nav-parent b { transform: rotate(180deg); }
 .nav-parent:hover { background: #143941; }
 .nav-children { display: none; padding: 2px 0 5px 12px; }
@@ -94,7 +94,7 @@
 #coding .coding-grid.text-collapsed { grid-template-columns:1fr; }
 #coding .coding-grid.text-collapsed .coding-document { display:none !important; }
 #coding .coding-grid.text-collapsed .coding-side { width:100%; }
-.coding-collapse-toggle { position:absolute; z-index:5; top:8px; right:calc(34.6% + 22px); width:28px; height:28px; padding:0; border:1px solid #d7e3e1; border-radius:7px; background:rgba(255,255,255,.92); color:#668083; cursor:pointer; font:12px/1 inherit; }
+.coding-collapse-toggle { position:absolute; z-index:5; top:8px; right:calc(34.6% + 22px); width:28px; height:28px; padding:0; border:1px solid #d7e3e1; border-radius:7px; background:rgba(255,255,255,.92); color:#668083; cursor:pointer; font:13px/1 inherit; }
 .coding-collapse-toggle:hover { border-color:#8db9b5; background:#eef7f5; color:var(--teal); }
 .coding-grid.text-collapsed .coding-collapse-toggle { right:auto; left:8px; }
 .coding-popover { position:fixed; z-index:50; width:min(450px,calc(100vw - 24px)); padding:9px; border:1px solid #d7e4e2; border-radius:10px; background:#fff; box-shadow:0 10px 28px rgba(12,49,54,.12); }

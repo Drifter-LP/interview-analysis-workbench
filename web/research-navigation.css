@@ -70,16 +70,16 @@
 .wc-source-body mark.research-evidence-highlight{background:#cceee8;color:inherit;border-radius:3px;padding:2px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 @media(max-width:1100px){.workspace-header.cross-header .editor-tool-row{flex-wrap:wrap}.workspace-header.cross-header .editor-tool-left{flex-wrap:wrap}.workspace-header.cross-header .research-record-scope{flex-wrap:wrap;gap:4px 12px}.research-scope-question{max-width:55vw}.workspace-header.cross-header .workspace-header-row{flex-wrap:wrap}.workspace-header.cross-header .workspace-selector-slot select{max-width:38vw}}
 .research-code-workspace{padding:18px 24px}
-.research-code-notice{color:#71888d;font-size:12px}
+.research-code-notice{color:#597177;font-size:12px}
 .research-members-dialog{width:min(820px,92vw);max-height:85vh;border:1px solid #dce7e8;border-radius:12px;padding:20px;overflow:auto}
 .research-members-dialog #projectManage{display:block!important}
-.research-manager-close{float:right;border:0;background:transparent;color:#71888d;cursor:pointer;padding:5px 10px}
+.research-manager-close{float:right;border:0;background:transparent;color:#597177;cursor:pointer;padding:5px 10px}
 .research-members-dialog .research-head{clear:both}
 .research-members-dialog::backdrop{background:#19374038}
 .research-source-dialog{width:min(1100px,94vw);height:min(780px,88vh);border:1px solid #dce7e8;border-radius:12px;padding:0;color:#193740}
 .research-source-dialog::backdrop{background:#19374038}
 .research-source-dialog>header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #e4eded}
-.research-source-dialog>header button{border:0;background:transparent;font-size:22px;color:#71888d;cursor:pointer}
+.research-source-dialog>header button{border:0;background:transparent;font-size:22px;color:#597177;cursor:pointer}
 .research-source-controls{display:flex;gap:10px;padding:12px 20px;align-items:center;border-bottom:1px solid #e4eded}
 .research-source-controls input{flex:1;min-width:100px;height:34px;padding:0 10px;border:1px solid #dce7e8;border-radius:7px;font:inherit}
 .research-source-controls select,.research-source-controls button{height:34px;border:1px solid #dce7e8;border-radius:7px;background:#fff;color:inherit;padding:0 10px;font:inherit;max-width:260px}

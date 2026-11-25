@@ -41,7 +41,7 @@
 #wordCooccurrence .wc-layout:not(.wc-pane-compact){height:auto;min-height:0;flex:1;}
 #wordCooccurrence:has(.wc-pane-compact){overflow:auto;}
 .wc-inline-split{position:fixed;z-index:1000;display:flex;align-items:center;background:#e3f5ef;border:1px solid #b9e4d9;border-radius:8px;box-shadow:0 4px 14px #18384120;padding:3px;}
-.wc-inline-split button{border:0;background:transparent;color:#16766b;font:14px 'Microsoft YaHei',sans-serif;padding:7px 11px;cursor:pointer;}
+.wc-inline-split button{border:0;background:transparent;color:#16766b;font:14px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;padding:7px 11px;cursor:pointer;}
 .wc-inline-split button+button{border-left:1px solid #bdded5;padding:7px 10px;}
 .wc-inline-split button:hover{background:#cfece2;border-radius:5px;}
 .wc-inline-caret{position:fixed;width:2px;background:#009c95;z-index:999;pointer-events:none;}
@@ -61,7 +61,7 @@
 #wordCooccurrence .wc-card-head{flex-wrap:wrap;gap:8px;}
 #wordCooccurrence .wc-card-head>span{flex:1;}
 #wordCooccurrence .wc-card-head .wc-excluded-toggle{padding:3px 6px;white-space:nowrap;}
-#wordCooccurrence .wc-excluded-badge{display:inline-block;background:#e8edef;color:#667983;border-radius:4px;font-size:11px;padding:2px 5px;margin-left:5px;}
+#wordCooccurrence .wc-excluded-badge{display:inline-block;background:#e8edef;color:#667983;border-radius:4px;font-size:13px;padding:2px 5px;margin-left:5px;}
 #wordCooccurrence .wc-card-head>select[hidden]{display:none!important;}
 #wordCooccurrence .wc-stat-menu{position:relative;flex:none;}
 #wordCooccurrence .wc-stat-menu summary{list-style:none;cursor:pointer;border:1px solid #cfe2e2;background:white;border-radius:9px;padding:7px 12px;font-size:13px;min-width:112px;color:#294c55;}
@@ -83,7 +83,7 @@
 .wc-source-drawer header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1px solid #e1ebee;}
 .wc-source-drawer header button{border:0;background:#f1f6f6;color:#426770;border-radius:7px;font-size:24px;cursor:pointer;}
 .wc-source-note{padding:12px 24px;margin:0;background:#f4f9f8;font-size:13px;color:#71888e;line-height:1.6;}
-.wc-source-body{flex:1;min-height:0;overflow:auto;padding:24px;white-space:pre-wrap;font:16px/1.9 'Microsoft YaHei',sans-serif;}
+.wc-source-body{flex:1;min-height:0;overflow:auto;padding:24px;white-space:pre-wrap;font:16px/1.9 "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;}
 .wc-source-body mark{background:#def3e8;color:inherit;border-radius:3px;}
 #wordCooccurrence .wc-merge-band .wc-merge{position:relative;}
 #wordCooccurrence .wc-merge-band .wc-merge:after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 7px);right:0;white-space:nowrap;padding:7px 11px;border:1px solid #deebe7;border-radius:9px;background:#f5faf8;color:#476a63;font-size:12px;font-weight:400;box-shadow:0 3px 12px #18384112;opacity:0;visibility:hidden;transform:translateY(3px);transition:opacity .15s,transform .15s;pointer-events:none;z-index:40;}
@@ -94,7 +94,7 @@
 #wordCooccurrence .wc-interview-title-group h3{margin:0;}
 #wordCooccurrence .wc-pending-count{font-size:12px;background:#fff0df;color:#bc751e;border-radius:6px;padding:4px 7px;white-space:nowrap;}
 #wordCooccurrence .wc-count-help{position:relative;display:inline-flex;align-items:center;}
-#wordCooccurrence .wc-count-help>button{display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:50%;background:transparent;color:#78959b;font:12px/1 'Microsoft YaHei',sans-serif;padding:0;cursor:pointer;position:relative;transition:background .15s,color .15s;}
+#wordCooccurrence .wc-count-help>button{display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:50%;background:transparent;color:#78959b;font:13px/1 "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;padding:0;cursor:pointer;position:relative;transition:background .15s,color .15s;}
 #wordCooccurrence .wc-count-help>button:before{content:'';position:absolute;inset:4px;border:1px solid currentColor;border-radius:50%;}
 #wordCooccurrence .wc-count-help>button:hover,#wordCooccurrence .wc-count-help>button:focus-visible{background:#edf6f3;color:#318f82;outline:none;}
 #wordCooccurrence .wc-count-tooltip{position:absolute;top:calc(100% + 6px);left:-100px;width:210px;max-width:70vw;background:#fcfefd;border:1px solid #e1eae7;border-radius:7px;box-shadow:0 3px 12px #17384110;padding:7px 9px;font-size:12px;line-height:1.5;color:#60787c;z-index:50;opacity:0;visibility:hidden;transition:opacity .15s;pointer-events:none;}
@@ -117,7 +117,7 @@
 #wordCooccurrence .wc-issues>h3>span{font-size:13px;padding:2px 7px;}
 #wordCooccurrence .wc-reason-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
 #wordCooccurrence .wc-reason-heading h3{font-size:15px;margin:0;line-height:1.5;}
-#wordCooccurrence .wc-reason-heading small{font-size:11px;color:#88999f;}
+#wordCooccurrence .wc-reason-heading small{font-size:13px;color:#88999f;}
 #wordCooccurrence .wc-issue-content .wc-reason-text{font-size:15px;line-height:1.85;color:#294a55;margin:10px 0 6px;overflow-wrap:anywhere;}
 #wordCooccurrence .wc-review-note{font-size:12px;line-height:1.6;color:#8a969b;margin-bottom:18px;}
 #wordCooccurrence .wc-review-excerpt{padding:12px 14px;border-radius:8px;background:#f6f8f9;margin:0 0 14px;}

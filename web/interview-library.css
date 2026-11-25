@@ -20,7 +20,7 @@
 .library-chevron{margin-left:auto;font-size:22px;color:#008d87}
 .library-table{padding:0 20px 12px}
 .library-columns,.library-row{display:grid;grid-template-columns:minmax(160px,1fr) 150px 110px 110px;align-items:center;gap:16px}
-.library-columns{padding:14px 4px 10px;color:#718391;font-size:13px}
+.library-columns{padding:14px 4px 10px;color:#576c7a;font-size:13px}
 #workspace .library-row{border:0;border-top:1px solid #e5ecef;border-radius:0;background:white;padding:12px 4px;margin:0;cursor:default;box-shadow:none;font-size:14px}
 .library-row-name{display:flex;align-items:center;gap:12px;min-width:0}
 #workspace .library-row{cursor:pointer;transition:background-color .18s ease,box-shadow .18s ease}
@@ -34,9 +34,9 @@
 #workspace .library-row:focus-visible{outline:2px solid #009b95;outline-offset:-2px}
 .library-row-name>span{font-size:0;width:18px;height:21px;flex-shrink:0;background:#607b86;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 2h9l5 5v15H5zM14 2v6h5M8 12h8M8 16h8' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
 .library-row-name strong{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.library-row time{font-size:13px;color:#718391}
+.library-row time{font-size:13px;color:#576c7a}
 .library-row-status{color:#687d87;white-space:nowrap;font-size:13px}
-.library-row-status.completed:before{content:'✓';display:inline-grid;place-items:center;width:16px;height:16px;background:#12c78a;color:white;border-radius:50%;margin-right:7px;font-size:11px}
+.library-row-status.completed:before{content:'✓';display:inline-grid;place-items:center;width:16px;height:16px;background:#12c78a;color:white;border-radius:50%;margin-right:7px;font-size:13px}
 .library-row-actions{display:flex;align-items:center;justify-content:space-between;position:relative;gap:12px}
 .library-row-actions button,.library-more-rows{border:0;background:transparent;color:#008e89;font:inherit;cursor:pointer;padding:5px}
 .library-row-actions .library-dots{color:#617782;font-size:21px;line-height:20px}

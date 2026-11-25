@@ -42,13 +42,21 @@
 
 ## 云端常驻服务
 
+### 正式域名入口（2026-11-25）
+
+已启用 `https://sociolab.cn`。DNSPod 的根域名 A 记录指向现有轻量服务器；Nginx 对外监听 80/443，HTTP 自动跳转 HTTPS。工作台服务启动参数已指定 `--origin https://sociolab.cn`，内部仍仅监听 `127.0.0.1:8765`，保留原资料目录及模型密钥文件。
+
+证书由 Certbot 管理；`certbot.timer` 定时续期，`/etc/letsencrypt/renewal-hooks/deploy/sociolab-nginx` 在成功续期后检查配置并重载 Nginx。只申请了 `sociolab.cn`，未启用 `www` 子域名。
+
+正式入口切换后，旧 SSH 通道地址不能作为正常登录入口（Host、Origin 和安全 Cookie 都以正式 HTTPS 域名为准）。服务器本机检查可用 `curl -fsS -H 'Host: sociolab.cn' http://127.0.0.1:8765/health`；外部检查使用 `curl -fsS https://sociolab.cn/health`。不要为恢复旧地址而降低来源校验或安全 Cookie 设置。
+
 现有腾讯云部署由 `workbench.service` 管理，以 `ubuntu` 用户运行，开机自启、异常退出后自动重启。继续使用原数据目录和原模型密钥文件，只在服务器的 `127.0.0.1:8765` 监听。
 
 ```sh
 systemctl is-enabled workbench.service
 systemctl is-active workbench.service
-curl -fsS http://127.0.0.1:8765/health
+curl -fsS -H 'Host: sociolab.cn' http://127.0.0.1:8765/health
 sudo journalctl -u workbench.service -n 50 --no-pager
 ```
 
-更新版本时，先在独立目录解包和检查，确认无正在运行的分析或访客任务，再变更服务的 `WorkingDirectory`，重新加载服务配置、重启并校验；失败则切回上一版目录。不要再用 `nohup`、旧的单进程切换脚本或另一份服务启动同一个数据目录。日常查看页面仍需 SSH 通道；让朋友直接访问需另行设置正式的 HTTPS 入口。
+更新版本时，先在独立目录解包和检查，确认无正在运行的分析或访客任务，再变更服务的 `WorkingDirectory`，保留正式的 `--origin` 参数，重新加载服务配置、重启并校验；失败则切回上一版目录。不要再用 `nohup`、旧的单进程切换脚本或另一份服务启动同一个数据目录。日常查看页面使用正式 HTTPS 域名，无需 SSH 通道。

@@ -266,7 +266,7 @@ class Store:
                 raise SiteError('账号不可用', 403)
             db.execute('DELETE FROM sessions WHERE expires<?', (time.time(),))
             guest = user['role'] == 'guest'
-            db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (token_hash(secret), user_id, csrf, time.time()+(86400 if guest else 43200)))
+            db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (token_hash(secret), user_id, csrf, time.time()+(86400 if guest else 30*86400)))
         return secret
 
     def session(self, secret):

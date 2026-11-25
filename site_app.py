@@ -41,7 +41,7 @@ PENDING = 'wb_guest_pending'
 DEV = os.environ.get('SITE_ALLOW_HTTP') == '1'
 TEXT_ONLY = os.environ.get('WORKBENCH_TEXT_ONLY') == '1'
 TEXT_ONLY_STYLE = '<style>#newProjectBtn,#systemState,#gpuState{display:none!important}</style>'
-GUEST_SINGLE_UI = '''<script>window.WORKBENCH_GUEST=true;</script><link rel="stylesheet" href="/assets/guest-lock.css?v=2"><style>
+GUEST_SINGLE_UI = '''<script>window.WORKBENCH_GUEST=true;history.replaceState(null,'','/');</script><link rel="stylesheet" href="/assets/guest-lock.css?v=2"><style>
 .nav-item[data-tab="matrix"],.nav-item[data-tab="projectManage"],
 #focused,#matrix,#projectManage,#projectData,#editorImportAudio,#editorMembership,
 #comparisonModeBtn,#comparisonTopActions,#comparisonWorkspace,#comparisonDialog,#compareMaterialsBtn{display:none!important}
@@ -408,7 +408,7 @@ async def auth(action: str, request: Request):
                             background=None if has_guest else BackgroundTask(warm_login_worker, secret))
     if old_guest:
         response.set_cookie(PENDING, request.cookies.get(COOKIE), max_age=86400, httponly=True, secure=not DEV, samesite='strict')
-    response.set_cookie(COOKIE, secret, max_age=86400 if action=='guest' else 43200, httponly=True, secure=not DEV, samesite='strict')
+    response.set_cookie(COOKIE, secret, max_age=86400 if action=='guest' else 30*86400, httponly=True, secure=not DEV, samesite='strict')
     return response
 
 
@@ -678,6 +678,8 @@ async def proxy_upstream(path: str, request: Request):
     # even to a conditional request. Never cache HTML or a research response.
     if request.method in ('GET','HEAD'):
         if not path:
+            if request.state.user['role'] == 'guest' and request.query_params.get('guest') != '1':
+                return HTMLResponse(account(request))
             content = (ROOT / 'web' / 'index.html').read_bytes()
             return HTMLResponse(workspace_html(content, request, text_only, guest_style))
         name = path.removeprefix('assets/')

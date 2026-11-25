@@ -31,7 +31,15 @@
  dlg.querySelector('.ad-missing').after(historyNote);
  const $=s=>dlg.querySelector(s);let me=null,scope='self',model='deepseek',stats=null,seq=0,opener=null,poll=0,tabRequest=0;
  const panelCache=new Map(),panelRequests=new Map();
- const message=s=>$('.ad-message').textContent=s;
+ const message=(s,copyUrl='')=>{
+  const box=$('.ad-message');box.textContent=s;
+  if(copyUrl){
+    const wrap=document.createElement('div');wrap.className='ad-copy-row';
+    const copyBtn=document.createElement('button');copyBtn.type='button';copyBtn.className='ad-copy-btn';copyBtn.textContent='复制链接';
+    copyBtn.onclick=async()=>{try{await navigator.clipboard.writeText(copyUrl);copyBtn.textContent='✓ 已复制';setTimeout(()=>{if(copyBtn.isConnected)copyBtn.textContent='复制链接';},2000);}catch{copyBtn.textContent='请手动复制';}};
+    wrap.append(copyBtn);box.append(wrap);
+  }
+};
  const quotaHelp=$('.ad-quota-help'),quotaTrigger=$('.ad-quota-help-button'),quotaTooltip=$('.ad-quota-tooltip');
  let quotaHover=false,quotaFocus=false,quotaPinned=false,quotaDismissed=false;
  function drawQuotaHelp(){
@@ -186,7 +194,7 @@
  function inviteForm(){
    const box=subpage('邀请成员');box.classList.add('ad-invite');
    const intro=document.createElement('p');intro.className='ad-invite-intro';intro.textContent='为新成员创建账号，生成专属邀请链接。';box.append(intro);
-   const {f,i,b}=form(box,'账号名称','','text',{minLength:3,maxLength:32,placeholder:'输入新成员的账号名称',autocomplete:'off',pattern:'[A-Za-z0-9][A-Za-z0-9_.\\-]{2,31}'},'生成邀请链接',async username=>{const r=await api('/auth/admin/invite',{username});message('邀请链接 48 小时有效，请私下发送：\n'+r.url)});
+   const {f,i,b}=form(box,'账号名称','','text',{minLength:3,maxLength:32,placeholder:'输入新成员的账号名称',autocomplete:'off',pattern:'[A-Za-z0-9][A-Za-z0-9_.\\-]{2,31}'},'生成邀请链接',async username=>{const r=await api('/auth/admin/invite',{username});message('邀请链接 48 小时有效，请私下发送：\n'+r.url,r.url)});
    i.setAttribute('aria-describedby','ad-invite-help');i.spellcheck=false;i.autocapitalize='none';
    const help=document.createElement('p');help.id='ad-invite-help';help.className='ad-invite-help';help.textContent='3–32 位英文或数字，支持 . _ -；须以字母或数字开头。';f.insertBefore(help,b);
    b.insertAdjacentHTML('afterbegin','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 15 6-6m-7 9-1 1a4.2 4.2 0 0 1-6-6l4-4a4.2 4.2 0 0 1 6 0m2-3 1-1a4.2 4.2 0 0 1 6 6l-4 4a4.2 4.2 0 0 1-6 0"/></svg>');
@@ -197,7 +205,7 @@
    const box=subpage('管理账号：'+u.username);
    if(u.role!=='admin')form(box,'每日 API 调用上限',u.daily_calls,'number',{min:1,max:100},'保存额度',async v=>{await api('/auth/admin/update',{id:u.id,active:!!u.active,daily_calls:Number(v)});u.daily_calls=Number(v);message('已更新额度')});
    const actions=document.createElement('div');actions.className='ad-actions';
-   if(u.active)actions.append(button('生成密码重设链接',async()=>{if(!confirm('确认已核验 '+u.username+' 的身份？重设链接仅可使用一次，请私下发送。'))return;const r=await api('/auth/admin/reset',{id:u.id,username:u.username});message('密码重设链接 1 小时内有效，仅可用一次。请私下发送：\n'+r.url)}));
+   if(u.active)actions.append(button('生成密码重设链接',async()=>{if(!confirm('确认已核验 '+u.username+' 的身份？重设链接仅可使用一次，请私下发送。'))return;const r=await api('/auth/admin/reset',{id:u.id,username:u.username});message('密码重设链接 1 小时内有效，仅可用一次。请私下发送：\n'+r.url,r.url)}));
    if(u.role!=='admin')actions.append(button(u.active?'停用账号':'启用账号',async()=>{if(!confirm('确认更改 '+u.username+' 的账号状态？资料不会删除。'))return;await api('/auth/admin/update',{id:u.id,active:!u.active,daily_calls:u.daily_calls});await members()}));
    box.append(actions);
  }

@@ -3,7 +3,7 @@
 .coding-tree-workspace{height:100%;min-height:0;background:#fff;color:#173742}
 .coding-tree-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;height:100%;min-height:0}
 .coding-tree-main{display:flex;flex-direction:column;min-width:0;min-height:0;padding:12px 24px 0}
-.coding-tree-headings{display:grid;grid-template-columns:repeat(4,252px);font-size:14px;font-weight:600;border-bottom:1px solid #e5edef;padding:0 24px 12px;overflow:hidden;flex-shrink:0}
+.coding-tree-headings{position:sticky;top:0;z-index:2;background:#fff;display:grid;grid-template-columns:repeat(4,252px);min-width:max-content;font-size:14px;font-weight:600;border-bottom:1px solid #e5edef;padding:8px 24px 12px}
 .coding-tree-scroll{overflow:auto;flex:1;min-height:0;position:relative}
 .coding-tree-scroll svg{display:block;min-height:400px}
 .coding-tree-scroll [role=button]{cursor:pointer;outline:none}.coding-tree-scroll [role=button]:focus-visible>rect{stroke:#008e89;stroke-width:2}

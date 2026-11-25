@@ -98,3 +98,4 @@
 
 @keyframes ad-pulse{0%,100%{opacity:1}50%{opacity:.45}}
 .ad-personal-content.ad-is-loading .ad-quota,.ad-personal-content.ad-is-loading .ad-chart{animation:ad-pulse 1.4s ease-in-out infinite}
+.ad-copy-row{margin-top:8px}.ad-copy-btn{border:1px solid #b9d7d2;background:#f0f8f6;color:#008b81;border-radius:6px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer}.ad-copy-btn:hover{background:#e1f2ee}

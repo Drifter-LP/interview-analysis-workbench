@@ -313,8 +313,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  opacity: 0;
-  transition: opacity .15s;
+  opacity: .72;
+  transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .material-card:hover .material-actions,
 .material-card:focus-within .material-actions { opacity: 1; }

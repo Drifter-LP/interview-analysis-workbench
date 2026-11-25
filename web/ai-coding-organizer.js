@@ -30,7 +30,7 @@
   toggle.onfocus=()=>show(true);wrap.onfocusout=e=>{if(!pinned&&!wrap.contains(e.relatedTarget))show(false);};
   document.addEventListener('pointerdown',e=>{if(!wrap.contains(e.target)){pinned=false;show(false);}},{signal:events.signal});
   owner.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden){e.preventDefault();e.stopPropagation();pinned=false;show(false);}},{signal:events.signal});
-  window.addEventListener('resize',()=>{pinned=false;show(false);},{signal:events.signal});
+  window.addEventListener('resize',()=>{pinned=false;show(false);},{signal:events.signal});owner.addEventListener('scroll',()=>{pinned=false;show(false);},{capture:true,signal:events.signal});
   owner.addEventListener('close',()=>{clearTimeout(hideTimer);events.abort();},{once:true});return wrap;
  }
  const types={duplicate:'疑似重复',boundary:'边界冲突',granularity:'粒度差异'},actions={consider_merge:'考虑合并',keep_independent:'保留独立',check_definition:'检查定义',manual_review:'人工判断'};

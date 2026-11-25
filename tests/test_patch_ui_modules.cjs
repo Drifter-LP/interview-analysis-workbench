@@ -25,12 +25,12 @@ const assert=require('node:assert/strict');
   await page.evaluate(()=>window.openAccountDrawer());
   await page.getByRole('tab',{name:'成员管理'}).click();
   await page.getByRole('button',{name:'＋ 邀请成员',exact:true}).click();
-  await page.locator('.ad-invite input[type=text]').fill('qa_patch_'+Date.now());
+  await page.locator('.wb-account-invite input[type=text]').fill('qa_patch_'+Date.now());
   await page.getByRole('button',{name:'生成邀请链接',exact:true}).click();
   await page.getByRole('button',{name:'复制链接',exact:true}).click();
   await page.waitForFunction(()=>typeof window.__copiedLink==='string');
   assert.ok(await page.evaluate(()=>window.__copiedLink.startsWith(location.origin+'/account#invite=')));
-  await page.locator('.ad-close').click();
+  await page.locator('.wb-account-close').click();
   assert.deepEqual(errors,[]);
   console.log('PASS: long memo title wraps and saves, evidence highlight opens, admin invitation link copies; synthetic data only, no model calls');
  }finally{await browser.close();}

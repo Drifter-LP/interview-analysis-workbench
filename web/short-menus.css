@@ -1,18 +1,18 @@
 /* Only short action/navigation menus. Editing popovers and dialogs are excluded. */
-body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu,.rail-menu,.settings-popover[data-settings-view=""]){
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.wb-account-account-menu,.rail-menu,.settings-popover[data-settings-view=""]){
   box-sizing:border-box;padding:6px;border:1px solid #dce8e5;border-radius:12px;background:#fff;color:#294b4e;
   box-shadow:0 12px 40px #163c3a24,0 2px 8px #163c3a0a;font:15px/20px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;
 }
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu){min-width:144px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto;z-index:1050}
-body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button,
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.wb-account-account-menu)>button,
 body :is(.rail-menu,.settings-popover[data-settings-view=""]) .settings-menu-item{
   box-sizing:border-box;display:flex;align-items:center;gap:9px;width:100%;min-height:36px;margin:0;padding:6px 8px;border:0;border-radius:9px;
   background:transparent;color:#294b4e;text-align:left;font:500 15px/20px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;
 }
-body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:hover,
-body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:focus-visible,
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.wb-account-account-menu)>button:hover,
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.wb-account-account-menu)>button:focus-visible,
 body :is(.rail-menu,.settings-popover[data-settings-view=""]) .settings-menu-item:hover{background:#edf7f4;color:#008b81}
-body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:focus-visible{outline:2px solid #168b84;outline-offset:-2px}
+body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.wb-account-account-menu)>button:focus-visible{outline:2px solid #168b84;outline-offset:-2px}
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu)>button:disabled{opacity:.45;cursor:not-allowed}
 body :is(.library-project-menu,.library-menu)>button[data-delete],
 body .library-project-menu>button:not([data-manage-project]){color:#bd444b}

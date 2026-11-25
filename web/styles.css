@@ -19,7 +19,7 @@
 .quick-pick-icon{color:var(--teal);font-style:normal}
 
 /* Gemini Frontend Design: Tabular Numerals & Global Reduced-Motion Compliance */
-.overview-grid strong,.ad-number,.ad-chart-value,.we-ranking,.network-zoom output,.ac-progress{font-variant-numeric:tabular-nums}
+.overview-grid strong,.wb-account-number,.wb-account-chart-value,.we-ranking,.network-zoom output,.ac-progress{font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}
 }

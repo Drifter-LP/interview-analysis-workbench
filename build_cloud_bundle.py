@@ -24,6 +24,9 @@ def bundle(destination):
                                        'word-cooccurrence-defaults.json',
                                        'web/index.html', 'web/account-center.html')]
     files += [p for p in (ROOT / 'web').iterdir() if p.suffix in {'.js', '.css'} and not p.name.startswith('test-')]
+    concert_dir = ROOT / 'examples' / 'concert'
+    if concert_dir.is_dir():
+        files += [p for p in concert_dir.iterdir() if p.is_file() and p.suffix == '.txt']
     if any(not p.is_file() or p.is_symlink() or p.resolve() != p for p in files):
         raise ValueError('部署所需文件缺失，或包含指向其他位置的链接')
     with ZipFile(destination, 'x', compression=ZIP_DEFLATED) as archive:

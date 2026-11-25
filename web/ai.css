@@ -48,8 +48,7 @@
 .nav-children .nav-item { padding: 9px 12px; font-size: 14px; }
 .shell.collapsed .nav-parent { display: block; padding: 12px 4px; text-align: center; }
 .shell.collapsed .nav-parent em,.shell.collapsed .nav-parent b,.shell.collapsed .nav-children { display: none; }
-.shell.collapsed .nav-parent::before { display: block; color: #b8cbcd; font-weight: 700; content: "访"; }
-.shell.collapsed .nav-parent[data-group="research"]::before { content: "项"; }
+/* Removed legacy collapsed text pseudo-elements that overlapped with SVG icons */
 #analysis .tab-panel { border-top: 1px solid var(--line); border-radius: 12px; }
 
 .research-head { display: grid; grid-template-columns:auto 1fr auto; align-items: center; gap: 12px; margin-bottom: 16px; }

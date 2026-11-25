@@ -1,4 +1,4 @@
-.account-drawer{--ad-ink:#173b40;--ad-muted:#60797e;--ad-teal:#008b81;--ad-line:#dbe6e5;box-sizing:border-box;position:fixed;inset:0 0 0 auto;width:min(542px,100vw);height:100dvh;max-width:100vw;max-height:100dvh;margin:0;padding:0;border:0;border-left:1px solid #cfdddb;border-radius:0;background:#fff;color:var(--ad-ink);font:15px/1.5 "Microsoft YaHei UI",sans-serif;overflow:auto;overscroll-behavior:contain}
+.account-drawer{--ad-ink:#173b40;--ad-muted:#60797e;--ad-teal:#008b81;--ad-line:#dbe6e5;box-sizing:border-box;position:fixed;inset:0 0 0 auto;width:min(542px,100vw);height:100dvh;max-width:100vw;max-height:100dvh;margin:0;padding:0;border:0;border-left:1px solid #cfdddb;border-radius:0;background:#fff;color:var(--ad-ink);font:15px/1.5 "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;overflow:auto;overscroll-behavior:contain}
 .account-drawer::backdrop{background:rgba(15,41,43,.15)}
 .account-drawer *{box-sizing:border-box}
 .account-drawer h2,.account-drawer h3,.account-drawer p{margin:0}
@@ -95,3 +95,6 @@
 .ad-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
 .ad-actions button{background:white;border:1px solid var(--ad-line);color:var(--ad-teal);border-radius:6px;padding:7px 10px}
 @media(max-width:460px){.ad-wrap{padding:16px}.ad-model-head{gap:10px;flex-wrap:wrap}.ad-scope button{width:46px}.ad-chart{padding:10px}.ad-chart-value{font-size:15px}.ad-limit{font-size:12px;padding:4px 8px}.ad-charts{gap:10px}}
+
+@keyframes ad-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.ad-personal-content.ad-is-loading .ad-quota,.ad-personal-content.ad-is-loading .ad-chart{animation:ad-pulse 1.4s ease-in-out infinite}

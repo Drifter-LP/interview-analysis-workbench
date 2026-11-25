@@ -102,7 +102,7 @@ def allowed(path, method):
             or re.fullmatch(r'assets/[a-zA-Z0-9_.-]+\.(?:js|css)', path)
         )
     if method == 'POST':
-        return path == 'api/transcript-projects' or bool(re.fullmatch(
+        return path in ('api/transcript-projects', 'api/demo-samples') or bool(re.fullmatch(
             project + r'/(?:opened|visibility|optimize-transcript|changes/accept|familiarity-memo|familiarity-summary|source-search|manual-coding/codes(?:/[a-f0-9]{32}/actions)?)', path
         ))
     if method == 'PUT':

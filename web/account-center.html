@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>登录工作台 · 访谈工作台</title>
 <style>
 *{box-sizing:border-box}[hidden]{display:none!important}
-body{margin:0;color:#173b40;background:#f5f8f8;font:15px/1.5 "Microsoft YaHei UI",sans-serif}
+body{margin:0;color:#173b40;background:#f5f8f8;font:15px/1.5 "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif}
 .preview{position:fixed;inset:-6px;display:grid;grid-template-columns:238px minmax(0,1fr);filter:blur(4px);pointer-events:none;user-select:none}
 .preview-side{background:linear-gradient(150deg,#0c3035,#09292e);padding:24px 22px;color:#e8f2f2}
 .brand{display:flex;align-items:center;gap:12px}.brand svg{width:32px;height:32px;flex:none;color:#24bcb5}.brand b{font-size:18px}.brand small{display:block;color:#87a5aa;font-size:11px}
@@ -21,7 +21,7 @@ input{font:inherit;font-size:14px;width:100%;height:40px;padding:0 12px;color:#1
 input::placeholder{color:#8b9c9f}input:focus{border-color:#008b81;outline:2px solid #008b8122;outline-offset:1px}
 button{font:inherit;font-weight:700;cursor:pointer;width:100%;min-height:40px;margin-top:4px;border:0;border-radius:6px;background:#008b81;color:white}
 button:disabled{cursor:wait;opacity:.65}button:focus-visible,a:focus-visible{outline:2px solid #008b81;outline-offset:3px}
-.hint{font-size:13px;color:#60797e;margin:20px 0 0;line-height:1.65}a{color:#008b81}
+.hint{font-size:13px;color:#60797e;margin:20px 0 0;line-height:1.65}.field-hint{font-size:12px;color:#6c8589;font-weight:400;margin-top:-2px}a{color:#008b81}
 .login-help{display:flex;justify-content:flex-end;margin:-7px 0 9px}.login-link{width:auto;min-height:32px;margin:0;padding:2px 0;background:none;color:#087d74;font-size:13px;font-weight:500}.login-link:hover{text-decoration:underline}
 #passwordSuccess{font-size:13px;color:#087d74;margin:0 0 14px}
 #message{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;color:#a34830;margin:0}#message:not(:empty){margin:0 0 14px}
@@ -43,7 +43,7 @@ button:disabled{cursor:wait;opacity:.65}button:focus-visible,a:focus-visible{out
 <p id="message" role="alert"></p>
 <p id="passwordSuccess" role="status" hidden>密码已更新，请使用新密码登录。</p>
 <form id="login"><label id="nameLabel" for="username">账号<input id="username" name="username" placeholder="请输入账号" autocomplete="username" required maxlength="32" autocapitalize="none" spellcheck="false"></label>
-<label for="password"><span id="passwordLabel">密码</span><input id="password" name="password" type="password" placeholder="请输入密码" autocomplete="current-password" minlength="12" maxlength="128" required></label>
+<label for="password"><span id="passwordLabel">密码</span><input id="password" name="password" type="password" placeholder="请输入密码（至少 12 位）" autocomplete="current-password" minlength="12" maxlength="128" required><small class="field-hint" id="passwordRuleHint">密码长度需为 12–128 位字符</small></label>
 <label for="passwordConfirm" id="passwordConfirmLabel" hidden>确认新密码<input id="passwordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128"></label>
 <div class="login-help" id="forgotEntry" hidden><button type="button" class="login-link" id="forgotPassword">忘记密码？</button></div>
 <button id="submit" disabled>正在检查登录…</button></form>

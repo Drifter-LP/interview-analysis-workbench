@@ -1,13 +1,13 @@
 /* Only short action/navigation menus. Editing popovers and dialogs are excluded. */
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu,.rail-menu,.settings-popover[data-settings-view=""]){
   box-sizing:border-box;padding:6px;border:1px solid #dce8e5;border-radius:12px;background:#fff;color:#294b4e;
-  box-shadow:0 12px 40px #163c3a24,0 2px 8px #163c3a0a;font:15px/20px "Microsoft YaHei UI",sans-serif;
+  box-shadow:0 12px 40px #163c3a24,0 2px 8px #163c3a0a;font:15px/20px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;
 }
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu){min-width:144px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto;z-index:1050}
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button,
 body :is(.rail-menu,.settings-popover[data-settings-view=""]) .settings-menu-item{
   box-sizing:border-box;display:flex;align-items:center;gap:9px;width:100%;min-height:36px;margin:0;padding:6px 8px;border:0;border-radius:9px;
-  background:transparent;color:#294b4e;text-align:left;font:500 15px/20px "Microsoft YaHei UI",sans-serif;cursor:pointer;
+  background:transparent;color:#294b4e;text-align:left;font:500 15px/20px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;
 }
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:hover,
 body :is(.library-project-menu,.library-menu,.library-move-submenu,.research-result-menu,.ad-account-menu)>button:focus-visible,
@@ -29,7 +29,7 @@ body .wb-menu-fixed{position:fixed!important;inset:auto!important;margin:0;left:
 body .wb-menu-fixed::backdrop{background:transparent;pointer-events:none}
 body .library-move-submenu>button{color:#294b4e!important}
 body .library-move-submenu>button:hover{color:#008b81!important}
-body .research-result-menu.wb-menu-fixed>button{height:auto;min-height:36px;padding:6px 8px;font:500 15px/20px "Microsoft YaHei UI",sans-serif;border-radius:9px;color:#294b4e}
+body .research-result-menu.wb-menu-fixed>button{height:auto;min-height:36px;padding:6px 8px;font:500 15px/20px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;border-radius:9px;color:#294b4e}
 body .research-result-menu.wb-menu-fixed>button:focus-visible{outline:2px solid #168b84;outline-offset:-2px}
 body .research-result-menu.wb-menu-fixed>button[aria-checked=true]{background:#edf7f4;color:#008b81}
-body .workspace-header.cross-header .research-result-menu.wb-menu-fixed>button{height:36px;padding:6px 8px;font:500 15px/20px "Microsoft YaHei UI",sans-serif;justify-content:flex-start;border:0;border-radius:9px}
+body .workspace-header.cross-header .research-result-menu.wb-menu-fixed>button{height:36px;padding:6px 8px;font:500 15px/20px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;justify-content:flex-start;border:0;border-radius:9px}

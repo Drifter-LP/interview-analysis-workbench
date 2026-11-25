@@ -853,6 +853,252 @@ def create_project(name: str = Form(""), audio: UploadFile = File(...)):
     return meta
 
 
+
+
+@app.post("/api/demo-samples")
+def load_demo_samples():
+    """One-click loader for built-in concert interview sample with pre-verified memo & open coding."""
+    import hashlib
+    existing = list_projects()
+    for item in existing:
+        if item.get("is_demo_sample") or "林沐" in item.get("name", ""):
+            return {"loaded": False, "project": item, "message": "示例访谈已在资料库中"}
+
+    sample_file = BASE_DIR / "examples" / "concert" / "展示材料-林沐.txt"
+    if sample_file.exists():
+        text = sample_file.read_text(encoding="utf-8-sig").strip()
+    else:
+        text = (
+            "跨城看演唱会：我们到底在为什么买单？\nL01｜林沐访谈\n"
+            "【虚构访谈｜仅用于产品功能演示，不是真实研究材料】\n"
+            "访谈员：先从那次去南京说起吧。你记得是什么时候决定要去的吗？\n"
+            "受访者：五月中旬看的，决定其实更早，大概三月底吧。沈知遥发巡演城市的时候，我第一眼先看有没有上海。没有，离我最近就是南京。我当时把截图发给室友，说“又得跨城了”。其实也没说一定去，先放那儿了。\n"
+            "访谈员：下午是怎么过的？\n"
+            "受访者：酒店放完东西我去了一个旧书店，原本是刷帖子看到有人推荐。里面有一只很胖的猫，店员说别摸它肚子。我买了一张明信片，也没写寄给谁。然后坐在门口喝冰咖啡。那个时候我突然觉得很安静，没有人催我去哪儿，也没有要和别人协调。可我又有点不适应，隔十分钟就拿手机看看朋友有没有回消息。"
+        )
+
+    now_ts = time.time()
+    project_id = "demo-linmu-" + uuid.uuid4().hex[:6]
+    directory = project_dir(project_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "导入访谈稿.txt").write_text(text, encoding="utf-8-sig")
+    meta = {
+        "id": project_id,
+        "name": "【示例演示】林沐 · 跨城看演唱会",
+        "audio_name": "展示材料-林沐.txt",
+        "source_type": "transcript",
+        "is_demo_sample": True,
+        "created_at": now_ts,
+        "last_opened_at": now_ts,
+        "status": "completed",
+        "message": "示例访谈已载入，可直接体验校订、纪要与编码审核",
+    }
+    write_metadata(project_id, meta)
+
+    # Pre-populate familiarity memo with accurate character offsets
+    memo_quotes = [
+        (1, "其实也没说一定去，先放那儿了。"),
+        (2, "我本来觉得两个人去，酒店不贵，夜里走回来也有人说话，好像比较合理。"),
+        (3, "那个时候我突然觉得很安静，没有人催我去哪儿，也没有要和别人协调。可我又有点不适应，隔十分钟就拿手机看看朋友有没有回消息。"),
+        (4, "这首歌我听了好多年，现场那一下好像把过去和现在连上了。"),
+    ]
+    evidence_list = []
+    for num, q in memo_quotes:
+        idx = text.find(q)
+        if idx >= 0:
+            evidence_list.append({"number": num, "quote": q, "start": idx, "end": idx + len(q)})
+
+    analysis_payload = {
+        "metadata": {
+            "participant_id": "L01（林沐）",
+            "participant_role": "23岁 · 高校硕士研究生",
+            "region": "上海 → 南京",
+            "institution": "虚构演示样本",
+            "interview_date": "2026-05",
+        },
+        "sources": [],
+        "codes": [],
+        "excerpts": [],
+        "ai_suggestions": [],
+        "familiarity_memo": {
+            "participant_identity": "林沐（23岁，上海某高校硕士研究生）",
+            "interview_date": "2026年5月（虚构演示）",
+            "interview_topic": "跨城独自观看演唱会的消费决策、独处体验与情感价值重估",
+            "summary": "受访者林沐最初因跨城成本与学业压力对南京演唱会犹豫搁置，在朋友邀约推动下决定购票；朋友抢票失败后转为独自出行。整个旅程呈现出“微观安全与预算弹性调整”“独处自由与社交缺失不适并存”以及“由青春私密记忆触发的体验价值重估”三重特征。",
+            "evidence": evidence_list,
+            "viewpoints": [
+                {
+                    "title": "从犹豫搁置到同伴触发的购票决策",
+                    "summary": "跨城成本与学业焦虑使受访者起初将计划搁置，朋友结伴分摊住宿与夜间安全感成为促成行动的关键。",
+                    "evidence": [1, 2],
+                    "points": [
+                        {"text": "巡演无上海站，加上研一学业与实习氛围带来的烦躁感，最初选择暂缓决定。", "evidence": [1]},
+                        {"text": "朋友提议同行使住宿分摊与夜间返程陪伴具有合理性，降低了决策门槛。", "evidence": [2]},
+                    ],
+                },
+                {
+                    "title": "独自跨城出行中的自由感与连接渴望并存",
+                    "summary": "被动转为独行后，受访者既享受无需迁就他人的节奏，又频繁通过查看手机寻求即时社交反馈。",
+                    "evidence": [3],
+                    "points": [
+                        {"text": "在南京旧书店喝咖啡时体会到无人催促与无需协调的松弛感，但仍每隔十分钟查看朋友消息。", "evidence": [3]},
+                    ],
+                },
+                {
+                    "title": "跨时间私密记忆连接带来的票价价值重估",
+                    "summary": "演唱会的核心价值并非短视频式的整齐狂欢，而是老歌触发高三记忆时跨越时间的自我连接。",
+                    "evidence": [4],
+                    "points": [
+                        {"text": "听见高中常听曲目的改编前奏时唤醒高三晚自习记忆，使门票脱离单纯时长计价而获得情感溢价。", "evidence": [4]},
+                    ],
+                },
+            ],
+        },
+        "updated_at": now_ts,
+    }
+    analysis_path(project_id).write_text(json.dumps(analysis_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Pre-populate open coding suggestions for manual-coding.json and research project coding.json
+    h = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    raw_codes = [
+        (
+            "跨城决策的犹豫与搁置",
+            "指受访者在面对异地观演的时间、金钱成本及学业压力时，虽有情感向往但暂缓作出购票决定的状态。",
+            "受访者提到既要考虑开销和课程作业，又觉得周末该做“更正经的事”，因此先放着没定。",
+            ["其实也没说一定去，先放那儿了。", "我那时候也有点烦躁，就会想，你是不是应该把周末用在更正经的事上。"],
+        ),
+        (
+            "同伴邀约作为行动触发器",
+            "指朋友的主动约伴通过分摊住宿成本与提供夜间同行安全感，打破原有的犹豫状态并促成购票行动。",
+            "受访者明确表示朋友提议同行后，算了预算觉得两人分摊酒店和夜里结伴走回来更合理。",
+            ["我本来觉得两个人去，酒店不贵，夜里走回来也有人说话，好像比较合理。"],
+        ),
+        (
+            "抢票时的焦虑与冲动消费",
+            "指在票务稀缺与网络卡顿的高压情境下，为避免错失机会而跳过协商直接完成支付的紧迫决策行为。",
+            "在图书馆楼梯间刷出余票时怕犹豫就没了直接付款，事后才发现朋友没抢到。",
+            ["页面转了好久，先显示没票，刷新一下又跳出一张六百八的。我怕再犹豫就没了，直接付款。"],
+        ),
+        (
+            "独自出行的微观安全担忧",
+            "指并非担忧目的地的宏观治安，而是对散场交通、手机没电、独自点餐及现场落单感等具体生活细节的不安。",
+            "受访者具体列举了手机没电、一人点菜吃不完以及怕在现场看到别人结伴觉得自己傻等细节顾虑。",
+            ["也不是觉得南京危险，就是怕一些小事没人商量。比如演唱会散场那么多人，手机万一没电怎么办"],
+        ),
+        (
+            "预算弹性调整：以舒适换成本",
+            "指在独自出行的情境下，主动放宽原定住宿预算上限，以换取近地铁交通便利与住宿安全感的补偿策略。",
+            "酒店预算从250元以内提高到近300元，认为既已出行，安全和睡眠不能太将就。",
+            ["酒店后来订到快三百了，因为我不想住得离地铁太远。那时候我又觉得，既然都去了，安全和睡觉总不能太将就。"],
+        ),
+        (
+            "独处时的自由与不适并存",
+            "指在独自活动期间，既享受无人协调的自主权，又因缺乏社交反馈而产生习惯性查看手机、寻求连接的矛盾心理。",
+            "受访者在书店感到安静、没人催，但同时又不适应，频繁看手机等待回复。",
+            [
+                "那个时候我突然觉得很安静，没有人催我去哪儿，也没有要和别人协调。",
+                "可我又有点不适应，隔十分钟就拿手机看看朋友有没有回消息。",
+            ],
+        ),
+        (
+            "拒绝陌生社交的边界维护",
+            "指虽加入同场互助群获取交通信息，但抗拒为了临时结伴而向陌生人从头交代个人喜好背景的社交负担。",
+            "面对同场网友约饭私信，受访者因不想从头认识陌生人、解释怎么喜欢上歌手而婉拒。",
+            ["不是她有什么问题，就是我突然不想从头认识一个人，还要解释自己怎么喜欢上这个歌手。"],
+        ),
+        (
+            "私密记忆引发的价值重估",
+            "指演出中的特定曲目唤醒个人成长阶段的私密记忆，使观演体验超越即时视听娱乐并获得情感合理化。",
+            "老歌编曲唤起高三晚自习回宿舍的记忆，把过去和现在连上，从而感到票价值得。",
+            ["唱到第二段，我忽然想到高三晚自习回宿舍那条路。那种感觉不是“终于见到偶像”那么简单，就是你以为早忘了的东西突然都回来了。"],
+        ),
+    ]
+
+    built_codes = []
+    for name, definition, reason, quotes in raw_codes:
+        refs = []
+        for q in quotes:
+            idx = text.find(q)
+            if idx >= 0:
+                refs.append({
+                    "id": uuid.uuid4().hex,
+                    "quote": q,
+                    "start": idx,
+                    "end": idx + len(q),
+                    "validation": "valid",
+                })
+        if refs:
+            built_codes.append({
+                "id": uuid.uuid4().hex,
+                "name": name,
+                "definition": definition,
+                "reason": reason,
+                "origin": "ai",
+                "status": "pending",
+                "source_hash": h,
+                "source_id": project_id,
+                "revision": 1,
+                "created_at": now_ts,
+                "updated_at": now_ts,
+                "references": refs,
+            })
+
+    coding_payload = {
+        "project_id": None,
+        "source_id": project_id,
+        "revision": 1,
+        "current_hash": h,
+        "sources": {h: {"text": text, "captured_at": now_ts}},
+        "runs": [{
+            "id": uuid.uuid4().hex,
+            "status": "completed",
+            "source_hash": h,
+            "started_at": now_ts,
+            "completed_at": now_ts,
+            "batches": [{"batch_index": 0, "status": "completed", "attempts": []}],
+        }],
+        "deleted_codes": [],
+        "codes": built_codes,
+        "updated_at": now_ts,
+    }
+    (directory / "manual-coding.json").write_text(json.dumps(coding_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Also create or attach to a demo research project so logged-in users see it in Research Projects & AI Coding
+    try:
+        demo_rp_id = "demo-concert-research"
+        rp_path = research_project_path(demo_rp_id)
+        if rp_path.exists():
+            rp_data = json.loads(rp_path.read_text(encoding="utf-8"))
+            if project_id not in rp_data.get("interview_ids", []):
+                rp_data.setdefault("interview_ids", []).insert(0, project_id)
+            rp_data["last_opened_at"] = now_ts
+        else:
+            rp_data = {
+                "id": demo_rp_id,
+                "name": "【示例项目】跨城看演唱会消费体验研究",
+                "created_at": now_ts,
+                "last_opened_at": now_ts,
+                "interview_ids": [project_id],
+                "uploaded_transcripts": [],
+                "material_comparisons": [],
+                "theme_analyses": [],
+            }
+        rp_path.write_text(json.dumps(rp_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        ai_coding_dir = (
+            RESEARCH_FILES_DIR
+            / "_ai_coding_demo"
+            / hashlib.sha256(demo_rp_id.encode("utf-8")).hexdigest()
+            / hashlib.sha256(project_id.encode("utf-8")).hexdigest()
+        )
+        ai_coding_dir.mkdir(parents=True, exist_ok=True)
+        rp_coding_payload = {**coding_payload, "project_id": demo_rp_id}
+        (ai_coding_dir / "coding.json").write_text(json.dumps(rp_coding_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+    return {"loaded": True, "project": meta, "message": "已载入示例访谈（含预置纪要与编码建议）"}
+
+
 @app.post("/api/transcript-projects")
 def create_transcript_project(name: str = Form(""), transcript: UploadFile = File(...)):
     text = read_uploaded_transcript(transcript)

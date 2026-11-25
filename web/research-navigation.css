@@ -25,22 +25,22 @@
 .workspace-header .research-view-controls{flex-shrink:0}
 .workspace-header .research-inline-question{display:flex;align-items:center;gap:8px;flex:1;min-width:240px;margin:0;padding:0;border:0}
 .workspace-header .research-inline-question .theme-view-actions{display:none!important}
-.workspace-header .research-inline-question input{flex:1;min-width:100px;width:auto;height:32px;margin:0;padding:0 10px;box-sizing:border-box;border:1px solid #dce7e8;border-radius:7px;font:12px 'Microsoft YaHei UI',sans-serif}
-.workspace-header .research-inline-question button{height:32px;margin:0;padding:0 10px;font:12px 'Microsoft YaHei UI',sans-serif;flex-shrink:0}
+.workspace-header .research-inline-question input{flex:1;min-width:100px;width:auto;height:32px;margin:0;padding:0 10px;box-sizing:border-box;border:1px solid #dce7e8;border-radius:7px;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif}
+.workspace-header .research-inline-question button{height:32px;margin:0;padding:0 10px;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;flex-shrink:0}
 .workspace-header .research-inline-question button.primary{background:#009e96;color:#fff;border-color:#009e96}
 .research-view-controls{display:flex;gap:2px;padding:2px;border:1px solid #dce7e8;border-radius:7px}
-.workspace-header .research-view-controls button{height:29px;padding:0 12px;border:0;background:transparent;font:12px 'Microsoft YaHei UI',sans-serif;color:#647e83;border-radius:5px;cursor:pointer}
+.workspace-header .research-view-controls button{height:29px;padding:0 12px;border:0;background:transparent;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;color:#647e83;border-radius:5px;cursor:pointer}
 .workspace-header .research-view-controls button.active{background:#e4f5f1;color:#008d83;font-weight:600}
 .workspace-header .research-result-picker{width:130px;min-width:100px;height:29px;margin:0 0 0 6px;border:0;border-left:1px solid #dce7e8;border-radius:0;font-size:12px;padding:0 22px 0 10px;background:#fff}
 .workspace-header .research-result-picker{position:relative;margin-left:6px;padding:0;border:0;border-radius:9px;background:transparent}
-.workspace-header .research-result-picker .research-result-trigger{width:100%;height:29px;padding:0 10px;border:1px solid #e1ece9;border-radius:9px;background:#f4f9f7!important;color:#37675f;font:12px 'Microsoft YaHei UI',sans-serif;justify-content:space-between}
+.workspace-header .research-result-picker .research-result-trigger{width:100%;height:29px;padding:0 10px;border:1px solid #e1ece9;border-radius:9px;background:#f4f9f7!important;color:#37675f;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;justify-content:space-between}
 .workspace-header .research-result-trigger:focus-visible{outline:2px solid #a6d8ce;outline-offset:2px}
 .research-result-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:150px;padding:5px;border:1px solid #e4eeea;border-radius:11px;background:#fff;box-shadow:0 8px 24px #214f411a;z-index:110}
 .research-result-menu[hidden],.research-result-picker[hidden]{display:none!important}
-.workspace-header .research-result-menu button{display:flex;width:100%;height:32px;justify-content:flex-start;padding:0 10px;border:0;border-radius:7px;background:transparent;font:12px 'Microsoft YaHei UI',sans-serif;color:#3d6660}
+.workspace-header .research-result-menu button{display:flex;width:100%;height:32px;justify-content:flex-start;padding:0 10px;border:0;border-radius:7px;background:transparent;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;color:#3d6660}
 .workspace-header .research-result-menu button:hover,.workspace-header .research-result-menu button:focus-visible{background:#f0f7f4;outline:0}
 .workspace-header .research-result-menu button[aria-checked="true"]{background:#e8f5ef;color:#008b7c;font-weight:600}
-.workspace-header .research-material-scope,.workspace-header .research-source-search,.workspace-header .editor-tool-left>button{height:32px;border:1px solid #dce7e8;border-radius:7px;background:#fff;color:#38646a;padding:0 10px;font:12px 'Microsoft YaHei UI',sans-serif;cursor:pointer}
+.workspace-header .research-material-scope,.workspace-header .research-source-search,.workspace-header .editor-tool-left>button{height:32px;border:1px solid #dce7e8;border-radius:7px;background:#fff;color:#38646a;padding:0 10px;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer}
 .workspace-header .research-project-picker{max-width:220px}
 .workspace-header.cross-header .research-project-picker{width:220px!important;max-width:min(220px,28vw)}
 .workspace-header.cross-header .workspace-header-right{display:flex;flex:1;flex-wrap:wrap;gap:8px}

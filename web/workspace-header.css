@@ -34,12 +34,12 @@ body .shell main.workspace-main{--workspace-header-height:64px;padding:0!importa
 .workspace-selector-slot,.workspace-status-slot,.workspace-action-slot{display:flex;align-items:center;gap:10px;min-width:0}
 .workspace-action-slot{flex-wrap:wrap}
 .workspace-selector-slot:empty,.workspace-status-slot:empty,.workspace-action-slot:empty{display:none}
-.workspace-header select{width:260px;min-width:130px;max-width:100%;height:36px;margin:0;padding:6px 28px 6px 12px;border:1px solid #dbe4e9;border-radius:8px;background:#fff;font:14px "Microsoft YaHei UI",sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workspace-header select{width:260px;min-width:130px;max-width:100%;height:36px;margin:0;padding:6px 28px 6px 12px;border:1px solid #dbe4e9;border-radius:8px;background:#fff;font:14px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .workspace-selector-slot .memo-selector-control{width:260px;max-width:100%;min-width:130px}
 .workspace-selector-slot .memo-selector-control>button{display:block;width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis}
 .workspace-selector-slot .memo-selector-control .comparison-history-list{position:absolute;top:42px;right:0;width:320px;max-width:calc(100vw - 48px);max-height:360px;overflow:auto;z-index:30;background:#fff}
 .workspace-selector-slot .memo-selector-control .comparison-history-list button{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left}
-.workspace-header button{height:36px;padding:0 13px;border:1px solid #d5e1e5;border-radius:8px;background:#fff;color:#21766f;font:14px "Microsoft YaHei UI",sans-serif;white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.workspace-header button{height:36px;padding:0 13px;border:1px solid #d5e1e5;border-radius:8px;background:#fff;color:#21766f;font:14px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .workspace-header button:hover{background:#eef8f5}
 .workspace-header button.workspace-primary{background:#009e96;color:#fff;border-color:#009e96}
 .workspace-header .workspace-action-slot button{height:36px;padding:0 13px;font-size:14px;border-radius:8px}

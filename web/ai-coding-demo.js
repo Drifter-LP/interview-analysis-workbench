@@ -23,7 +23,21 @@
  selectionMenu.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const buttons=[manual,attach].filter(b=>!b.disabled),i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:buttons.length-1))%buttons.length].focus();}});
  document.addEventListener('scroll',closeSelectionMenu,true);window.addEventListener('resize',closeSelectionMenu);
  if(guest){organizeButton.title='登录后可使用 AI 整理编码';acceptAll.hidden=true;}
- source.tabIndex=0;source.setAttribute('aria-label','编码访谈原文');middle.append(sourceTitle,source);grid.append(left,middle,reviewCard);page.append(grid);
+ const mobileTabs=el('div','ac-mobile-tabs');
+mobileTabs.setAttribute('role','tablist');mobileTabs.setAttribute('aria-label','移动端编码视图切换');
+const mTabSource=btn('访谈原文',()=>setMobilePane('source')),mTabList=btn('编码建议',()=>setMobilePane('list')),mTabReview=btn('编码审核',()=>setMobilePane('review'));
+mTabSource.dataset.pane='source';mTabList.dataset.pane='list';mTabReview.dataset.pane='review';
+mobileTabs.append(mTabSource,mTabList,mTabReview);
+function setMobilePane(pane){
+ grid.dataset.mobilePane=pane;
+ for(const b of mobileTabs.querySelectorAll('button')){
+  const on=b.dataset.pane===pane;
+  b.classList.toggle('active',on);
+  b.setAttribute('aria-selected',String(on));
+ }
+}
+setMobilePane('source');
+source.tabIndex=0;source.setAttribute('aria-label','编码访谈原文');middle.append(sourceTitle,source);grid.append(left,middle,reviewCard);page.append(mobileTabs,grid);
  let state=null,pid='',tid='',selected='',editing=null,dirty=false,range=null,shownHash='',token=0,timer=null,busy=false,referenceIndex=0,peers=[],scopeChoices=[],activation=0,previousFilter='all';
  const statusLabels={pending:'待审核',accepted:'已接受',modified:'已修改',rejected:'已拒绝'};
  const endpoint=()=>guest?`/api/projects/${encodeURIComponent(tid)}/manual-coding`:`/api/research-projects/${encodeURIComponent(pid)}/ai-coding/${encodeURIComponent(tid)}`;
@@ -38,6 +52,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   if(state&&sourceId===tid&&(guest||!context.researchProjectId||context.researchProjectId===pid)){render();return;}
   if(!checkDirty())return;
   const serial=++activation,previousPid=pid;resetContext(sourceId?'正在读取当前访谈的编码…':'请先选择一篇访谈');pid='';tid=sourceId;scopeChoices=[];
+  if(!sourceId&&window.renderQuickInterviewGuide)window.renderQuickInterviewGuide(source,'coding');
   window.workspaceHeader?.refresh();if(!sourceId)return;
   try{
    if(guest){await load();return;}
@@ -65,7 +80,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
  project.onchange=async()=>{if(!checkDirty()){project.value=pid;return;}const next=project.value;resetContext('正在读取此项目下的编码…');pid=next;window.singleInterviewCodingContext.setScope?.(pid);await load();};
  filter.onchange=()=>{if(!checkDirty()){filter.value=previousFilter;return;}previousFilter=filter.value;selected='';editing=null;dirty=false;range=null;render();};
  async function run(continuing){if(guest||busy||!state||!checkDirty())return;const last=state.runs.at(-1);if(!continuing&&state.codes.length&&!confirm('重新编码将新增一轮待审核建议，已有编码和人工判断全部保留。继续？'))return;busy=true;start.disabled=resume.disabled=true;try{await request(endpoint()+'/run','POST',continuing?{resume_run_id:last?.id}:{});editing=null;dirty=false;await load();}catch(e){warn(e);}finally{busy=false;start.disabled=resume.disabled=false;}}
- function choose(id){if(!checkDirty())return;selected=id;editing=null;dirty=false;referenceIndex=0;range=null;render();scrollToRef();}
+ function choose(id){if(!checkDirty())return;selected=id;editing=null;dirty=false;referenceIndex=0;range=null;if(window.innerWidth<=850&&typeof setMobilePane==='function')setMobilePane('review');render();scrollToRef();}
  function nextCode(){const codes=state?.codes||[],index=codes.findIndex(c=>c.id===selected);return index<0?null:codes.slice(index+1).find(c=>filter.value==='all'||c.status===filter.value)||null;}
  function advanceCode(){if(busy)return;const next=nextCode();if(next)choose(next.id);else toast('当前列表已无下一处编码。');}
  function current(){return editing||[...(state?.codes||[]),...(state?.deleted_codes||[])].find(c=>c.id===selected);}

@@ -41,7 +41,7 @@ PENDING = 'wb_guest_pending'
 DEV = os.environ.get('SITE_ALLOW_HTTP') == '1'
 TEXT_ONLY = os.environ.get('WORKBENCH_TEXT_ONLY') == '1'
 TEXT_ONLY_STYLE = '<style>#newProjectBtn,#systemState,#gpuState{display:none!important}</style>'
-GUEST_SINGLE_UI = '''<script>window.WORKBENCH_GUEST=true;history.replaceState(null,'','/');</script><link rel="stylesheet" href="/assets/guest-lock.css?v=2"><style>
+GUEST_SINGLE_UI = '''<script>window.WORKBENCH_GUEST=true;history.replaceState(null,'','/'+(location.hash||''));</script><link rel="stylesheet" href="/assets/guest-lock.css?v=2"><style>
 .nav-item[data-tab="matrix"],.nav-item[data-tab="projectManage"],
 #focused,#matrix,#projectManage,#projectData,#editorImportAudio,#editorMembership,
 #comparisonModeBtn,#comparisonTopActions,#comparisonWorkspace,#comparisonDialog,#compareMaterialsBtn{display:none!important}

@@ -107,6 +107,7 @@
    return svg+'</svg>';
  }
  function draw(){
+   $('.ad-personal-content')?.classList.remove('ad-is-loading');
    for(const b of dlg.querySelectorAll('[data-scope]'))b.setAttribute('aria-pressed',String(b.dataset.scope===scope));
    for(const b of dlg.querySelectorAll('[data-model]'))b.setAttribute('aria-pressed',String(b.dataset.model===model));
    if(!stats)return;

@@ -72,8 +72,8 @@ box.querySelectorAll('.library-group').forEach(el=>{const id=el.dataset.groupId;
    $('#projectCount').textContent=$('#reviewCount').textContent='—';
    markup=libraryFailed?'<div class="empty" role="status">访谈资料读取失败。 <button type="button" class="soft" data-retry-library>重试</button></div>':'<div class="empty" role="status">正在读取访谈资料…</div>';
   }
-  if(libraryReady && !projects.length && !researchProjects.length && !$('#librarySearch').value.trim() && !$('#libraryStatus').value && document.querySelector('script[data-workbench-accounts]')){
-   markup='<div class="empty">这是你的独立资料库，导入第一份访谈即可开始分析。 <button type="button" class="soft" data-first-import>导入访谈</button></div>';
+  if(libraryReady && !projects.length && !researchProjects.length && !$('#librarySearch').value.trim() && !$('#libraryStatus').value){
+   markup='<div class="empty empty-onboarding"><strong>这是你的独立资料库</strong><p>导入第一份 TXT / Word 访谈稿，或一键载入内置示例访谈即可体验校订、纪要与编码分析。</p><div class="empty-actions"><button type="button" class="primary" data-first-import>导入访谈稿</button><button type="button" class="soft" data-load-demo>一键载入示例访谈（跨城看演唱会）</button></div></div>';
   }
   const template=document.createElement('template');template.innerHTML=markup;
   function key(node){return node.nodeType===1?(node.dataset.groupId||node.dataset.rowKey||''):''}
@@ -122,6 +122,25 @@ box.querySelectorAll('.library-group').forEach(el=>{const id=el.dataset.groupId;
   try{const boot=await initial;loadStatus(boot?.status).catch(e=>toast(e.message));await Promise.all([loadProjects(boot?.projects),loadResearchProjects(boot?.research)]);libraryReady=true;render();if(projects.some(p=>['queued','running'].includes(p.status)))startPolling();}
   catch(e){libraryFailed=true;render();toast(e.message);}
  }
- $('#projectList').addEventListener('click',e=>{if(e.target.closest('[data-first-import]'))$('#importTranscriptBtn').click();if(e.target.closest('[data-retry-library]'))loadInitialLibrary()});
+ window.loadDemoSample=async function(targetTab='',triggerBtn=null){
+  if(triggerBtn){triggerBtn.disabled=true;triggerBtn.dataset.origText=triggerBtn.textContent;triggerBtn.textContent='正在载入示例…';}
+  try{
+   const res=await api('/api/demo-samples',{method:'POST'});
+   await Promise.all([loadProjects(),window.WORKBENCH_GUEST?Promise.resolve():loadResearchProjects().catch(()=>{})]);
+   toast(res.message||'示例访谈已载入');
+   if(res.project?.id&&targetTab){
+    await openProject(res.project.id,null,targetTab==='editor'?{transcriptFirst:true}:{targetTab});
+    if(targetTab!=='editor')switchView('analysis',targetTab);
+   }
+   return res.project;
+  }catch(err){toast(err.message||'示例载入失败');}
+  finally{if(triggerBtn&&triggerBtn.isConnected){triggerBtn.disabled=false;triggerBtn.textContent=triggerBtn.dataset.origText||'一键载入示例访谈';}}
+ };
+ $('#projectList').addEventListener('click',e=>{
+  if(e.target.closest('[data-first-import]'))$('#importTranscriptBtn').click();
+  if(e.target.closest('[data-retry-library]'))loadInitialLibrary();
+  const demoBtn=e.target.closest('[data-load-demo]');
+  if(demoBtn)window.loadDemoSample('',demoBtn);
+ });
  ['librarySearch','libraryStatus','librarySort'].forEach(id=>$('#'+id).addEventListener(id==='librarySearch'?'input':'change',render));loadInitialLibrary(window.workbenchInitialLibrary);
 })();

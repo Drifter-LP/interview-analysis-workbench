@@ -43,8 +43,59 @@ function markTranscriptAccepted(mark){pendingAccepted.add(mark.dataset.changeId)
 function acceptAllChanges(){document.querySelectorAll('.ai-change:not(.accepted):not(.rejected)').forEach(mark=>markTranscriptAccepted(mark));updateAcceptAllButton();$('#transcript').dispatchEvent(new Event('input',{bubbles:true}));toast('已接受其余建议（跳过已拒绝项），点击保存后生效')}
 function acceptTranscriptChange(button){markTranscriptAccepted(button.closest('.ai-change'));updateAcceptAllButton();$('#transcript').dispatchEvent(new Event('input',{bubbles:true}));toast('已接受，点击保存后生效')}
 function rejectTranscriptChange(button){const mark=button.closest('.ai-change'),id=mark.dataset.changeId;pendingAccepted.delete(id);pendingRejected.add(id);mark.classList.remove('medium','low','accepted');mark.classList.add('rejected');mark.replaceChildren(document.createTextNode(mark.dataset.original||''));const popover=document.createElement('span');popover.className='change-popover';popover.contentEditable='false';popover.textContent='已拒绝 · 已还原原文';mark.append(popover);updateAcceptAllButton();$('#transcript').dispatchEvent(new Event('input',{bubbles:true}));toast('已拒绝并还原原文，点击保存后生效')}
-function switchView(id,tab=''){if(window.WORKBENCH_GUEST&&id==='analysis'){tab=tab||'familiarity';if(!['familiarity','coding','sourceSearch'].includes(tab))return;}document.querySelectorAll('.view,.nav-item').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');const item=document.querySelector(`.nav-item[data-view="${id}"]${tab?`[data-tab="${tab}"]`:':not([data-tab])'}`);if(item)item.classList.add('active');$('#pageTitle').textContent=labels[tab||id];document.querySelector('.topbar').hidden=id==='analysis'||id==='editor';$('#saveAnalysisBtn').hidden=id!=='analysis'||tab==='projectManage';$('#newProjectBtn').hidden=id==='analysis';$('#importTranscriptBtn').hidden=id==='analysis';closeEditorMenu('import');closeEditorMenu('accept');if(id==='analysis')switchTab(tab||'projectManage')}
-function switchTab(id){if(window.WORKBENCH_GUEST&&!['familiarity','coding','sourceSearch'].includes(id))return;document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('.nav-item[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$('#saveAnalysisBtn').hidden=id==='projectManage'||id==='matrix'||id==='familiarity'||id==='focused';if(id==='projectManage'){selectedResearchProject=null;$('#currentProject').textContent='全部项目';$('#researchHeading').textContent='研究项目';$('#researchBackBtn').hidden=true;$('#deleteResearchBtn').hidden=true;$('#createResearchBtn').textContent='新建项目';loadResearchProjects()}if(id==='coding')window.aiCodingDemo?.activateCurrent();if(id==='familiarity')renderMemo();if(id==='focused')renderFocusedAnalysis();if(id==='matrix')refreshMatrix()}
+let _suppressHashSync=true;
+function syncRouteHash(viewId,tabId=''){
+ if(_suppressHashSync)return;
+ const nextHash=viewId==='analysis'?`#analysis/${tabId||'familiarity'}`:viewId==='workspace'?'#workspace':`#${viewId}`;
+ if(location.hash!==nextHash){
+  try{history.pushState({view:viewId,tab:tabId},'',nextHash);}catch{}
+ }
+}
+function renderQuickInterviewGuide(container,mode='editor'){
+ if(!container)return;
+ const completed=projects.filter(p=>p.status==='completed'&&!p.hidden_in_library);
+ const modeNames={editor:'文字校订',familiarity:'单篇访谈纪要',coding:'单篇访谈编码'};
+ const title=modeNames[mode]||'访谈分析';
+ const card=document.createElement('div');
+ card.className='quick-guide-card';
+ if(completed.length){
+  card.innerHTML=`<strong>请选择一篇访谈开始${escapeHtml(title)}</strong><p>直接点击下方访谈稿即可进入，无需前往右上角菜单切换：</p><div class="quick-pick-list">${completed.slice(0,6).map(p=>`<button type="button" class="quick-pick-chip" data-quick-open="${escapeHtml(p.id)}"><span class="quick-pick-icon" aria-hidden="true">▤</span><span>${escapeHtml(p.name)}</span></button>`).join('')}</div><div class="empty-actions"><button type="button" class="soft" data-quick-import>导入新访谈稿</button></div>`;
+ }else{
+  card.innerHTML=`<strong>当前资料库暂无访谈稿</strong><p>导入一份 TXT / Word 访谈稿，或一键载入内置示例即可体验${escapeHtml(title)}：</p><div class="empty-actions"><button type="button" class="primary" data-quick-import>从电脑导入访谈</button><button type="button" class="soft" data-quick-demo>一键载入示例访谈（跨城看演唱会）</button></div>`;
+ }
+ card.querySelectorAll('[data-quick-open]').forEach(btn=>{
+  btn.onclick=async()=>{
+   btn.disabled=true;
+   const id=btn.dataset.quickOpen;
+   if(mode==='editor')await openProject(id,null,{transcriptFirst:true});
+   else{await openProject(id,null,{targetTab:mode});switchView('analysis',mode);}
+  };
+ });
+ card.querySelector('[data-quick-import]')?.addEventListener('click',()=>$('#importTranscriptBtn')?.click());
+ card.querySelector('[data-quick-demo]')?.addEventListener('click',e=>window.loadDemoSample?.(mode,e.currentTarget));
+ container.replaceChildren(card);
+}
+window.renderQuickInterviewGuide=renderQuickInterviewGuide;
+function updateEditorEmptyGuide(){
+ let guide=$('#editorEmptyGuide');
+ if(!guide){
+  guide=document.createElement('div');
+  guide.id='editorEmptyGuide';
+  guide.className='editor-empty-guide';
+  const ed=$('#editor');
+  if(ed)ed.append(guide);
+ }
+ if(selected){
+  guide.hidden=true;
+  $('#transcript').hidden=false;
+ }else{
+  guide.hidden=false;
+  renderQuickInterviewGuide(guide,'editor');
+ }
+}
+window.updateEditorEmptyGuide=updateEditorEmptyGuide;
+function switchView(id,tab=''){if(window.WORKBENCH_GUEST&&id==='analysis'){tab=tab||'familiarity';if(!['familiarity','coding','sourceSearch'].includes(tab))return;}document.querySelectorAll('.view,.nav-item').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');const item=document.querySelector(`.nav-item[data-view="${id}"]${tab?`[data-tab="${tab}"]`:':not([data-tab])'}`);if(item)item.classList.add('active');$('#pageTitle').textContent=labels[tab||id];document.querySelector('.topbar').hidden=id==='analysis'||id==='editor';$('#saveAnalysisBtn').hidden=id!=='analysis'||tab==='projectManage';$('#newProjectBtn').hidden=id==='analysis';$('#importTranscriptBtn').hidden=id==='analysis';closeEditorMenu('import');closeEditorMenu('accept');if(id==='editor')updateEditorEmptyGuide();if(id==='analysis')switchTab(tab||'projectManage');else syncRouteHash(id,'')}
+function switchTab(id){if(window.WORKBENCH_GUEST&&!['familiarity','coding','sourceSearch'].includes(id))return;document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active');document.querySelectorAll('.nav-item[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));$('#saveAnalysisBtn').hidden=id==='projectManage'||id==='matrix'||id==='familiarity'||id==='focused';if(id==='projectManage'){selectedResearchProject=null;$('#currentProject').textContent='全部项目';$('#researchHeading').textContent='研究项目';$('#researchBackBtn').hidden=true;$('#deleteResearchBtn').hidden=true;$('#createResearchBtn').textContent='新建项目';loadResearchProjects()}if(id==='coding')window.aiCodingDemo?.activateCurrent();if(id==='familiarity')renderMemo();if(id==='focused')renderFocusedAnalysis();if(id==='matrix')refreshMatrix();syncRouteHash('analysis',id)}
 async function loadStatus(initial){const s=initial??await api('/api/status');$('#readyDot').classList.toggle('ready',s.ready);$('#systemState').textContent=s.ready?'千问ASR已就绪':'千问ASR尚未就绪';$('#gpuState').textContent=s.gpu+' · '+(s.engine||'Qwen3-ASR');$('#activeState').textContent=s.active_project?'正在转录':'空闲'}
 async function loadProjects(){projects=await api('/api/projects');if(window.renderInterviewLibrary){window.renderInterviewLibrary();return}const visibleProjects=projects.filter(p=>!p.hidden_in_library);$('#projectCount').textContent=visibleProjects.length;$('#reviewCount').textContent=visibleProjects.filter(p=>p.status==='completed'&&!p.edited_at).length;const box=$('#projectList');if(!visibleProjects.length){box.innerHTML='<div class="empty">暂无显示的访谈，可在右上角导入文本或录音。</div>';return}box.innerHTML=visibleProjects.map(p=>`<article class="project" data-id="${escapeHtml(p.id)}"><div class="project-name"><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.audio_name||'')}</small></div><div class="project-meta">${dateText(p.created_at)}</div><span class="status ${p.status}">${statusText(p.status)}</span><div class="project-actions"><span class="open-link">打开 →</span><button type="button" class="delete-interview" data-hide-interview aria-label="隐藏访谈：${escapeHtml(p.name)}" title="隐藏：仅从此列表隐藏，不影响分析" ${['queued','running'].includes(p.status)?'disabled':''}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M3 3 21 21M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11 11 0 0 1 12 5c5 0 9 7 9 7a18 18 0 0 1-3.2 3.8M6.5 6.5A19 19 0 0 0 3 12s4 7 9 7a10 10 0 0 0 4.1-.9"/></svg></button></div></article>`).join('');box.querySelectorAll('.project').forEach(el=>{el.onclick=()=>openProject(el.dataset.id);el.querySelector('[data-hide-interview]').onclick=event=>{event.stopPropagation();hideInterview(el.dataset.id,event.currentTarget)}})}
 async function hideInterview(id,button){const interview=projects.find(p=>p.id===id);if(!interview||button.disabled)return;button.disabled=true;try{await api(`/api/projects/${encodeURIComponent(id)}/visibility`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hidden:true})});await loadProjects();toast('已从列表隐藏，访谈仍可用于分析')}catch(error){button.disabled=false;toast(error.message)}}
@@ -83,7 +134,7 @@ async function openProject(id,memoMaterial=null,options={}){
  if(meta.status!=='completed'){toast(meta.message||statusText(meta.status));return false;}
  const [t,a,r]=opened?[opened.transcript,null,null]:await Promise.all([api(base+'/transcript'),api(base+'/analysis-workspace'),analysisOnly?Promise.resolve(null):api('/api/research-projects').catch(()=>null)]);
  if(!isCurrent())return false;
- selected=id;selectedProject=meta;currentMemoMaterial=memoMaterial||{type:'workspace',key:String(id)};pendingAccepted.clear();pendingRejected.clear();selectedCodeId=null;codingSelection=null;
+ selected=id;selectedProject=meta;try{sessionStorage.setItem('wb_last_interview_id',String(id));}catch{}updateEditorEmptyGuide();currentMemoMaterial=memoMaterial||{type:'workspace',key:String(id)};pendingAccepted.clear();pendingRejected.clear();selectedCodeId=null;codingSelection=null;
  interviewAnalysisRead=transcriptFirst?{id,promise:null,error:null}:null;
  if(r)researchProjects=r;renderTranscript(t.text,t.annotations||[]);setCodingText(t.text);$('#memoSource').dataset.text=t.text;$('#editorTitle').textContent=selectedProject.name;$('#editorHint').textContent=t.edited?'已有校订稿':selectedProject.source_type==='transcript'?'已导入访谈稿':'当前为转录稿';$('#currentProject').textContent=selectedProject.name;$('#saveBtn').disabled=false;$('#optimizeBtn').disabled=false;$('#goAnalysisBtn').disabled=false;analysisData=transcriptFirst?null:(a||emptyAnalysis());renderEditorProjects();fillMetadata();
  if(transcriptFirst){switchView('editor');loadInterviewAnalysis().catch(()=>{});}
@@ -103,7 +154,7 @@ function collectMetadata(){const old=analysisData?.metadata||{};return{...old,pa
 async function saveAnalysis(show=true){if(!selected||!analysisData){toast(selected?'请先载入分析记录':'请先选择项目');return}analysisData.metadata=collectMetadata();await api(`/api/projects/${selected}/analysis-workspace`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:analysisData})});if(show)toast('分析项目已保存')}
 function renderAnalysis(){renderCodes();renderSuggestions();renderEvidence()}
 function memoEvidenceButtons(numbers=[]){return numbers.map(number=>`<button class="evidence-index" data-evidence-number="${Number(number)}" title="查看原文">${Number(number)}</button>`).join('')}
-function renderMemoSource(activeNumber=0){const box=$('#memoSource'),text=box.dataset.text||codingTextValue();if(!text){box.innerHTML='<div class="empty">请先打开一份访谈稿</div>';return}const memo=analysisData?.familiarity_memo,evidence=memo?.evidence?.find(item=>Number(item.number)===Number(activeNumber));if(!evidence||evidence.start<0||evidence.end<=evidence.start){box.textContent=text;window.formatTranscriptTurns?.(text,box);return}box.innerHTML=escapeHtml(text.slice(0,evidence.start))+`<mark class="memo-source-hit" id="memoEvidenceHit">${escapeHtml(text.slice(evidence.start,evidence.end))}</mark>`+escapeHtml(text.slice(evidence.end));window.formatTranscriptTurns?.(text,box);requestAnimationFrame(()=>$('#memoEvidenceHit')?.scrollIntoView({behavior:'smooth',block:'center'}))}
+function renderMemoSource(activeNumber=0){const box=$('#memoSource'),text=box.dataset.text||codingTextValue();if(!text){renderQuickInterviewGuide(box,'familiarity');return}const memo=analysisData?.familiarity_memo,evidence=memo?.evidence?.find(item=>Number(item.number)===Number(activeNumber));if(!evidence||evidence.start<0||evidence.end<=evidence.start){box.textContent=text;window.formatTranscriptTurns?.(text,box);return}box.innerHTML=escapeHtml(text.slice(0,evidence.start))+`<mark class="memo-source-hit" id="memoEvidenceHit">${escapeHtml(text.slice(evidence.start,evidence.end))}</mark>`+escapeHtml(text.slice(evidence.end));window.formatTranscriptTurns?.(text,box);requestAnimationFrame(()=>$('#memoEvidenceHit')?.scrollIntoView({behavior:'smooth',block:'center'}))}
 function memoMaterials(){return selectedResearchProject?[...(selectedResearchProject.interviews||[]).map(x=>({name:x.name,type:'workspace',key:String(x.id),projectId:String(x.id)})),...(selectedResearchProject.uploaded_transcripts||[]).map((x,index)=>({name:x.name,type:'uploaded',key:String(index),projectId:x.workspace_project_id?String(x.workspace_project_id):''}))]:selectedProject?[{name:selectedProject.name,type:'workspace',key:String(selected),projectId:String(selected)}]:[]}
 function renderMemoSwitcher(){const picker=$('#memoInterviewSelect'),rows=window.WORKBENCH_GUEST?projects.filter(p=>p.status==='completed').map(p=>({type:'workspace',key:String(p.id),name:p.name})):memoMaterials();if(window.WORKBENCH_GUEST){picker.replaceChildren(new Option('请选择访谈稿',''),...rows.map(row=>{const option=new Option(row.name,row.key);option.dataset.type=row.type;option.dataset.key=row.key;return option;}));picker.value=String(selected||'');picker.disabled=!rows.length;return;}picker.innerHTML=(rows.length?rows.map(row=>`<option data-type="${row.type}" data-key="${escapeHtml(row.key)}" ${currentMemoMaterial&&currentMemoMaterial.type===row.type&&String(currentMemoMaterial.key)===row.key?'selected':''}>${escapeHtml(row.name)}</option>`).join(''):'<option>暂无访谈稿</option>')+'<option value="choose-project">选择研究项目…</option>';picker.disabled=false;$('#compareMaterialsBtn').disabled=false}
 function renderMemo(){renderMemoSource();renderMemoSwitcher();const panel=$('#memoPanel'),memo=analysisData?.familiarity_memo;$('#memoTitle').textContent=selectedProject?.name?`${selectedProject.name} · 访谈纪要`:'访谈纪要';const loading=interviewAnalysisRead;if(loading&&loading.id===selected){$('#memoStatus').textContent=loading.error?'分析记录读取失败':'正在读取分析记录…';$('#generateMemoBtn').disabled=true;$('#saveMemoBtn').disabled=true;const message=document.createElement('div');message.className='memo-empty';message.setAttribute('role','status');message.textContent=loading.error?'分析记录读取失败。':'正在读取分析记录…';if(loading.error){const retry=document.createElement('button');retry.type='button';retry.className='soft';retry.textContent='重试';retry.onclick=()=>{loadInterviewAnalysis(loading).catch(()=>{});renderMemo();};message.append(' ',retry);}panel.replaceChildren(message);return;}$('#memoStatus').textContent=memo?'已生成':'尚未生成';$('#generateMemoBtn').disabled=!selected;if(!memo){panel.innerHTML='<div class="memo-empty">点击“生成纪要”开始。</div>';$('#saveMemoBtn').disabled=true;return}$('#saveMemoBtn').disabled=false;panel.innerHTML=`<div class="memo-meta"><label><span>受访者</span><input id="memoIdentity" value="${escapeHtml(memo.participant_identity||'')}"></label><label><span>日期</span><input id="memoDate" value="${escapeHtml(memo.interview_date||'')}"></label><label><span>主题</span><input id="memoTopic" value="${escapeHtml(memo.interview_topic||'')}"></label></div><section class="memo-summary"><div class="memo-summary-head"><h3>访谈摘要</h3><button class="soft ai-action" id="generateMemoSummaryBtn"><i class="ai-ring" aria-hidden="true"></i><span>${memo.summary?'重新生成':'生成摘要'}</span></button></div><p id="memoSummary" contenteditable="true">${escapeHtml(memo.summary||'')}</p></section><details class="memo-detail" open><summary>具体观点</summary><section class="memo-viewpoints">${(memo.viewpoints||[]).map((view,index)=>`<article class="viewpoint-card" data-viewpoint="${index}"><div class="viewpoint-heading"><span class="viewpoint-number">${String(index+1).padStart(2,'0')}</span><input class="viewpoint-title" value="${escapeHtml(view.title||'')}"></div><div class="viewpoint-body"><div class="viewpoint-summary-row"><span class="viewpoint-summary" contenteditable="true">${escapeHtml(view.summary||'')}</span><span class="memo-indexes">${memoEvidenceButtons(view.evidence)}</span></div>${(view.points||[]).length?`<ul>${view.points.map((point,pointIndex)=>`<li data-point="${pointIndex}"><span class="point-text" contenteditable="true">${escapeHtml(point.text||'')}</span><span class="memo-indexes">${memoEvidenceButtons(point.evidence)}</span></li>`).join('')}</ul>`:''}</div></article>`).join('')||'<div class="memo-empty">尚未提取到核心观点</div>'}</section></details>`;panel.querySelectorAll('[data-evidence-number]').forEach(button=>button.onclick=()=>renderMemoSource(Number(button.dataset.evidenceNumber)));$('#generateMemoSummaryBtn').onclick=generateMemoSummary}
@@ -151,3 +202,33 @@ $('#projectForm').onsubmit=async e=>{e.preventDefault();const btn=$('#submitProj
 $('#transcriptForm').onsubmit=async e=>{e.preventDefault();const btn=$('#submitTranscript');btn.disabled=true;btn.textContent='导入中…';try{const project=await api('/api/transcript-projects',{method:'POST',body:new FormData(e.target)});$('#transcriptDialog').close();e.target.reset();$('#transcriptFileLabel').textContent='选择 TXT 或 Word 访谈稿';await loadProjects();toast('访谈稿已导入');await openProject(project.id)}catch(err){toast(err.message)}finally{btn.disabled=false;btn.textContent='导入'}};
 $('#researchForm').onsubmit=async e=>{e.preventDefault();const adding=researchDialogMode==='add',btn=$('#submitResearch'),form=new FormData(e.target),ids=form.getAll('interview_ids');form.delete('interview_ids');form.append('interview_ids',JSON.stringify(ids));btn.disabled=true;btn.textContent=adding?'添加中…':'创建中…';try{await api(adding?`/api/research-projects/${selectedResearchProject.id}/materials`:'/api/research-projects',{method:'POST',body:form});$('#researchDialog').close();e.target.reset();$('#researchTranscriptLabel').textContent='TXT 或 DOCX';await loadResearchProjects();if(adding){openResearchProject(selectedResearchProject.id);toast('资料已添加')}else{showResearchList();toast('研究项目已创建')}}catch(err){toast(err.message)}finally{btn.disabled=false;btn.textContent=adding?'添加':'创建项目'}};
 async function refresh(){await Promise.all([loadStatus(),loadProjects(),loadResearchProjects()])}function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(async()=>{await refresh();if(!projects.some(p=>['queued','running'].includes(p.status)))clearInterval(pollTimer)},5000)}document.addEventListener('DOMContentLoaded',()=>{if(window.renderInterviewLibrary)return;refresh().then(()=>{if(projects.some(p=>['queued','running'].includes(p.status)))startPolling()}).catch(e=>toast(e.message))},{once:true});
+
+function applyUrlHashRoute(){
+ const raw=(location.hash||'').replace(/^#/,'').trim();
+ _suppressHashSync=false;
+ if(!raw)return;
+ const [viewPart,tabPart]=raw.split('/');
+ if(viewPart==='workspace'){
+  _suppressHashSync=true;switchView('workspace');_suppressHashSync=false;
+ }else if(viewPart==='editor'){
+  _suppressHashSync=true;switchView('editor');_suppressHashSync=false;
+ }else if(viewPart==='analysis'){
+  const tab=tabPart||(window.WORKBENCH_GUEST?'familiarity':'projectManage');
+  _suppressHashSync=true;switchView('analysis',tab);_suppressHashSync=false;
+ }
+}
+window.addEventListener('popstate',()=>applyUrlHashRoute());
+window.addEventListener('hashchange',()=>applyUrlHashRoute());
+setTimeout(()=>{
+ _suppressHashSync=false;
+ if(location.hash&&location.hash!=='#workspace'){
+  const lastId=(()=>{try{return sessionStorage.getItem('wb_last_interview_id');}catch{return null;}})();
+  if(!selected&&lastId&&projects.some(p=>String(p.id)===String(lastId)&&p.status==='completed')){
+   const raw=location.hash.replace(/^#/,'');
+   const [,tabPart]=raw.split('/');
+   openProject(lastId,null,raw==='editor'?{transcriptFirst:true}:{targetTab:tabPart||'familiarity'}).then(()=>applyUrlHashRoute()).catch(()=>applyUrlHashRoute());
+  }else{
+   applyUrlHashRoute();
+  }
+ }
+},180);

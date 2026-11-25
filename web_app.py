@@ -864,7 +864,7 @@ def load_demo_samples():
         if item.get("is_demo_sample") or "林沐" in item.get("name", ""):
             return {"loaded": False, "project": item, "message": "示例访谈已在资料库中"}
 
-    sample_file = BASE_DIR / "examples" / "concert" / "展示材料-林沐.txt"
+    sample_file = CODE_DIR / "examples" / "concert" / "展示材料-林沐.txt"
     if sample_file.exists():
         text = sample_file.read_text(encoding="utf-8-sig").strip()
     else:

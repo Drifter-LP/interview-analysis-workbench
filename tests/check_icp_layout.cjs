@@ -21,7 +21,7 @@ const fs=require('node:fs');
   });
   assert.ok(g.x>=0&&g.right<=g.w&&g.y>=0&&g.bottom<=g.h,JSON.stringify(g));
   assert.equal(g.bg,'rgba(0, 0, 0, 0)');assert.equal(g.bodyPadding,'0px');
-  if(state==='expanded'){assert.equal(g.align,'left');assert.ok(Math.abs(g.x-g.sidebar.x-g.sidebar.padding)<1);}
+  if(state==='expanded'){assert.equal(g.align,'left');assert.ok(Math.abs(g.x-g.sidebar.x-g.sidebar.padding)<1);assert.ok(g.y>=g.h-65,'Expanded sidebar footer lost its bottom anchor');}
   else assert.ok(g.w-g.right<=25);
   await link.focus();assert.ok(await link.evaluate(a=>document.activeElement===a));
   await page.screenshot({path:out+'/'+state+'.png'});

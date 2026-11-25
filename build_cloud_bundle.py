@@ -12,7 +12,7 @@ interview_coding interview_facts interview_library interview_move interview_name
 interview_reference_index interview_trash_api network_batches node_gates node_quality
 raw_theme_source review_storage run_accounts run_cloud site_ai_guard site_app site_boundary
 site_guests site_store site_worker source_search statement_comparison theme_file_io
-theme_model_io theme_network theme_recovery transcript_review transcription_recovery
+theme_model_io theme_network theme_recovery text_chunks transcript_review transcription_recovery
 web_app word_cooccurrence word_topic_index
 '''.split()
 

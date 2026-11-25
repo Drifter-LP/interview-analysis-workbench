@@ -28,13 +28,13 @@ SELECT_PROMPT = '''根据研究问题，从一篇访谈的基础事实清单中�
 只返回JSON：{"fact_ids":["已有ID"],"relevance":"direct","reason":"相关性及覆盖局限"}。'''
 
 
-def limited_create(client, **kwargs):
+def limited_create(client, _attempts=3, **kwargs):
     with API_GATE:
-        for attempt in range(3):
+        for attempt in range(_attempts):
             try:
                 return client.chat.completions.create(**kwargs)
             except Exception as error:
-                if getattr(error, 'status_code', None) != 429 or attempt == 2:
+                if getattr(error, 'status_code', None) != 429 or attempt == _attempts-1:
                     raise
                 time.sleep(2 ** (attempt + 1))
 

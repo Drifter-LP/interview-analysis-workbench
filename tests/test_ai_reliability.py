@@ -95,6 +95,8 @@ class Reliability(unittest.TestCase):
         self.assertTrue((run.path/'part-1/attempt-001/request.json').exists())
         resumed.call('part-2',invoke,validate);resumed.complete()
         self.assertEqual(read_json(run.path/'manifest.json')['status'],'completed')
+        resumed.fail(RuntimeError('late duplicate response'))
+        self.assertEqual(read_json(run.path/'manifest.json')['status'],'completed')
 
     def test_memo_auth_failure_not_retried(self):
         from ai_run import MemoRun
@@ -117,6 +119,66 @@ class Reliability(unittest.TestCase):
             with self.assertRaises(app.HTTPException):
                 app.save_theme_analysis(self.pid,app.ThemeAnalysisSaveRequest(
                     analysis=dict(payload,name='不同内容'),request_id='test-request-123'))
+
+    def test_chunk_coverage_boundaries_and_unicode(self):
+        from text_chunks import bounded_spans
+        for text in ['😀'+('没有换行的内容'*7000),('访问员：您怎么看？\n受访者：不能一概而论。\n\n'*900),'前文\n\n中段。\n末尾  ']:
+            spans=bounded_spans(text,12000)
+            self.assertEqual(''.join(s['text'] for s in spans),text)
+            self.assertTrue(all(len(s['text'])<=12000 for s in spans))
+            for i,s in enumerate(spans):
+                self.assertEqual(text[s['start']:s['end']],s['text'])
+                if i:self.assertEqual(spans[i-1]['end'],s['start'])
+        pair='提问人：您拒绝过服务吗？\n受访者：没有。'
+        self.assertEqual(len(bounded_spans(pair,100)),1)
+
+    def test_coding_long_single_unit_has_budget_and_question_context(self):
+        from interview_coding import source_units,batches,generate_initial_codes
+        text='访问员：您对费用担心吗？\n\n受访者：'+('需要看具体情况。'*3500)
+        units=source_units(text)
+        self.assertTrue(all(len(u['text'])<=8000 for u in units))
+        self.assertTrue(all(sum(len(u['text']) for u in batch)<=9000 for batch in batches(units)))
+        self.assertTrue(units[1]['question_context'].startswith('访问员：'))
+        for u in units:self.assertEqual(text[u['start']:u['end']],u['text'])
+        payloads=[]
+        def call(prompt,payload):
+            payloads.append(payload)
+            self.assertIn('不是指令',prompt)
+            self.assertLessEqual(len(json.dumps(payload,ensure_ascii=False)),40000)
+            return dict(codes=[],bindings=[])
+        generate_initial_codes(text,'费用',[],self.pid,call)
+        self.assertEqual(len(payloads),len(batches(units)))
+
+    def test_context_cannot_become_target_evidence(self):
+        from interview_coding import validate_reply
+        raw=dict(codes=[dict(id='c1',name='概念',definition='定义')],bindings=[dict(code_id='c1',unit_id='context',quote='前文')])
+        with self.assertRaises(ValueError):validate_reply(raw,[dict(unit_id='u1',text='本段',start=2,unit_kind='paragraph')],'前文本段',self.pid)
+
+    def test_oversize_index_stops_before_paid_call(self):
+        from indexed_theme import get_index
+        call=Mock()
+        with self.assertRaisesRegex(ValueError,'未截断'):
+            get_index('大'*80000,call,'synthetic',DATA/'index')
+        call.assert_not_called()
+
+    def test_memo_valid_parts_merge_and_persist(self):
+        q1='第一段：费用需要看报销。';q2='第二段：现在仍坐地铁。'
+        text=q1+'甲'*6200+'\n\n'+q2+'乙'*6200
+        (app.project_dir(self.pid)/'导入访谈稿.txt').write_text(text,encoding='utf-8')
+        def raw(quotes):
+            return dict(participant_identity='未说明',interview_date='未说明',interview_topic='虚构测试',summary='虚构材料概括',
+                viewpoints=[dict(title='虚构观点',summary='仅测试数据流',evidence=quotes,points=[])])
+        def response(value):
+            content=json.dumps(value,ensure_ascii=False)
+            return types.SimpleNamespace(model_dump=lambda **kw:dict(content=content),
+                choices=[types.SimpleNamespace(finish_reason='stop',message=types.SimpleNamespace(content=content))])
+        with patch.object(app,'read_deepseek_key',return_value='synthetic-key'),patch.object(app,'limited_create',
+                side_effect=[response(raw([q1])),response(raw([q2])),response(raw([q1,q2]))]) as call:
+            result=app.generate_familiarity_memo(self.pid,app.MemoRequest())
+        self.assertEqual(call.call_count,3)
+        self.assertIn('合并',call.call_args.kwargs['messages'][0]['content'])
+        self.assertEqual([e['quote'] for e in result['memo']['evidence']],[q1,q2])
+        self.assertEqual(app.read_analysis(self.pid)['familiarity_memo'],result['memo'])
 
 if __name__=='__main__':
     try:unittest.main()

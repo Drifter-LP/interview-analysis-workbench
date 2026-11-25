@@ -263,7 +263,7 @@ def isolated_main():
                 return client
 
             def memo_response(self, content, finish_reason='stop'):
-                return types.SimpleNamespace(choices=[types.SimpleNamespace(
+                return types.SimpleNamespace(model_dump=lambda **kw:dict(choices=[dict(finish_reason=finish_reason,message=dict(content=content))]),choices=[types.SimpleNamespace(
                     finish_reason=finish_reason,
                     message=types.SimpleNamespace(content=content))])
 
@@ -285,9 +285,10 @@ def isolated_main():
                                 text = '甲' * 6500 + '\n\n' + '乙' * 6500
                             self.transcript.write_text(text, encoding='utf-8-sig')
                             failed = self.memo_response(content, finish_reason)
-                            responses = ([self.memo_response('{}'), self.memo_response('{}'), failed]
-                                         if stage == 'merge' else [failed])
-                            with patch.object(web, 'limited_create', side_effect=responses) as create, patch.object(web, 'atomic_write_json', wraps=web.atomic_write_json) as save:
+                            valid=json.dumps(dict(participant_identity='未说明',interview_date='未说明',interview_topic='未说明',summary='无明确观点',viewpoints=[]))
+                            responses = ([self.memo_response(valid), self.memo_response(valid)]+[failed]*3
+                                         if stage == 'merge' else [failed]*3)
+                            with patch('ai_run.time.sleep'),patch.object(web, 'limited_create', side_effect=responses) as create, patch.object(web, 'atomic_write_json', wraps=web.atomic_write_json) as save:
                                 response = self.client.post('/api/projects/sample/familiarity-memo', json={'refresh': True})
                             self.assertEqual(response.status_code, 502, response.text)
                             self.assertEqual(create.call_count, len(responses))
@@ -313,13 +314,13 @@ def isolated_main():
                 for kind in ('memo','source'):
                     with self.subTest(kind=kind):
                         storage.atomic_write_json(path, original)
-                        self.transcript.write_text('受访者：原稿。', encoding='utf-8-sig')
+                        self.transcript.write_text('受访者：原稿。'+kind, encoding='utf-8-sig')
                         def concurrent_edit(client, **kwargs):
                             if kind == 'memo':
                                 storage.atomic_write_json(path, {'codes':[{'id':'keep'}], 'familiarity_memo':{'summary':'manual'}})
                             else:
                                 self.transcript.write_text('受访者：人工修改后的稿件。', encoding='utf-8-sig')
-                            return self.memo_response(json.dumps({'summary':'model','viewpoints':[]}))
+                            return self.memo_response(json.dumps(dict(participant_identity='未说明',interview_date='未说明',interview_topic='未说明',summary='model',viewpoints=[])))
                         with patch.object(web, 'limited_create', side_effect=concurrent_edit):
                             response = self.client.post('/api/projects/sample/familiarity-memo', json={})
                         self.assertEqual(response.status_code,409,response.text)
@@ -332,9 +333,9 @@ def isolated_main():
                 text = '访谈者：请介绍情况。\n\n受访者：基层医院需要完善服务。我们希望加强人员培训。'
                 self.transcript.write_text(text, encoding='utf-8-sig')
                 quote, second = '基层医院需要完善服务。', '我们希望加强人员培训。'
-                payload = {'summary': '讨论服务与培训', 'viewpoints': [{
+                payload = {'participant_identity':'未说明','interview_date':'未说明','interview_topic':'服务','summary': '讨论服务与培训', 'viewpoints': [{
                     'title': '完善服务', 'summary': '需要服务和培训',
-                    'evidence': [quote, '模型虚构引文'],
+                    'evidence': [quote],
                     'points': [{'text': '培训', 'evidence': [second, quote]}],
                 }]}
                 path = web.analysis_path('sample')
@@ -410,7 +411,8 @@ def isolated_main():
                 for endpoint, payload in (('coding-suggestions', {}), ('familiarity-memo', {'refresh': True}), ('familiarity-summary', None)):
                     with self.subTest(endpoint=endpoint):
                         path = web.analysis_path('sample')
-                        storage.atomic_write_json(path, {'codes': [], 'familiarity_memo': {'summary': 'existing', 'viewpoints': []}})
+                        from analysis_contracts import source_hash
+                        storage.atomic_write_json(path, {'codes': [], 'familiarity_memo': {'summary': 'existing', 'viewpoints': [],'source_hash':source_hash(self.transcript.read_text(encoding='utf-8-sig'))}})
                         original = path.read_bytes()
                         client = self.model()
                         client.chat.completions.create.side_effect = SiteError('quota exhausted', 429)

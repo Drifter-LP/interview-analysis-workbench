@@ -67,5 +67,8 @@ class MemoRun:
         log_event('memo_run_saved',run_id=self.id)
 
     def fail(self,error):
-        self.update(status='failed',error_type=type(error).__name__)
+        with file_lock(self.path/'manifest.json'):
+            state=read_json(self.path/'manifest.json')
+            if state.get('status')!='completed':
+                self.update(status='failed',error_type=type(error).__name__)
         log_failure('memo_run_failed',error,run_id=self.id)

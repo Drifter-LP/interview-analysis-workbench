@@ -467,3 +467,18 @@
   .memo-source { height: 45vh; }
   .memo-panel { min-height: 45vh; }
 }
+
+/* Bugfix: full-width multi-line viewpoint title, zero 34px clip, clean meta & structure connectors */
+.viewpoint-heading{display:block}
+.viewpoint-title{display:block;width:100%;border:0;border-radius:6px;padding:4px 6px;margin:-4px -6px 0;font:700 15px/1.6 var(--font-sans);color:var(--ink);background:transparent;white-space:pre-wrap;overflow-wrap:anywhere}
+.viewpoint-body{padding-left:0}
+.comparison-item>p{margin:12px 0 14px 0}
+.comparison-perspective{margin:8px 0 0 0}
+.memo-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px 18px;padding:0 0 18px}
+.memo-meta label{padding:0 0 0 14px;border-left:1px solid var(--line)}
+.memo-meta label:first-child{padding-left:0;border-left:0}
+.memo-meta input{text-overflow:clip}
+.structure-root{position:relative}
+@media(min-width:951px){
+  .structure-root::after{content:'';position:absolute;right:-39px;top:26px;width:39px;border-top:1px solid #b6cfca}
+}

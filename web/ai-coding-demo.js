@@ -123,7 +123,7 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
    if(owner!==endpoint()||ownerToken!==token)return;
    state=d;editing=null;dirty=false;range=null;busy=false;render();
    toast('此处引用已确认并保存；编码审核状态未改变。');
-  }catch(e){warn(e);}finally{busy=false;updateReviewStatus();}
+  }catch(e){warn(e);}finally{busy=false;for(const b of reviewFooter.querySelectorAll('button'))b.disabled=false;updateReviewStatus();}
  }
  function renderReview(){
   right.replaceChildren();reviewFooter.replaceChildren();reviewFooter.hidden=true;
@@ -212,9 +212,9 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
    if(action==='restore'){filter.value=previousFilter='all';selected=c.id;}
    if(action==='remove_reference')referenceIndex=Math.min(referenceIndex,d.codes.find(x=>x.id===c.id).references.length-1);
    busy=false;render();toast(action==='delete'?'已删除，可从左侧筛选中恢复':action==='restore'?'编码已恢复':action==='remove_reference'?'引用关联已移除并保存':'引用已恢复');
-  }catch(e){warn(e);}finally{busy=false;updateReviewStatus();}
+  }catch(e){warn(e);}finally{busy=false;for(const b of reviewFooter.querySelectorAll('button'))b.disabled=false;updateReviewStatus();}
  }
- async function persist(statusValue){if(busy||!editing)return;busy=true;try{const owner=endpoint(),payload={...editing,status:statusValue};const d=await request(owner+'/codes','POST',payload);if(owner!==endpoint())return;state=d;selected=d.codes.find(c=>c.id===payload.id)?.id||d.codes.at(-1)?.id||'';editing=null;dirty=false;busy=false;render();toast('编码已保存');}catch(e){warn(e);}finally{busy=false;updateReviewStatus();}}
+ async function persist(statusValue){if(busy||!editing)return;busy=true;for(const b of reviewFooter.querySelectorAll('button'))b.disabled=true;const note=reviewCard.querySelector('.ac-save-state');if(note)note.textContent='正在保存…';try{const owner=endpoint(),payload={...editing,status:statusValue};const d=await request(owner+'/codes','POST',payload);if(owner!==endpoint())return;state=d;selected=d.codes.find(c=>c.id===payload.id)?.id||d.codes.at(-1)?.id||'';editing=null;dirty=false;busy=false;render();toast('编码已保存');}catch(e){warn(e);}finally{busy=false;for(const b of reviewFooter.querySelectorAll('button'))b.disabled=false;updateReviewStatus();}}
 
  function openOrganizer(){
   if(guest||!state)return;

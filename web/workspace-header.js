@@ -129,7 +129,7 @@
     sourceSearchTab.classList.add('workspace-tab-action');
     config.tabs.push(sourceSearchTab);writeStatus(sourceSearchTab,'查找原文');
     if(structureButton)writeStatus(structureButton,'纪要结构');
-    sourceSearchTab.classList.toggle('active',id==='sourceSearch');
+    sourceSearchTab.classList.toggle('active',id==='sourceSearch');sourceSearchTab.hidden=(id==='familiarity'&&!!structureButton&&!find('#memoStructure')?.hidden);
     if(id==='sourceSearch')find('.nav-item[data-tab="familiarity"]')?.classList.add('active');
     codingTab.classList.toggle('active',id==='coding');
     if(structureButton){
@@ -158,15 +158,15 @@
    for(const b of header.slots.tabs.querySelectorAll('button')){const pressed=String(b.classList.contains('active'));if(b.getAttribute('aria-pressed')!==pressed)b.setAttribute('aria-pressed',pressed);}
   }finally{header.element.dataset.syncCount=String(Number(header.element.dataset.syncCount||0)+1);header.element.dataset.lastSyncMs=(performance.now()-syncStarted).toFixed(2);observer.observe(main,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','hidden','disabled','aria-pressed']});}
  }
- const editorDirty=new Map(),editorSaved=new Map();
- editorPicker.onchange=async()=>{if(!editorPicker.value||editorLoading)return;const id=editorPicker.value;editorLoading=true;sync();try{await openProject(id,null,{transcriptFirst:true});editorDirty.delete(String(selected));editorSaved.delete(String(selected));}catch(error){toast(error.message);}finally{editorLoading=false;sync();}};
+ const editorDirty=new Map(),editorSaved=new Map(),editorSavedText=new Map();
+ editorPicker.onchange=async()=>{if(!editorPicker.value||editorLoading)return;const id=editorPicker.value;editorLoading=true;sync();try{await openProject(id,null,{transcriptFirst:true});editorDirty.delete(String(selected));editorSaved.delete(String(selected));editorSavedText.set(String(selected),transcriptText());}catch(error){toast(error.message);}finally{editorLoading=false;sync();}};
  const originalSave=saveTranscript;
  find('#saveBtn').onclick=async()=>{
   if(!selected)return;const id=String(selected);writeStatus(editorStatus,'保存中…');
-  try{await originalSave();editorDirty.delete(id);editorSaved.set(id,'已保存');sync();}
+  try{await originalSave();editorDirty.delete(id);editorSaved.set(id,'已保存');editorSavedText.set(id,transcriptText());sync();}
   catch(error){writeStatus(editorStatus,'保存失败');toast(error.message);}
  };
- find('#transcript').addEventListener('input',()=>{if(selected)editorDirty.set(String(selected),true);schedule();});
+ find('#transcript').addEventListener('input',()=>{if(selected){const sid=String(selected);if(!editorSavedText.has(sid))editorSavedText.set(sid,transcriptText());const isDirty=transcriptText()!==editorSavedText.get(sid);if(isDirty)editorDirty.set(sid,true);else{editorDirty.delete(sid);editorSaved.set(sid,'已保存');}}schedule();});
  const originalMemoSave=find('#saveMemoBtn').onclick;
  find('#saveMemoBtn').onclick=async()=>{
   if(!analysisData?.familiarity_memo)return;

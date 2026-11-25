@@ -61,7 +61,7 @@ body .shell main.workspace-main{--workspace-header-height:64px;padding:0!importa
 .workspace-tab-slot .network-tabs{display:contents}
 .workspace-tab-slot button{height:44px;padding:0 4px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none!important;color:#768592;font-size:14px}
 .workspace-tab-slot button.active{color:#00998f;border-bottom-color:#00998f;font-weight:600}
-.workspace-tab-slot:has(.workspace-tab-action){overflow-x:auto;gap:20px}
+.workspace-tab-slot:has(.workspace-tab-action){overflow-x:auto;overflow-y:hidden;align-items:center;gap:20px}
 .workspace-tab-slot:has(.workspace-tab-action)>button{flex-shrink:0}
 .workspace-header .workspace-tab-slot button.workspace-tab-action{align-self:center;height:36px;margin-left:auto;padding:0 13px;border:1px solid #d5e1e5;border-radius:8px;background:#fff!important;color:#21766f;font-weight:400}
 .workspace-header .workspace-tab-slot button.workspace-tab-action:hover{background:#eef8f5!important}

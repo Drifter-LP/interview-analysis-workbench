@@ -23,3 +23,6 @@
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}
 }
+
+/* Bugfix: breathing room below dialog header and cleaner native select alignment */
+dialog form .dialog-head{margin-bottom:14px}

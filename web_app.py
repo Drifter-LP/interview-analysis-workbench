@@ -1674,7 +1674,12 @@ def analyze(project_id: str):
 @app.get("/api/projects/{project_id}/analysis-workspace")
 def get_analysis_workspace(project_id: str):
     read_metadata(project_id)
-    return read_analysis(project_id)
+    return {**read_analysis(project_id), "_version": analysis_version(project_id)}
+
+
+def analysis_version(project_id):
+    path = analysis_path(project_id)
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "new"
 
 
 @app.put("/api/projects/{project_id}/analysis-workspace")
@@ -1683,12 +1688,16 @@ def save_analysis_workspace(project_id: str, body: AnalysisUpdate):
     read_metadata(project_id)
     # A valid client payload must not silently overwrite damaged stored results.
     read_analysis(project_id)
-    data = body.data
+    expected = body.data.get("_version")
+    actual = analysis_version(project_id)
+    if expected != actual and not (actual == "new" and expected is None):
+        raise HTTPException(409, "分析记录已被其他页面或任务更新，请重新打开访谈后再保存；当前内容未覆盖")
+    data = {k: v for k, v in body.data.items() if k != "_version"}
     for key, default in (("metadata", {}), ("sources", []), ("codes", []), ("excerpts", []), ("ai_suggestions", [])):
         data.setdefault(key, default)
     data["updated_at"] = time.time()
     atomic_write_json(analysis_path(project_id), data)
-    return {"saved": True, "updated_at": data["updated_at"]}
+    return {"saved": True, "updated_at": data["updated_at"], "_version": analysis_version(project_id)}
 
 
 @app.post("/api/projects/{project_id}/coding-suggestions")
@@ -1831,7 +1840,7 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
             data["familiarity_memo"] = memo
             data["updated_at"] = time.time()
             atomic_write_json(analysis_path(project_id), data)
-        return {"memo": memo}
+        return {"memo": memo, "_version": analysis_version(project_id)}
     except (SiteError, HTTPException):
         raise
     except Exception as exc:
@@ -1869,7 +1878,7 @@ def generate_familiarity_summary(project_id: str):
             latest['familiarity_memo']['summary'] = summary
             latest['updated_at'] = time.time()
             atomic_write_json(analysis_path(project_id), latest)
-        return {"summary": summary}
+        return {"summary": summary, "_version": analysis_version(project_id)}
     except (SiteError, HTTPException):
         raise
     except Exception as exc:

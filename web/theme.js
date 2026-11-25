@@ -196,6 +196,8 @@ function openThemeMaterialDialog() {
 }
 
 async function generateThemeAnalysis() {
+  const owner=selectedResearchProject;
+  if(!owner)return;
   const theme = $('#themeInput').value.trim();
   const choices = [...document.querySelectorAll('#themeMaterialList input[data-type]:checked')];
   if (!theme || !choices.length) return;
@@ -209,14 +211,15 @@ async function generateThemeAnalysis() {
     for (const choice of choices) {
       let projectId = choice.dataset.projectId;
       if (!projectId && choice.dataset.type === 'uploaded') {
-        const prepared = await api(`/api/research-projects/${selectedResearchProject.id}/uploaded/${choice.dataset.key}/prepare`, {method: 'POST'});
+        const prepared = await api(`/api/research-projects/${owner.id}/uploaded/${choice.dataset.key}/prepare`, {method: 'POST'});
         projectId = prepared.project_id;
-        selectedResearchProject.uploaded_transcripts[Number(choice.dataset.key)].workspace_project_id = projectId;
+        owner.uploaded_transcripts[Number(choice.dataset.key)].workspace_project_id = projectId;
       }
       if (projectId) ids.push(projectId);
     }
     requestIds=ids;
-    const result = await runThemeWithProgress({research_project_id: selectedResearchProject.id, project_ids: ids, theme},data=>{progress.textContent=data.message||'正在分析…';});
+    const result = await runThemeWithProgress({research_project_id: owner.id, project_ids: ids, theme},data=>{progress.textContent=data.message||'正在分析…';});
+    if(selectedResearchProject!==owner)return;
     currentThemeAnalysis = {...result.analysis, _saved: false, _researchProjectId: selectedResearchProject.id};
     themePickerOriginal=null;
     $('#themeDialog').close();
@@ -235,16 +238,19 @@ button.onclick=async()=>{button.disabled=true;button.textContent=context.recover
 
 async function saveThemeAnalysis() {
   if (!currentThemeAnalysis || !selectedResearchProject) return;
+  const owner=selectedResearchProject,original=currentThemeAnalysis;
   collectThemeResult();
   const name = await askComparisonName(currentThemeAnalysis.name || currentThemeAnalysis.theme, '保存主题分析', '分析名称');
   if (!name) return;
+  if(selectedResearchProject!==owner||currentThemeAnalysis!==original)return;
   const button = $('#saveThemeBtn');
   button.disabled = true;
   try {
     const analysis = {...currentThemeAnalysis, name};
     delete analysis._saved;
     delete analysis._researchProjectId;
-    const result = await api(`/api/research-projects/${selectedResearchProject.id}/theme-analyses`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({analysis})});
+    const result = await api(`/api/research-projects/${owner.id}/theme-analyses`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({analysis})});
+    if(selectedResearchProject!==owner||currentThemeAnalysis!==original)return;
     selectedResearchProject.theme_analyses = selectedResearchProject.theme_analyses || [];
     selectedResearchProject.theme_analyses.push(result.analysis);
     currentThemeAnalysis = {...result.analysis, _saved: true, _researchProjectId: selectedResearchProject.id};

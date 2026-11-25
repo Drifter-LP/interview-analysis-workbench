@@ -115,6 +115,8 @@ def validate_reply(reply, units, text, project_id):
             seen.add(identity)
             end = start + len(quote)
             suggestions.append({"id": uuid.uuid4().hex, "code": code["name"].strip(), "definition": code["definition"].strip(), "reason": code["definition"].strip(), "quote": quote, "unit_id": unit["unit_id"], "unit_kind": unit["unit_kind"], "project_id": project_id, "source_start": start, "source_end": end, "start": len(text[:start].encode("utf-16-le")) // 2, "end": len(text[:end].encode("utf-16-le")) // 2, "transcript_hash": digest, "prompt_version": PROMPT_VERSION, "speaker": "", "status": "待确认"})
+    if rejected:
+        raise ValueError(f"{rejected}条编码引用未通过校验；保留该批原始输出，不能静默丢弃后视为完整")
     return suggestions, rejected
 
 def generate_initial_codes(text, question, existing, project_id, call):

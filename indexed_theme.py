@@ -384,7 +384,7 @@ def synthesize(statements, question, call, checkpoint=None):
         raise ValueError('最终维度方案编号无效')
     return {'findings': findings, 'reference_relations': relations, **review_audit, 'dimension_candidates': candidates,
             'dimension_trials': trials, 'dimension_selection': selection,
-            'selected_dimensions': next((t for t in trials if t['candidate_id'] == selected_id), None)}
+            'selected_dimensions': next((t for t in trials if t['candidate_id'] == selected_id), None) if selection['acceptable'] else None}
 
 
 def assemble_result(statements, raw):
@@ -419,7 +419,7 @@ def assemble_result(statements, raw):
     if raw.get('dimension_stage_skipped'):
         # Compatibility container for saved records/review; not a model-generated dimension.
         return [{'name': '研究发现', 'is_flat_findings': True, 'findings': list(findings.values())}]
-    selected = raw['selected_dimensions']
+    selected = raw['selected_dimensions'] if raw.get('dimension_selection',{}).get('acceptable',True) else None
     dimensions = []
     if selected:
         for d in selected['dimensions']:

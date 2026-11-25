@@ -14,7 +14,7 @@
  const dialog=document.createElement('dialog');dialog.className='review-dialog';dialog.innerHTML='<form method="dialog"><h3>编码设置</h3><label>本篇编码关注问题<textarea id="reviewQuestion" rows="3"></textarea></label><p>用于现有 AI 编码请求，不改变其他页面的研究问题。</p><div><button value="cancel" class="soft">取消</button><button value="save" class="primary">保存设置</button></div></form>';document.body.append(dialog);
  const edit=document.createElement('dialog');edit.className='review-dialog';edit.innerHTML='<form method="dialog"><h3>修改编码</h3><label>名称<input name="name" required maxlength="100"></label><label>归属<input name="theme" placeholder="可选：已有范畴或主题"></label><label>说明<textarea name="definition" rows="3"></textarea></label><div><button value="cancel" class="soft" formnovalidate>取消</button><button value="save" class="primary">保存</button></div></form>';document.body.append(edit);let editTarget=null;
  function ensure(){if(!analysisData)return false;analysisData.codes??=[];analysisData.excerpts??=[];analysisData.ai_suggestions??=[];return true;}
- function position(item){const quote=String(item.quote||'');if(!quote)return -1;const start=Number(item.start);return Number.isInteger(start)&&start>=0&&raw.slice(start,start+quote.length)===quote?start:raw.indexOf(quote);}
+ function position(item){const quote=String(item.quote||'');if(!quote||(item.transcript_hash&&item.transcript_hash!==analysisData?._source_hash))return -1;const start=Number(item.start);return Number.isInteger(start)&&start>=0&&raw.slice(start,start+quote.length)===quote?start:-1;}
  function paragraph(start){return start<0?'原文未匹配':'第 '+(raw.slice(0,start).split(/\n\s*\n/).length)+' 段';}
  function paint(){
   // Build only source text/marks here: textContent stays byte-for-byte identical to raw.

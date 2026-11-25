@@ -1674,7 +1674,10 @@ def analyze(project_id: str):
 @app.get("/api/projects/{project_id}/analysis-workspace")
 def get_analysis_workspace(project_id: str):
     read_metadata(project_id)
-    return {**read_analysis(project_id), "_version": analysis_version(project_id)}
+    from analysis_contracts import source_hash
+    source = transcript_path(project_id)
+    return {**read_analysis(project_id), "_version": analysis_version(project_id),
+            "_source_hash": source_hash(source.read_text(encoding='utf-8-sig')) if source else None}
 
 
 def analysis_version(project_id):
@@ -1692,7 +1695,11 @@ def save_analysis_workspace(project_id: str, body: AnalysisUpdate):
     actual = analysis_version(project_id)
     if expected != actual and not (actual == "new" and expected is None):
         raise HTTPException(409, "分析记录已被其他页面或任务更新，请重新打开访谈后再保存；当前内容未覆盖")
-    data = {k: v for k, v in body.data.items() if k != "_version"}
+    from analysis_contracts import source_hash
+    source = transcript_path(project_id)
+    if body.data.get("_source_hash") and (not source or body.data["_source_hash"] != source_hash(source.read_text(encoding='utf-8-sig'))):
+        raise HTTPException(409, "原文已变化，旧页面的分析不能覆盖，请重新打开访谈")
+    data = {k: v for k, v in body.data.items() if k not in ("_version", "_source_hash")}
     for key, default in (("metadata", {}), ("sources", []), ("codes", []), ("excerpts", []), ("ai_suggestions", [])):
         data.setdefault(key, default)
     data["updated_at"] = time.time()
@@ -1793,43 +1800,9 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
                 ],
             )
             merged = decode_model_json(response, "memo_merge")
-        evidence_items = []
-        evidence_lookup = {}
-
-        def attach_evidence(quotes) -> list[int]:
-            numbers = []
-            for value in quotes if isinstance(quotes, list) else []:
-                quote = str(value).strip()
-                if not quote or quote not in text:
-                    continue
-                if quote not in evidence_lookup:
-                    start = text.find(quote)
-                    evidence_lookup[quote] = len(evidence_items) + 1
-                    evidence_items.append({"number": len(evidence_items) + 1, "quote": quote, "start": start, "end": start + len(quote)})
-                numbers.append(evidence_lookup[quote])
-            return numbers
-
-        viewpoints = []
-        for item in merged.get("viewpoints", []) if isinstance(merged.get("viewpoints"), list) else []:
-            if not isinstance(item, dict):
-                continue
-            points = []
-            for point in item.get("points", []) if isinstance(item.get("points"), list) else []:
-                if isinstance(point, dict) and str(point.get("text", "")).strip():
-                    points.append({"text": str(point.get("text", "")).strip(), "evidence": attach_evidence(point.get("evidence", []))})
-            title = str(item.get("title", "")).strip()
-            summary = str(item.get("summary", "")).strip()
-            if title or summary:
-                viewpoints.append({"title": title, "summary": summary, "evidence": attach_evidence(item.get("evidence", [])), "points": points})
-        memo = {
-            "participant_identity": str(merged.get("participant_identity", "未说明")).strip() or "未说明",
-            "interview_date": str(merged.get("interview_date", "未说明")).strip() or "未说明",
-            "interview_topic": str(merged.get("interview_topic", "未说明")).strip() or "未说明",
-            "summary": str(merged.get("summary", "")).strip(),
-            "viewpoints": viewpoints,
-            "evidence": evidence_items,
-            "generated_at": time.time(),
-        }
+        from analysis_contracts import validate_memo
+        validated_memo = validate_memo(merged, text)
+        memo = {**validated_memo, "generated_at": time.time()}
         with document_transaction(analysis_path(project_id)):
             data = read_analysis(project_id)
             if data.get('familiarity_memo') != starting_memo:
@@ -1854,6 +1827,12 @@ def generate_familiarity_summary(project_id: str):
     memo = data.get("familiarity_memo")
     if not isinstance(memo, dict):
         raise HTTPException(400, "请先生成访谈纪要")
+    from analysis_contracts import check_memo_source
+    source = transcript_path(project_id)
+    try:
+        check_memo_source(memo, source.read_text(encoding='utf-8-sig') if source else '')
+    except ValueError as error:
+        raise HTTPException(409,str(error)) from error
     key = read_deepseek_key()
     if not key:
         raise HTTPException(400, "未检测到 DeepSeek API Key")
@@ -1868,7 +1847,8 @@ def generate_familiarity_summary(project_id: str):
                 {"role": "user", "content": json.dumps({"participant_identity": memo.get("participant_identity"), "interview_topic": memo.get("interview_topic"), "viewpoints": memo.get("viewpoints", [])}, ensure_ascii=False)},
             ],
         )
-        summary = str(decode_model_json(response, "memo_summary").get("summary", "")).strip()
+        from analysis_contracts import required_text
+        summary = required_text(decode_model_json(response, "memo_summary").get("summary"), "summary")
         if not summary:
             raise HTTPException(502, "未生成有效摘要")
         with document_transaction(analysis_path(project_id)):
@@ -2012,6 +1992,9 @@ def generate_material_comparison(body: MaterialComparisonRequest):
         research=read_json_document(research_project_path(body.research_project_id))
         analysis=next((a for a in research.get('theme_analyses',[]) if a.get('id')==body.theme_analysis_id),None)
         if not analysis:raise HTTPException(404,'主题分析记录不存在')
+        from analysis_contracts import check_analysis_sources
+        try:check_analysis_sources(analysis,transcript_path)
+        except ValueError as error:raise HTTPException(409,str(error)) from error
         if analysis.get('theme')!=body.theme or set(body.project_ids)!={m['project_id'] for m in analysis.get('materials',[])}:raise HTTPException(400,'比较主题与材料不匹配')
         from openai import OpenAI
         from statement_comparison import generate
@@ -2058,6 +2041,10 @@ def generate_material_comparison(body: MaterialComparisonRequest):
         if not memo:
             missing.append(project_names.get(project_id, project_id))
             continue
+        from analysis_contracts import check_memo_source
+        source=transcript_path(project_id)
+        try:check_memo_source(memo,source.read_text(encoding='utf-8-sig') if source else '')
+        except ValueError as error:raise HTTPException(409,str(error)) from error
         materials.append({
             "project_id": project_id,
             "name": project_names.get(project_id, project_id),

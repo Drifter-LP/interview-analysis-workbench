@@ -249,7 +249,11 @@ async function saveThemeAnalysis() {
     const analysis = {...currentThemeAnalysis, name};
     delete analysis._saved;
     delete analysis._researchProjectId;
-    const result = await api(`/api/research-projects/${owner.id}/theme-analyses`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({analysis})});
+    delete analysis._savePayload;
+    delete analysis._saveRequestId;
+    const payload=JSON.stringify(analysis);
+    if(original._savePayload!==payload){original._savePayload=payload;original._saveRequestId=crypto.randomUUID();}
+    const result = await api(`/api/research-projects/${owner.id}/theme-analyses`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({analysis,request_id:original._saveRequestId})});
     if(selectedResearchProject!==owner||currentThemeAnalysis!==original)return;
     selectedResearchProject.theme_analyses = selectedResearchProject.theme_analyses || [];
     selectedResearchProject.theme_analyses.push(result.analysis);

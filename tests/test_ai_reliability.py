@@ -72,6 +72,52 @@ class Reliability(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_reply(raw,[dict(unit_id='u1',text='原文',start=0,unit_kind='paragraph')],'原文',self.pid)
 
+    def test_memo_stages_resume_and_keep_attempts(self):
+        from ai_run import MemoRun
+        from theme_file_io import read_json
+        def response(raw):
+            return types.SimpleNamespace(
+                model_dump=lambda **kw:dict(choices=[dict(message=dict(content=json.dumps(raw)))]),
+                choices=[types.SimpleNamespace(finish_reason='stop',message=types.SimpleNamespace(content=json.dumps(raw)))])
+        run=MemoRun(DATA/'runs',dict(text='虚构材料',model='fake'))
+        invoke=Mock(return_value=response(dict(ok=True)))
+        validate=lambda raw: self.assertTrue(raw.get('ok'))
+        run.call('part-1',invoke,validate,request=dict(model='fake',input='虚构'))
+        failure=Mock(side_effect=ValueError('错误结构'))
+        with patch('ai_run.time.sleep'),self.assertRaises(ValueError):
+            run.call('part-2',failure,validate)
+        run.fail(ValueError('未完成'))
+        resumed=MemoRun(DATA/'runs',dict(text='虚构材料',model='fake'))
+        resumed.call('part-1',invoke,validate)
+        self.assertEqual(invoke.call_count,1)
+        self.assertEqual(failure.call_count,3)
+        self.assertEqual(len(list((run.path/'part-2').glob('attempt-*'))),3)
+        self.assertTrue((run.path/'part-1/attempt-001/request.json').exists())
+        resumed.call('part-2',invoke,validate);resumed.complete()
+        self.assertEqual(read_json(run.path/'manifest.json')['status'],'completed')
+
+    def test_memo_auth_failure_not_retried(self):
+        from ai_run import MemoRun
+        error=RuntimeError('no secret here');error.status_code=401
+        invoke=Mock(side_effect=error)
+        with self.assertRaises(RuntimeError):
+            MemoRun(DATA/'runs',dict(text=self.pid)).call('part-1',invoke,lambda r:None)
+        self.assertEqual(invoke.call_count,1)
+
+    def test_theme_save_is_idempotent(self):
+        research=app.research_project_path(self.pid)
+        app.atomic_write_json(research,dict(id=self.pid,theme_analyses=[]))
+        payload=dict(name='虚构主题',theme='测试',dimensions=[])
+        body=app.ThemeAnalysisSaveRequest(analysis=payload,request_id='test-request-123')
+        with patch('review_storage.rehome'):
+            first=app.save_theme_analysis(self.pid,body)
+            second=app.save_theme_analysis(self.pid,body)
+            self.assertEqual(first['analysis']['id'],second['analysis']['id'])
+            self.assertEqual(second['count'],1)
+            with self.assertRaises(app.HTTPException):
+                app.save_theme_analysis(self.pid,app.ThemeAnalysisSaveRequest(
+                    analysis=dict(payload,name='不同内容'),request_id='test-request-123'))
+
 if __name__=='__main__':
     try:unittest.main()
     finally:

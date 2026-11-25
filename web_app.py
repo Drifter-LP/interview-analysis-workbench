@@ -389,6 +389,7 @@ class ThemeAnalysisRequest(BaseModel):
 
 class ThemeAnalysisSaveRequest(BaseModel):
     analysis: dict
+    request_id: str = ""
 
 
 def read_uploaded_transcript(upload: UploadFile) -> str:
@@ -1761,7 +1762,7 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
         chunks.append("\n\n".join(current))
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=240.0)
+        client = OpenAI(api_key=key, base_url="https://api.deepseek.com", timeout=240.0, max_retries=0)
         prompt = (
             "你是中文社会科学访谈纪要助手。根据访谈稿生成忠于原文的材料熟悉纪要。"
             "只提取受访者明确表达的信息，不推测身份和日期；无法确认时写‘未说明’。"
@@ -1775,31 +1776,21 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
             '"viewpoints":[{"title":"观点标题","summary":"观点概括","evidence":["连续原文"],'
             '"points":[{"text":"具体要点","evidence":["连续原文"]}]}]}。'
         )
-        partials = []
-        for index, chunk in enumerate(chunks, 1):
-            response = limited_create(client,
-                model="deepseek-flash", temperature=0, max_tokens=8000,
-                response_format={"type": "json_object"},
-                extra_body={"thinking": {"type": "disabled"}},
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": json.dumps({"part": index, "total_parts": len(chunks), "text": chunk}, ensure_ascii=False)},
-                ],
-            )
-            partials.append(decode_model_json(response, f"memo_part_{index}"))
-        if len(partials) == 1:
-            merged = partials[0]
-        else:
-            response = limited_create(client,
-                model="deepseek-flash", temperature=0, max_tokens=8000,
-                response_format={"type": "json_object"},
-                extra_body={"thinking": {"type": "disabled"}},
-                messages=[
-                    {"role": "system", "content": prompt + "现在合并分段纪要，合并重复观点，保留全部有效证据原文。"},
-                    {"role": "user", "content": json.dumps({"partial_memos": partials}, ensure_ascii=False)},
-                ],
-            )
-            merged = decode_model_json(response, "memo_merge")
+        from ai_run import MemoRun
+        from analysis_contracts import validate_memo
+        run=MemoRun(project_dir(project_id)/'memo_runs',dict(text=text,prompt=prompt,
+            baseline=starting_memo,model='deepseek-flash',temperature=0,max_tokens=8000,contract=1))
+        def stage(label,payload,source):
+            request=dict(
+                model='deepseek-flash',temperature=0,max_tokens=8000,
+                response_format={'type':'json_object'},extra_body={'thinking':{'type':'disabled'}},
+                messages=[{'role':'system','content':prompt+('现在合并分段纪要，合并重复观点，保留全部有效证据原文。' if label=='merge' else '')},
+                          {'role':'user','content':json.dumps(payload,ensure_ascii=False)}])
+            return run.call(label,lambda:client.chat.completions.create(**request),
+                lambda raw:validate_memo(raw,source),request=request)
+        partials=[stage(f'part-{index:03d}',dict(part=index,total_parts=len(chunks),text=chunk),chunk)
+                  for index,chunk in enumerate(chunks,1)]
+        merged=partials[0] if len(partials)==1 else stage('merge',dict(partial_memos=partials),text)
         from analysis_contracts import validate_memo
         validated_memo = validate_memo(merged, text)
         memo = {**validated_memo, "generated_at": time.time()}
@@ -1813,12 +1804,15 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
             data["familiarity_memo"] = memo
             data["updated_at"] = time.time()
             atomic_write_json(analysis_path(project_id), data)
-        return {"memo": memo, "_version": analysis_version(project_id)}
+        run.complete()
+        return {"run_id": run.id, "memo": memo, "_version": analysis_version(project_id)}
     except (SiteError, HTTPException):
+        if 'run' in locals():run.fail(__import__('sys').exc_info()[1])
         raise
     except Exception as exc:
+        if 'run' in locals():run.fail(exc)
         log_failure('backend_operation_failed', exc)
-        raise HTTPException(500, str(exc).replace(key, "***")[:500])
+        raise HTTPException(500, ("纪要未完成，已保留成功阶段。运行编号："+run.id+"。"+str(exc).replace(key, "***")[:300]) if "run" in locals() else str(exc).replace(key, "***")[:500])
 
 
 @app.post("/api/projects/{project_id}/familiarity-summary")
@@ -2190,6 +2184,16 @@ def save_theme_analysis(project_id: str, body: ThemeAnalysisSaveRequest):
     from review_storage import rehome
     new_analysis_id = uuid.uuid4().hex
     source_project = read_json_document(path)
+    if body.request_id:
+        if not re.fullmatch(r'[a-zA-Z0-9-]{8,80}',body.request_id):
+            raise HTTPException(400,'保存请求标识格式无效')
+        digest=hashlib.sha256(json.dumps(body.analysis,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+        previous=next((a for a in source_project.get('theme_analyses',[]) if a.get('_save_request_id')==body.request_id),None)
+        if previous:
+            if previous.get('_save_digest')!=digest:raise HTTPException(409,'该保存标识已用于不同内容，请刷新后重试')
+            return {'analysis':previous,'count':len(source_project['theme_analyses']),'reused':True}
+        analysis['_save_request_id']=body.request_id
+        analysis['_save_digest']=digest
     original_analysis = next((a for a in source_project.get('theme_analyses', []) if a.get('id') == analysis.get('id')), {})
     try:
         rehome(analysis, RESEARCH_FILES_DIR, project_id, new_analysis_id, original_analysis.get('finding_reviews', []))

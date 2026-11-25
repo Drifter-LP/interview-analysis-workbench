@@ -37,7 +37,14 @@ def _write_json(path, value):
     with file_lock(path):
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
-        temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+        try:
+            with temporary.open('w', encoding='utf-8', newline='') as stream:
+                json.dump(value, stream, ensure_ascii=False, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
         for attempt in range(len(RETRY_DELAYS) + 1):
             try:
                 os.replace(temporary, path)

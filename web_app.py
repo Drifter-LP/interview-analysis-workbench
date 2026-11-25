@@ -13,6 +13,8 @@ import webbrowser
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from functools import lru_cache
+from contextvars import copy_context
 from theme_file_io import read_json as read_theme_json
 from correction_speed import select_paragraphs, restore_paragraphs, RULES as PUNCTUATION_SCREEN_RULES
 
@@ -22,6 +24,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
 from interview_facts import limited_create
+from site_store import SiteError
+from backend_storage import atomic_write_json, atomic_write_text, read_json_document, locked_document, document_transaction
+from theme_file_io import file_lock
+from backend_observability import setup_request_tracking, request_id, log_event, log_failure
+from fastapi.responses import JSONResponse
 
 
 CODE_DIR = Path(__file__).resolve().parent
@@ -60,8 +67,49 @@ os.environ.setdefault("TEMP", str(APP_DIR / "temp"))
 os.environ.setdefault("TMP", str(APP_DIR / "temp"))
 
 app = FastAPI(title="访谈分析工作台")
+
+
+@app.exception_handler(SiteError)
+async def site_error_response(request, error):
+    log_failure('site_error', error, status=error.status)
+    return JSONResponse({'detail': str(error), 'request_id': request_id.get()}, status_code=error.status)
+
+
+@app.exception_handler(Exception)
+async def unexpected_error_response(request, error):
+    log_failure('unexpected_error', error)
+    ident = getattr(request.state, 'request_id', '') or request_id.get()
+    return JSONResponse({'detail': '处理失败，请联系管理员并提供请求编号',
+                         'request_id': ident}, status_code=500,
+                        headers={'X-Request-ID': ident})
+
+
+@app.exception_handler(HTTPException)
+async def http_error_response(request, error):
+    if error.status_code >= 500:
+        log_failure('http_operation_failed', error, status=error.status_code)
+    return JSONResponse({'detail': error.detail, 'request_id': request_id.get()},
+                        status_code=error.status_code, headers=error.headers)
+
+
+def decode_model_json(response, stage):
+    choice = response.choices[0]
+    if choice.finish_reason != 'stop':
+        log_event('model_output_incomplete', stage=stage, finish_reason=str(choice.finish_reason))
+        raise HTTPException(502, '模型输出未完整结束，本次未保存，请缩小材料范围后重试')
+    try:
+        value = json.loads(choice.message.content or '{}')
+        if not isinstance(value, dict):
+            raise ValueError('Expected a JSON object')
+        return value
+    except (ValueError, TypeError) as error:
+        log_failure('model_json_invalid', error, stage=stage)
+        raise HTTPException(502, '模型返回的数据格式不完整，本次未保存；请提供请求编号以便排查') from error
+
+
 from site_boundary import protect_worker
 protect_worker(app)
+setup_request_tracking(app, 'worker')
 app.mount("/assets", StaticFiles(directory=STATIC_DIR), name="assets")
 
 
@@ -85,13 +133,19 @@ def read_metadata(project_id: str) -> dict:
     path = metadata_path(project_id)
     if not path.exists():
         raise HTTPException(404, "项目不存在")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return read_json_document(path)
 
 
 def write_metadata(project_id: str, data: dict) -> None:
-    metadata_path(project_id).write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    atomic_write_json(metadata_path(project_id), data)
+
+
+def patch_metadata(project_id: str, **changes):
+    with document_transaction(metadata_path(project_id)):
+        meta = read_metadata(project_id)
+        meta.update(changes)
+        write_metadata(project_id, meta)
+        return meta
 
 
 def transcript_path(project_id: str) -> Path | None:
@@ -117,10 +171,7 @@ def read_analysis(project_id: str) -> dict:
     path = analysis_path(project_id)
     if not path.exists():
         return empty_analysis()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return empty_analysis()
+    data = read_json_document(path)
     for key, default in (("metadata", {}), ("sources", []), ("codes", []), ("excerpts", []), ("ai_suggestions", [])):
         data.setdefault(key, default)
     return data
@@ -248,10 +299,9 @@ def build_review_annotations(text: str, changes: list[dict]) -> list[dict]:
 def run_transcription(project_id: str, audio_path: Path, resume: bool = False) -> None:
     global active_project
     directory = project_dir(project_id)
-    meta = read_metadata(project_id)
-    meta.update(status="running", message="正在从检查点继续转录" if resume else "正在加载模型并转录")
-    meta['resumed_at' if resume else 'started_at']=time.time()
-    write_metadata(project_id, meta)
+    meta = patch_metadata(project_id, status="running",
+                          message="正在从检查点继续转录" if resume else "正在加载模型并转录",
+                          **{'resumed_at' if resume else 'started_at': time.time()})
     log_path = directory / "运行记录.txt"
     command = [
         str(PYTHON),
@@ -269,25 +319,23 @@ def run_transcription(project_id: str, audio_path: Path, resume: bool = False) -
             text=True,
             encoding="utf-8",
             errors="replace",
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         with log_path.open('a' if resume else 'w',encoding='utf8') as log:
             if resume:log.write('\n【从检查点继续转录】\n')
             log.write((completed.stdout or '')+'\n'+(completed.stderr or ''))
-        meta = read_metadata(project_id)
         if completed.returncode == 0:
-            meta.update(
+            patch_metadata(project_id,
                 status="completed",
                 finished_at=time.time(),
                 message="转录完成，可以校订和分析",
             )
         else:
-            meta.update(status="failed", message="转录失败，请查看运行记录")
-        write_metadata(project_id, meta)
+            patch_metadata(project_id, status="failed", message="转录失败，请查看运行记录")
+    except (SiteError, HTTPException):
+        raise
     except Exception as exc:
-        meta = read_metadata(project_id)
-        meta.update(status="failed", message=str(exc))
-        write_metadata(project_id, meta)
+        patch_metadata(project_id, status="failed", message=str(exc))
     finally:
         with active_lock:
             if active_project==project_id:active_project = None
@@ -407,7 +455,7 @@ def status():
     ready = PYTHON.exists() and TRANSCRIBER.exists() and (QWEN_MODEL / "config.json").exists()
     return {
         "ready": ready,
-        "gpu": "NVIDIA GeForce RTX 3050",
+        "gpu": gpu_name(),
         "model_count": 1 if ready else 0,
         "engine": "Qwen3-ASR-0.6B",
         "speaker_engine": "CAM++",
@@ -415,23 +463,46 @@ def status():
     }
 
 
+@lru_cache(maxsize=1)
+def gpu_name():
+    configured = os.environ.get('WORKBENCH_GPU_NAME', '').strip()
+    if configured:
+        return configured[:200]
+    try:
+        result = subprocess.run(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'],
+                                capture_output=True, text=True, timeout=1.5,
+                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        names = result.stdout.strip().splitlines() if result.returncode == 0 else []
+        return names[0][:200] if names else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 @app.get("/api/projects")
 def list_projects():
     PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
     from interview_names import normalize_names
-    normalize_names(PROJECTS_DIR, RESEARCH_PROJECTS_DIR, RESEARCH_FILES_DIR,
-                    APP_DIR / "backups", refresh_material_names)
+    try:
+        normalize_names(PROJECTS_DIR, RESEARCH_PROJECTS_DIR, RESEARCH_FILES_DIR,
+                        APP_DIR / "backups", refresh_material_names)
+    except (SiteError, OSError, ValueError) as error:
+        log_failure('name_normalization_failed', error)
+    return list_project_metadata()
+
+
+def list_project_metadata():
     projects = []
     for path in PROJECTS_DIR.iterdir():
         meta = path / "project.json"
         if path.is_dir() and meta.exists():
             try:
-                item = json.loads(meta.read_text(encoding="utf-8"))
+                item = read_json_document(meta)
                 from transcription_recovery import presentation
                 item=presentation(item,path,active_project)
                 item["hidden_in_library"] = bool(item.get("hidden_at") or item.get("deleted_at"))
                 projects.append(item)
-            except Exception:
+            except Exception as error:
+                log_failure('interview_listing_failed', error, file=meta.name)
                 continue
     return sorted(projects, key=lambda item: item.get("created_at", 0), reverse=True)
 
@@ -452,9 +523,10 @@ def delete_interview(project_id: str):
 @app.post("/api/projects/{project_id}/opened")
 def mark_interview_opened(project_id: str):
     with active_lock:
-        meta = read_metadata(project_id)
-        meta["last_opened_at"] = time.time()
-        write_metadata(project_id, meta)
+        with document_transaction(metadata_path(project_id)):
+            meta = read_metadata(project_id)
+            meta["last_opened_at"] = time.time()
+            write_metadata(project_id, meta)
     return {"last_opened_at": meta["last_opened_at"]}
 
 
@@ -465,7 +537,7 @@ class InterviewVisibilityRequest(BaseModel):
 @app.post("/api/projects/{project_id}/visibility")
 def set_interview_visibility(project_id: str, body: InterviewVisibilityRequest):
     """Visibility affects only the library, not material pickers or analysis."""
-    with active_lock:
+    with active_lock, document_transaction(metadata_path(project_id)):
         meta = read_metadata(project_id)
         if body.hidden and (active_project == project_id or meta.get("status") in {"queued", "running"}):
             raise HTTPException(409, "访谈正在转录，请完成后再隐藏")
@@ -474,13 +546,7 @@ def set_interview_visibility(project_id: str, body: InterviewVisibilityRequest):
             meta["hidden_at"] = time.time()
         else:
             meta.pop("hidden_at", None)
-        target = metadata_path(project_id)
-        temporary = target.with_name("project.delete-" + uuid.uuid4().hex + ".tmp")
-        try:
-            temporary.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-            temporary.replace(target)
-        finally:
-            temporary.unlink(missing_ok=True)
+        write_metadata(project_id, meta)
     return {"hidden": body.hidden, "recoverable": True}
 
 
@@ -504,30 +570,32 @@ def research_project_list(projects, summaries):
     items = []
     for path in RESEARCH_PROJECTS_DIR.glob("*.json"):
         try:
-            item = json.loads(path.read_text(encoding="utf-8"))
-            changed = False
-            from review_storage import refresh_display_names, project_listing
-            refresh_display_names(item, interview_names)
-            material_types = item.setdefault("material_types", {})
-            for interview_id in item.get("interview_ids", []):
-                if interview_id not in material_types:
-                    material_types[interview_id] = "interview"
-                    changed = True
-            for material in item.setdefault("uploaded_transcripts", []):
-                if "material_type" not in material:
-                    material["material_type"] = "interview"
-                    changed = True
-            item["interviews"] = [
-                {"id": interview_id, "name": interview_names.get(interview_id, interview_id), "material_type": material_types.get(interview_id, "interview")}
-                for interview_id in item.get("interview_ids", [])
-            ]
-            if changed:
-                path.write_text(json.dumps({key: value for key, value in item.items() if key != "interviews"}, ensure_ascii=False, indent=2), encoding="utf-8")
-            listed=project_listing(item)
-            if summaries:
-                listed['theme_analyses']=[{**{k:a[k] for k in ('id','name','theme','saved_at','created_at') if k in a},'_summary':True} for a in listed.get('theme_analyses',[])]
-            items.append(listed)
-        except Exception:
+            with document_transaction(path):
+                item = read_json_document(path)
+                changed = False
+                from review_storage import refresh_display_names, project_listing
+                refresh_display_names(item, interview_names)
+                material_types = item.setdefault("material_types", {})
+                for interview_id in item.get("interview_ids", []):
+                    if interview_id not in material_types:
+                        material_types[interview_id] = "interview"
+                        changed = True
+                for material in item.setdefault("uploaded_transcripts", []):
+                    if "material_type" not in material:
+                        material["material_type"] = "interview"
+                        changed = True
+                item["interviews"] = [
+                    {"id": interview_id, "name": interview_names.get(interview_id, interview_id), "material_type": material_types.get(interview_id, "interview")}
+                    for interview_id in item.get("interview_ids", [])
+                ]
+                if changed:
+                    atomic_write_json(path, {key: value for key, value in item.items() if key != "interviews"})
+                listed=project_listing(item)
+                if summaries:
+                    listed['theme_analyses']=[{**{k:a[k] for k in ('id','name','theme','saved_at','created_at') if k in a},'_summary':True} for a in listed.get('theme_analyses',[])]
+                items.append(listed)
+        except Exception as error:
+            log_failure('research_listing_failed', error, file=path.name)
             continue
     return sorted(items, key=lambda item: item.get("last_opened_at", item.get("created_at", 0)), reverse=True)
 
@@ -548,18 +616,19 @@ def theme_analysis_record(project_id: str, record_index: int):
     from review_storage import project_listing
     p=research_project_path(project_id)
     if not p.exists():raise HTTPException(404,'研究项目不存在')
-    records=json.loads(p.read_text(encoding='utf-8')).get('theme_analyses',[])
+    records=read_json_document(p).get('theme_analyses',[])
     if record_index<0 or record_index>=len(records):raise HTTPException(404,'分析记录不存在')
     return project_listing({'theme_analyses':[records[record_index]]})['theme_analyses'][0]
 
 @app.post("/api/research-projects/{project_id}/opened")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def mark_research_project_opened(project_id: str):
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    item = json.loads(path.read_text(encoding="utf-8"))
+    item = read_json_document(path)
     item["last_opened_at"] = time.time()
-    path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, item)
     return {"id": project_id}
 
 
@@ -592,29 +661,32 @@ def refresh_material_names(value, project_id: str, name: str) -> None:
 @app.put("/api/projects/{project_id}/name")
 def rename_interview(project_id: str, body: DisplayNameRequest):
     name = display_name(body.name)
-    meta = read_metadata(project_id)
-    meta["name"] = name
-    write_metadata(project_id, meta)
+    with document_transaction(metadata_path(project_id)):
+        meta = read_metadata(project_id)
+        meta["name"] = name
+        write_metadata(project_id, meta)
     for path in RESEARCH_PROJECTS_DIR.glob("*.json"):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        before = json.dumps(data, ensure_ascii=False)
-        refresh_material_names(data, project_id, name)
-        if json.dumps(data, ensure_ascii=False) != before:
-            path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        with document_transaction(path):
+            data = read_json_document(path)
+            before = json.dumps(data, ensure_ascii=False)
+            refresh_material_names(data, project_id, name)
+            if json.dumps(data, ensure_ascii=False) != before:
+                atomic_write_json(path, data)
     list_projects()
     return {"id": project_id, "name": read_metadata(project_id)["name"]}
 
 
 @app.put("/api/research-projects/{project_id}/name")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def rename_research_project(project_id: str, body: DisplayNameRequest):
     name = display_name(body.name)
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = read_json_document(path)
     data["name"] = name
     data["updated_at"] = time.time()
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, data)
     return {"id": project_id, "name": name}
 
 
@@ -624,23 +696,27 @@ def rename_uploaded_interview(project_id: str, material_index: int, body: Displa
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    data = json.loads(path.read_text(encoding="utf-8"))
-    uploads = data.get("uploaded_transcripts", [])
-    if not 0 <= material_index < len(uploads):
-        raise HTTPException(404, "访谈稿不存在")
-    material = uploads[material_index]
-    linked = material.get("workspace_project_id")
-    if linked and metadata_path(linked).exists():
+    with document_transaction(path):
+        data = read_json_document(path)
+        uploads = data.get("uploaded_transcripts", [])
+        if not 0 <= material_index < len(uploads):
+            raise HTTPException(404, "访谈稿不存在")
+        material = uploads[material_index]
+        linked = material.get("workspace_project_id")
+        if not (linked and metadata_path(linked).exists()):
+            material["name"] = name
+            data["updated_at"] = time.time()
+            atomic_write_json(path, data)
+            linked = None
+    if linked:
         return rename_interview(linked, body)
-    material["name"] = name
-    data["updated_at"] = time.time()
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     list_projects()
-    refreshed = json.loads(path.read_text(encoding="utf-8"))
+    refreshed = read_json_document(path)
     return {"name": refreshed["uploaded_transcripts"][material_index]["name"]}
 
 
 @app.delete("/api/research-projects/{project_id}")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def delete_research_project(project_id: str):
     path = research_project_path(project_id)
     if not path.exists():
@@ -655,11 +731,12 @@ def delete_research_project(project_id: str):
 
 
 @app.delete("/api/research-projects/{project_id}/materials/{material_type}/{material_key}")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def remove_research_material(project_id: str, material_type: str, material_key: str):
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    item = json.loads(path.read_text(encoding="utf-8"))
+    item = read_json_document(path)
     if material_type == "workspace":
         ids = item.get("interview_ids", [])
         if material_key not in ids:
@@ -687,7 +764,7 @@ def remove_research_material(project_id: str, material_type: str, material_key: 
     else:
         raise HTTPException(400, "资料类型无效")
     item["updated_at"] = time.time()
-    path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, item)
     return {"removed": True}
 
 
@@ -724,9 +801,7 @@ def create_research_project(
         "updated_at": now,
     }
     RESEARCH_PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
-    research_project_path(project_id).write_text(
-        json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    atomic_write_json(research_project_path(project_id), item)
     return item
 
 
@@ -745,12 +820,13 @@ def save_research_uploads(project_id: str, transcripts: list[UploadFile]) -> lis
         files_dir.mkdir(parents=True, exist_ok=True)
         base = safe_id(Path(upload.filename).stem)
         target = files_dir / f"{base}-{uuid.uuid4().hex[:6]}.txt"
-        target.write_text(text, encoding="utf-8-sig")
+        atomic_write_text(target, text, encoding="utf-8-sig")
         uploaded.append({"name": upload.filename, "file": target.name, "material_type": "interview"})
     return uploaded
 
 
 @app.post("/api/research-projects/{project_id}/materials")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def add_research_materials(
     project_id: str,
     interview_ids: str = Form("[]"),
@@ -765,27 +841,29 @@ def add_research_materials(
         raise HTTPException(400, "访谈稿选择无效") from exc
     if not isinstance(selected_ids, list):
         raise HTTPException(400, "访谈稿选择无效")
-    available = {item.get("id") for item in list_projects()}
+    # No display-name migration while holding a project transaction.
+    available = {item.get("id") for item in list_project_metadata()}
     selected_ids = list(dict.fromkeys(str(item) for item in selected_ids))
     if any(item not in available for item in selected_ids):
         raise HTTPException(400, "所选访谈稿不存在")
-    item = json.loads(path.read_text(encoding="utf-8"))
+    item = read_json_document(path)
     item["interview_ids"] = list(dict.fromkeys(item.get("interview_ids", []) + selected_ids))
     material_types = item.setdefault("material_types", {})
     for interview_id in selected_ids:
         material_types[interview_id] = "interview"
     item["uploaded_transcripts"] = item.get("uploaded_transcripts", []) + save_research_uploads(project_id, transcripts)
     item["updated_at"] = time.time()
-    path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, item)
     return item
 
 
 @app.post("/api/research-projects/{project_id}/uploaded/{material_index}/prepare")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def prepare_uploaded_research_material(project_id: str, material_index: int):
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    item = json.loads(path.read_text(encoding="utf-8"))
+    item = read_json_document(path)
     uploaded = item.get("uploaded_transcripts", [])
     if material_index < 0 or material_index >= len(uploaded):
         raise HTTPException(404, "访谈稿不存在")
@@ -815,7 +893,7 @@ def prepare_uploaded_research_material(project_id: str, material_index: int):
     })
     material["workspace_project_id"] = workspace_id
     item["updated_at"] = now
-    path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, item)
     return {"project_id": workspace_id}
 
 
@@ -856,6 +934,7 @@ def create_project(name: str = Form(""), audio: UploadFile = File(...)):
 
 
 @app.post("/api/demo-samples")
+@locked_document(lambda values: APP_DIR / '.demo-samples.lock')
 def load_demo_samples():
     """One-click loader for built-in concert interview sample with pre-verified memo & open coding."""
     import hashlib
@@ -881,7 +960,7 @@ def load_demo_samples():
     project_id = "demo-linmu-" + uuid.uuid4().hex[:6]
     directory = project_dir(project_id)
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "导入访谈稿.txt").write_text(text, encoding="utf-8-sig")
+    atomic_write_text(directory / "导入访谈稿.txt", text, encoding="utf-8-sig")
     meta = {
         "id": project_id,
         "name": "【示例演示】林沐 · 跨城看演唱会",
@@ -956,7 +1035,7 @@ def load_demo_samples():
         },
         "updated_at": now_ts,
     }
-    analysis_path(project_id).write_text(json.dumps(analysis_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(analysis_path(project_id), analysis_payload)
 
     # Pre-populate open coding suggestions for manual-coding.json and research project coding.json
     h = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -1061,40 +1140,43 @@ def load_demo_samples():
         "codes": built_codes,
         "updated_at": now_ts,
     }
-    (directory / "manual-coding.json").write_text(json.dumps(coding_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(directory / "manual-coding.json", coding_payload)
 
     # Also create or attach to a demo research project so logged-in users see it in Research Projects & AI Coding
     try:
-        demo_rp_id = "demo-concert-research"
-        rp_path = research_project_path(demo_rp_id)
-        if rp_path.exists():
-            rp_data = json.loads(rp_path.read_text(encoding="utf-8"))
-            if project_id not in rp_data.get("interview_ids", []):
-                rp_data.setdefault("interview_ids", []).insert(0, project_id)
-            rp_data["last_opened_at"] = now_ts
-        else:
-            rp_data = {
-                "id": demo_rp_id,
-                "name": "【示例项目】跨城看演唱会消费体验研究",
-                "created_at": now_ts,
-                "last_opened_at": now_ts,
-                "interview_ids": [project_id],
-                "uploaded_transcripts": [],
-                "material_comparisons": [],
-                "theme_analyses": [],
-            }
-        rp_path.write_text(json.dumps(rp_data, ensure_ascii=False, indent=2), encoding="utf-8")
-        ai_coding_dir = (
-            RESEARCH_FILES_DIR
-            / "_ai_coding_demo"
-            / hashlib.sha256(demo_rp_id.encode("utf-8")).hexdigest()
-            / hashlib.sha256(project_id.encode("utf-8")).hexdigest()
-        )
-        ai_coding_dir.mkdir(parents=True, exist_ok=True)
-        rp_coding_payload = {**coding_payload, "project_id": demo_rp_id}
-        (ai_coding_dir / "coding.json").write_text(json.dumps(rp_coding_payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+        with document_transaction(research_project_path('demo-concert-research')):
+            demo_rp_id = "demo-concert-research"
+            rp_path = research_project_path(demo_rp_id)
+            if rp_path.exists():
+                rp_data = read_json_document(rp_path)
+                if project_id not in rp_data.get("interview_ids", []):
+                    rp_data.setdefault("interview_ids", []).insert(0, project_id)
+                rp_data["last_opened_at"] = now_ts
+            else:
+                rp_data = {
+                    "id": demo_rp_id,
+                    "name": "【示例项目】跨城看演唱会消费体验研究",
+                    "created_at": now_ts,
+                    "last_opened_at": now_ts,
+                    "interview_ids": [project_id],
+                    "uploaded_transcripts": [],
+                    "material_comparisons": [],
+                    "theme_analyses": [],
+                }
+            atomic_write_json(rp_path, rp_data)
+            ai_coding_dir = (
+                RESEARCH_FILES_DIR
+                / "_ai_coding_demo"
+                / hashlib.sha256(demo_rp_id.encode("utf-8")).hexdigest()
+                / hashlib.sha256(project_id.encode("utf-8")).hexdigest()
+            )
+            ai_coding_dir.mkdir(parents=True, exist_ok=True)
+            rp_coding_payload = {**coding_payload, "project_id": demo_rp_id}
+            atomic_write_json(ai_coding_dir / "coding.json", rp_coding_payload)
+    except (SiteError, HTTPException):
+        raise
+    except Exception as error:
+        log_failure('demo_research_link_failed', error)
 
     return {"loaded": True, "project": meta, "message": "已载入示例访谈（含预置纪要与编码建议）"}
 
@@ -1106,7 +1188,7 @@ def create_transcript_project(name: str = Form(""), transcript: UploadFile = Fil
         raise HTTPException(400, "访谈稿内容为空")
     project_id = safe_id(name or Path(transcript.filename or "访谈稿").stem) + "-" + uuid.uuid4().hex[:6]
     directory = project_dir(project_id); directory.mkdir(parents=True)
-    (directory / "导入访谈稿.txt").write_text(text, encoding="utf-8-sig")
+    atomic_write_text(directory / "导入访谈稿.txt", text, encoding="utf-8-sig")
     meta = {
         "id": project_id, "name": name.strip() or Path(transcript.filename or "访谈稿").stem,
         "audio_name": transcript.filename, "source_type": "transcript", "created_at": time.time(),
@@ -1162,8 +1244,8 @@ def get_transcription_progress(project_id: str):
     directory = project_dir(project_id)
     progress_path = directory / "转录进度.json"
     checkpoint_path = directory / "转录检查点.json"
-    progress = json.loads(progress_path.read_text(encoding="utf-8")) if progress_path.exists() else {}
-    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8")) if checkpoint_path.exists() else {}
+    progress = read_json_document(progress_path) if progress_path.exists() else {}
+    checkpoint = read_json_document(checkpoint_path) if checkpoint_path.exists() else {}
     from transcription_recovery import presentation
     state=presentation({**meta,'id':project_id},directory,active_project)
     return {**progress, 'status':state['status'], "task_status": state['status'], 'resume_available':state['resume_available'],
@@ -1175,6 +1257,7 @@ def get_transcription_progress(project_id: str):
 
 
 @app.get("/api/projects/{project_id}/transcript")
+@locked_document(lambda values: project_dir(values['project_id']) / 'DeepSeek修改记录.json')
 def get_transcript(project_id: str):
     path = transcript_path(project_id)
     if not path:
@@ -1184,11 +1267,11 @@ def get_transcript(project_id: str):
     record_path = project_dir(project_id) / "DeepSeek修改记录.json"
     if path.name in {"DeepSeek自动校订稿.txt", "校订稿.txt"} and record_path.exists():
         try:
-            record = json.loads(record_path.read_text(encoding="utf-8"))
+            record = read_json_document(record_path)
             annotations = record.get("annotations") if "annotations" in record else build_review_annotations(text, record.get("changes", []))
             if "annotations" not in record:
                 record["annotations"] = annotations
-                record_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+                atomic_write_json(record_path, record)
         except (OSError, ValueError, TypeError):
             annotations = []
     return {"text": text, "edited": path.name in {"校订稿.txt", "DeepSeek自动校订稿.txt"}, "annotations": annotations}
@@ -1218,11 +1301,12 @@ def get_source_audio(project_id: str):
 
 
 @app.post("/api/projects/{project_id}/changes/accept")
+@locked_document(lambda values: project_dir(values['project_id']) / 'DeepSeek修改记录.json')
 def accept_transcript_change(project_id: str, body: ChangeDecision):
     record_path = project_dir(project_id) / "DeepSeek修改记录.json"
     if not record_path.exists():
         raise HTTPException(404, "修改记录不存在")
-    record = json.loads(record_path.read_text(encoding="utf-8"))
+    record = read_json_document(record_path)
     found = False
     for item in record.get("annotations", []):
         if item.get("change_id") == body.change_id:
@@ -1234,11 +1318,12 @@ def accept_transcript_change(project_id: str, body: ChangeDecision):
             item["accepted"] = True
     if not found:
         raise HTTPException(404, "没有找到这条修改")
-    record_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(record_path, record)
     return {"accepted": True}
 
 
 @app.put("/api/projects/{project_id}/transcript")
+@locked_document(lambda values: project_dir(values['project_id']) / 'DeepSeek修改记录.json')
 def save_transcript(project_id: str, body: TranscriptUpdate):
     directory = project_dir(project_id)
     if not directory.exists():
@@ -1248,7 +1333,7 @@ def save_transcript(project_id: str, body: TranscriptUpdate):
     if record_path.exists():
         from transcript_review import save_decisions
         from theme_file_io import write_json
-        record = json.loads(record_path.read_text(encoding="utf-8"))
+        record = read_json_document(record_path)
         previous = transcript_path(project_id)
         old_text = previous.read_text(encoding='utf-8-sig') if previous else ''
         try:
@@ -1257,10 +1342,8 @@ def save_transcript(project_id: str, body: TranscriptUpdate):
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
         write_json(record_path, record)
-    target.write_text(body.text, encoding="utf-8-sig")
-    meta = read_metadata(project_id)
-    meta["edited_at"] = time.time()
-    write_metadata(project_id, meta)
+    atomic_write_text(target, body.text, encoding="utf-8-sig")
+    patch_metadata(project_id, edited_at=time.time())
     return {"saved": True}
 
 
@@ -1286,7 +1369,7 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
     manual_hash = hashlib.sha256(manual_path.read_bytes()).hexdigest() if manual_path.exists() else None
 
     def write_call_log(data: dict) -> None:
-        entry = {"run_id": run_id, "logged_at": time.time(), **data}
+        entry = {"run_id": run_id, "logged_at": time.time(), **data, "request_id": request_id.get()}
         with result_lock, log_path.open("a", encoding="utf-8") as log_file:
             log_file.write(json.dumps(entry, ensure_ascii=False) + "\n")
     text = path.read_text(encoding="utf-8-sig")
@@ -1315,8 +1398,8 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
     local_target = directory / '本地自动整理稿.txt'
     if path.resolve() == local_target.resolve():
         local_target = raw_dir / '本地整理输入快照.txt'
-    local_target.write_text(local_output, encoding="utf-8-sig")
-    (directory / "本地自动整理修改记录.json").write_text(json.dumps({"created_at": time.time(), "counts": local_counts, "units": local_records}, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_text(local_target, local_output, encoding="utf-8-sig")
+    atomic_write_json(directory / "本地自动整理修改记录.json", {"created_at": time.time(), "counts": local_counts, "units": local_records})
 
     def make_chunks(source_units: list[dict], max_chars: int = 8500) -> list[list[dict]]:
         result, current, size = [], [], 0
@@ -1454,7 +1537,7 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
                     )
                     raw_content = response.choices[0].message.content or "{}"
                     raw_name = re.sub(r"[^0-9A-Za-z_-]+", "-", label)
-                    (raw_dir / f"{stage}-{raw_name}.json").write_text(raw_content, encoding="utf-8")
+                    atomic_write_text(raw_dir / f"{stage}-{raw_name}.json", raw_content, encoding="utf-8")
                     parsed = json.loads(raw_content)
                     if getattr(response.choices[0], 'finish_reason', None) == 'length':
                         raise RuntimeError('模型返回因长度限制截断')
@@ -1479,7 +1562,7 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
                     save_checkpoint(stage, label, "completed", chunk, revised_chunk, batch_records)
                     usage = response.usage.model_dump() if getattr(response, "usage", None) else {}
                     finish_reason = getattr(response.choices[0], "finish_reason", None)
-                    write_call_log({"event": "batch_completed", "stage": stage, "batch": label, "request_id": getattr(response, "id", None), "model": getattr(response, "model", None), "finish_reason": finish_reason, "response_chars": len(raw_content), "elapsed_seconds": round(time.time() - started_at, 3), "unit_count": len(chunk), "applied_change_count": applied_count, "usage": usage})
+                    write_call_log({"event": "batch_completed", "stage": stage, "batch": label, "provider_request_id": getattr(response, "id", None), "model": getattr(response, "model", None), "finish_reason": finish_reason, "response_chars": len(raw_content), "elapsed_seconds": round(time.time() - started_at, 3), "unit_count": len(chunk), "applied_change_count": applied_count, "usage": usage})
                     return revised_chunk
                 except (json.JSONDecodeError, RuntimeError) as batch_exc:
                     error_text = str(batch_exc).replace(key, "***")[:1000]
@@ -1495,6 +1578,8 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
                     save_checkpoint(stage, label, "failed", chunk, error=error_text)
                     failed_batches.append({"stage": stage, "batch": label, "unit_ids": [item["unit_id"] for item in chunk], "error": error_text})
                     return [dict(item) for item in chunk]
+                except (SiteError, HTTPException):
+                    raise
                 except Exception as batch_exc:
                     error_text = str(batch_exc).replace(key, "***")[:1000]
                     write_call_log({"event": "batch_failed", "stage": stage, "batch": label, "elapsed_seconds": round(time.time() - started_at, 3), "error": error_text})
@@ -1510,7 +1595,7 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
 
             batches = make_chunks(source_units,max_chars)
             with ThreadPoolExecutor(max_workers=2) as pool:
-                futures=[pool.submit(process_chunk,chunk,f'第{i:03d}批') for i,chunk in enumerate(batches,1)]
+                futures=[pool.submit(copy_context().run,process_chunk,chunk,f'第{i:03d}批') for i,chunk in enumerate(batches,1)]
                 # Collect in original order, not completion order.
                 revised_units=[unit for future in futures for unit in future.result()]
             return revised_units
@@ -1520,7 +1605,7 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
             candidates,mapping,skipped = select_paragraphs(revised)
             write_call_log({'event':'punctuation_selection','selected_paragraphs':len(candidates),
                             'skipped_paragraphs':skipped,'rules':PUNCTUATION_SCREEN_RULES})
-            (checkpoint_dir/'punctuation-selection.json').write_text(json.dumps({'mapping':mapping,'skipped':skipped},ensure_ascii=False,indent=2),encoding='utf8')
+            atomic_write_json(checkpoint_dir/'punctuation-selection.json', {'mapping':mapping,'skipped':skipped})
             checked = run_stage(candidates,'punctuation',punctuation_rules)
             revised = restore_paragraphs(revised,checked,mapping)
         else:
@@ -1529,20 +1614,23 @@ def optimize_transcript(project_id: str, punctuation_mode: str = "filtered"):
         output = "\n\n".join((f"{item['speaker']}：" if item["speaker"] else "") + item["text"] for item in revised)
         if hashlib.sha256(path.read_bytes()).hexdigest()!=input_hash or (hashlib.sha256(manual_path.read_bytes()).hexdigest() if manual_path.exists() else None)!=manual_hash:
             raise RuntimeError('运行期间原稿或人工校订稿已改变，结果仅保存在检查点，未覆盖当前稿件')
-        (project_dir(project_id) / "DeepSeek自动校订稿.txt").write_text(output, encoding="utf-8-sig")
+        atomic_write_text(project_dir(project_id) / "DeepSeek自动校订稿.txt", output, encoding="utf-8-sig")
         annotations = build_review_annotations(output, all_records)
-        (directory / "DeepSeek修改记录.json").write_text(json.dumps({"run_id": run_id, "changes": all_records, "annotations": annotations, "failed_batches": failed_batches}, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(directory / "DeepSeek修改记录.json", {"run_id": run_id, "changes": all_records, "annotations": annotations, "failed_batches": failed_batches})
         applied_total = sum(bool(item.get("applied")) for item in all_records)
         skipped_total = len(all_records) - applied_total
         write_call_log({"event": "run_completed", "applied_change_count": applied_total, "skipped_change_count": skipped_total, "failed_batch_count": len(failed_batches), "failed_batches": failed_batches, "changed_unit_count": sum(item["text"] != source["text"] for item, source in zip(revised, units))})
         checkpoint_manifest["finished_at"] = time.time()
         checkpoint_manifest["failed_batches"] = failed_batches
-        (checkpoint_dir / "manifest.json").write_text(json.dumps(checkpoint_manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-        meta = read_metadata(project_id); meta["ai_edited_at"] = time.time(); meta["ai_run_id"] = run_id; meta["ai_key_fingerprint"] = key_fingerprint; meta["ai_partial"] = bool(failed_batches); write_metadata(project_id, meta)
+        atomic_write_json(checkpoint_dir / "manifest.json", checkpoint_manifest)
+        patch_metadata(project_id, ai_edited_at=time.time(), ai_run_id=run_id,
+                       ai_key_fingerprint=key_fingerprint, ai_partial=bool(failed_batches))
         message = f"AI修订完成：应用 {applied_total} 处，跳过 {skipped_total} 处"
         if failed_batches:
             message += f"；{len(failed_batches)} 个子批次未完成，已保留其他批次结果"
         return {"text": output, "annotations": annotations, "failed_batches": failed_batches, "message": message}
+    except (SiteError, HTTPException):
+        raise
     except Exception as exc:
         write_call_log({"event": "run_failed", "error": str(exc).replace(key, "***")[:1000]})
         raise HTTPException(500, str(exc).replace(key, "***")[:500])
@@ -1590,13 +1678,16 @@ def get_analysis_workspace(project_id: str):
 
 
 @app.put("/api/projects/{project_id}/analysis-workspace")
+@locked_document(lambda values: analysis_path(values['project_id']))
 def save_analysis_workspace(project_id: str, body: AnalysisUpdate):
     read_metadata(project_id)
+    # A valid client payload must not silently overwrite damaged stored results.
+    read_analysis(project_id)
     data = body.data
     for key, default in (("metadata", {}), ("sources", []), ("codes", []), ("excerpts", []), ("ai_suggestions", [])):
         data.setdefault(key, default)
     data["updated_at"] = time.time()
-    analysis_path(project_id).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(analysis_path(project_id), data)
     return {"saved": True, "updated_at": data["updated_at"]}
 
 
@@ -1624,12 +1715,16 @@ def coding_suggestions(project_id: str, body: CodingRequest):
             return json.loads(response.choices[0].message.content or "{}")
         existing = read_analysis(project_id).get("codes", [])
         return generate_initial_codes(text, body.research_question, existing, project_id, call)
+    except (SiteError, HTTPException):
+        raise
     except Exception as exc:
+        log_failure('backend_operation_failed', exc)
         raise HTTPException(500, str(exc).replace(key, "***")[:500])
 
 
 @app.post("/api/projects/{project_id}/familiarity-memo")
 def generate_familiarity_memo(project_id: str, body: MemoRequest):
+    starting_memo = read_analysis(project_id).get('familiarity_memo')
     path = transcript_path(project_id)
     if not path:
         raise HTTPException(404, "没有找到访谈稿")
@@ -1675,7 +1770,7 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
                     {"role": "user", "content": json.dumps({"part": index, "total_parts": len(chunks), "text": chunk}, ensure_ascii=False)},
                 ],
             )
-            partials.append(json.loads(response.choices[0].message.content or "{}"))
+            partials.append(decode_model_json(response, f"memo_part_{index}"))
         if len(partials) == 1:
             merged = partials[0]
         else:
@@ -1688,7 +1783,7 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
                     {"role": "user", "content": json.dumps({"partial_memos": partials}, ensure_ascii=False)},
                 ],
             )
-            merged = json.loads(response.choices[0].message.content or "{}")
+            merged = decode_model_json(response, "memo_merge")
         evidence_items = []
         evidence_lookup = {}
 
@@ -1726,12 +1821,21 @@ def generate_familiarity_memo(project_id: str, body: MemoRequest):
             "evidence": evidence_items,
             "generated_at": time.time(),
         }
-        data = read_analysis(project_id)
-        data["familiarity_memo"] = memo
-        data["updated_at"] = time.time()
-        analysis_path(project_id).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        with document_transaction(analysis_path(project_id)):
+            data = read_analysis(project_id)
+            if data.get('familiarity_memo') != starting_memo:
+                raise HTTPException(409, '生成期间纪要已被修改，本次结果未覆盖，请刷新后确认')
+            current_source = transcript_path(project_id)
+            if not current_source or current_source.read_text(encoding='utf-8-sig') != text:
+                raise HTTPException(409, '生成期间访谈稿已修改，本次结果未覆盖，请刷新后确认')
+            data["familiarity_memo"] = memo
+            data["updated_at"] = time.time()
+            atomic_write_json(analysis_path(project_id), data)
         return {"memo": memo}
+    except (SiteError, HTTPException):
+        raise
     except Exception as exc:
+        log_failure('backend_operation_failed', exc)
         raise HTTPException(500, str(exc).replace(key, "***")[:500])
 
 
@@ -1755,16 +1859,21 @@ def generate_familiarity_summary(project_id: str):
                 {"role": "user", "content": json.dumps({"participant_identity": memo.get("participant_identity"), "interview_topic": memo.get("interview_topic"), "viewpoints": memo.get("viewpoints", [])}, ensure_ascii=False)},
             ],
         )
-        summary = str(json.loads(response.choices[0].message.content or "{}").get("summary", "")).strip()
+        summary = str(decode_model_json(response, "memo_summary").get("summary", "")).strip()
         if not summary:
             raise HTTPException(502, "未生成有效摘要")
-        memo["summary"] = summary
-        data["updated_at"] = time.time()
-        analysis_path(project_id).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        with document_transaction(analysis_path(project_id)):
+            latest = read_analysis(project_id)
+            if latest.get('familiarity_memo') != memo:
+                raise HTTPException(409, '生成期间纪要已被修改，本次摘要未覆盖，请刷新后确认')
+            latest['familiarity_memo']['summary'] = summary
+            latest['updated_at'] = time.time()
+            atomic_write_json(analysis_path(project_id), latest)
         return {"summary": summary}
-    except HTTPException:
+    except (SiteError, HTTPException):
         raise
     except Exception as exc:
+        log_failure('backend_operation_failed', exc)
         raise HTTPException(500, str(exc).replace(key, "***")[:500])
 
 
@@ -1891,7 +2000,7 @@ def merge_question_comparison_batches(raw, batch_results, materials, theme, dime
 @app.post("/api/material-comparisons")
 def generate_material_comparison(body: MaterialComparisonRequest):
     if body.theme_analysis_id:
-        research=json.loads(research_project_path(body.research_project_id).read_text(encoding='utf-8'))
+        research=read_json_document(research_project_path(body.research_project_id))
         analysis=next((a for a in research.get('theme_analyses',[]) if a.get('id')==body.theme_analysis_id),None)
         if not analysis:raise HTTPException(404,'主题分析记录不存在')
         if analysis.get('theme')!=body.theme or set(body.project_ids)!={m['project_id'] for m in analysis.get('materials',[])}:raise HTTPException(400,'比较主题与材料不匹配')
@@ -1905,7 +2014,11 @@ def generate_material_comparison(body: MaterialComparisonRequest):
             if response.choices[0].finish_reason!='stop':raise ValueError('比较输出不完整')
             return json.loads(response.choices[0].message.content)
         try:return {'comparison':generate(analysis,statement_call)}
-        except Exception as exc:raise HTTPException(502,str(exc).replace(key,'***')[:400])
+        except (SiteError, HTTPException):
+            raise
+        except Exception as exc:
+            log_failure('material_comparison_failed', exc)
+            raise HTTPException(502,str(exc).replace(key,'***')[:400])
     theme = body.theme.strip()
     dimensions = list(dict.fromkeys(str(name).strip()[:80] for name in body.dimensions if str(name).strip()))[:20]
     if not theme or len(theme) > 300:
@@ -1917,7 +2030,7 @@ def generate_material_comparison(body: MaterialComparisonRequest):
         path = research_project_path(body.research_project_id)
         if not path.exists():
             raise HTTPException(404, "研究项目不存在")
-        research = json.loads(path.read_text(encoding="utf-8"))
+        research = read_json_document(path)
         allowed = set(research.get("interview_ids", [])) | {
             str(item.get("workspace_project_id")) for item in research.get("uploaded_transcripts", []) if item.get("workspace_project_id")
         }
@@ -2026,9 +2139,10 @@ def generate_material_comparison(body: MaterialComparisonRequest):
             batches = [compare_batch(materials[index:index + 2]) for index in range(0, len(materials), 2)]
             comparison = merge_batches(batches, materials)
         return {"comparison": comparison}
-    except HTTPException:
+    except (SiteError, HTTPException):
         raise
     except Exception as exc:
+        log_failure('backend_operation_failed', exc)
         raise HTTPException(500, str(exc).replace(key, "***")[:500])
 
 
@@ -2065,6 +2179,7 @@ def latest_theme_run_status(project_id: str, request_token: str = ""):
 
 
 @app.post("/api/research-projects/{project_id}/theme-analyses")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def save_theme_analysis(project_id: str, body: ThemeAnalysisSaveRequest):
     path = research_project_path(project_id)
     if not path.exists():
@@ -2078,7 +2193,7 @@ def save_theme_analysis(project_id: str, body: ThemeAnalysisSaveRequest):
     analysis["name"] = name
     from review_storage import rehome
     new_analysis_id = uuid.uuid4().hex
-    source_project = json.loads(path.read_text(encoding='utf-8'))
+    source_project = read_json_document(path)
     original_analysis = next((a for a in source_project.get('theme_analyses', []) if a.get('id') == analysis.get('id')), {})
     try:
         rehome(analysis, RESEARCH_FILES_DIR, project_id, new_analysis_id, original_analysis.get('finding_reviews', []))
@@ -2086,20 +2201,21 @@ def save_theme_analysis(project_id: str, body: ThemeAnalysisSaveRequest):
         raise HTTPException(409, '核查档案未能完整复制，分析尚未保存') from exc
     analysis["id"] = new_analysis_id
     analysis["saved_at"] = time.time()
-    research = json.loads(path.read_text(encoding="utf-8"))
+    research = read_json_document(path)
     records = research.setdefault("theme_analyses", [])
     records.append(analysis)
     research["updated_at"] = analysis["saved_at"]
-    path.write_text(json.dumps(research, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, research)
     return {"analysis": analysis, "count": len(records)}
 
 
 @app.put("/api/research-projects/{project_id}/theme-analyses/{analysis_id}/comparison")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def save_theme_comparison(project_id: str, analysis_id: str, body: MaterialComparisonSaveRequest):
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    research = json.loads(path.read_text(encoding="utf-8"))
+    research = read_json_document(path)
     record = next((item for item in research.get("theme_analyses", []) if item.get("id") == analysis_id), None)
     if record is None:
         raise HTTPException(404, "主题分析记录不存在")
@@ -2113,11 +2229,12 @@ def save_theme_comparison(project_id: str, analysis_id: str, body: MaterialCompa
     record["comparison"] = comparison
     record["updated_at"] = time.time()
     research["updated_at"] = record["updated_at"]
-    path.write_text(json.dumps(research, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, research)
     return {"analysis": record}
 
 
 @app.post("/api/research-projects/{project_id}/material-comparisons")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def save_material_comparison(project_id: str, body: MaterialComparisonSaveRequest):
     path = research_project_path(project_id)
     if not path.exists():
@@ -2131,15 +2248,16 @@ def save_material_comparison(project_id: str, body: MaterialComparisonSaveReques
         raise HTTPException(400, "没有可保存的比较结果")
     comparison["id"] = comparison.get("id") or uuid.uuid4().hex
     comparison["saved_at"] = time.time()
-    research = json.loads(path.read_text(encoding="utf-8"))
+    research = read_json_document(path)
     records = research.setdefault("material_comparisons", [])
     records.append(comparison)
     research["updated_at"] = comparison["saved_at"]
-    path.write_text(json.dumps(research, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, research)
     return {"comparison": comparison, "count": len(records)}
 
 
 @app.put("/api/research-projects/{project_id}/material-comparisons/{record_index}")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def rename_material_comparison(project_id: str, record_index: int, body: MaterialComparisonRenameRequest):
     path = research_project_path(project_id)
     if not path.exists():
@@ -2147,31 +2265,32 @@ def rename_material_comparison(project_id: str, record_index: int, body: Materia
     name = body.name.strip()
     if not name:
         raise HTTPException(400, "请填写比较结果名称")
-    research = json.loads(path.read_text(encoding="utf-8"))
+    research = read_json_document(path)
     records = research.get("material_comparisons", [])
     if record_index < 0 or record_index >= len(records):
         raise HTTPException(404, "比较记录不存在")
     records[record_index]["name"] = name[:80]
     research["updated_at"] = time.time()
-    path.write_text(json.dumps(research, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, research)
     return {"comparison": records[record_index]}
 
 
 @app.delete("/api/research-projects/{project_id}/material-comparisons/{record_index}")
+@locked_document(lambda values: research_project_path(values['project_id']))
 def delete_material_comparison(project_id: str, record_index: int):
     path = research_project_path(project_id)
     if not path.exists():
         raise HTTPException(404, "研究项目不存在")
-    research = json.loads(path.read_text(encoding="utf-8"))
+    research = read_json_document(path)
     records = research.get("material_comparisons", [])
     if record_index < 0 or record_index >= len(records):
         raise HTTPException(404, "比较记录不存在")
     removed = records.pop(record_index)
     archive = RESEARCH_FILES_DIR / project_id / "deleted_comparisons"
     archive.mkdir(parents=True, exist_ok=True)
-    (archive / f"{uuid.uuid4().hex}.json").write_text(json.dumps(removed, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(archive / f"{uuid.uuid4().hex}.json", removed)
     research["updated_at"] = time.time()
-    path.write_text(json.dumps(research, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, research)
     return {"deleted": True, "count": len(records)}
 
 
@@ -2185,7 +2304,7 @@ def comparison():
         data = read_analysis(directory.name)
         if not data.get("excerpts"):
             continue
-        meta = json.loads(meta_path.read_text(encoding="utf-8")); code_map = {item.get("id"): item.get("name", "") for item in data.get("codes", [])}; counts = {}
+        meta = read_json_document(meta_path); code_map = {item.get("id"): item.get("name", "") for item in data.get("codes", [])}; counts = {}
         for excerpt in data.get("excerpts", []):
             name = code_map.get(excerpt.get("code_id"), "")
             if name:

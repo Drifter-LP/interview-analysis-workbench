@@ -6,6 +6,9 @@ import time
 import uuid
 from functools import lru_cache
 from pathlib import Path
+from backend_storage import read_json_document, atomic_write_json, document_transaction
+from backend_observability import log_failure
+from site_store import SiteError
 
 _lock = threading.RLock()
 
@@ -51,15 +54,28 @@ def assignments(records):
 def normalize_names(projects_dir, research_dir, files_dir, archive_root, refresh_names):
     with _lock:
         documents, workspaces, memberships, records = {}, {}, {}, []
+        originals = {}
         for path in Path(projects_dir).glob('*/project.json'):
             if path.parent.is_symlink():
                 continue
-            data = json.loads(path.read_text(encoding='utf-8'))
+            try:
+                with document_transaction(path):
+                    data = read_json_document(path)
+                    originals[path] = path.read_text(encoding='utf-8')
+            except (SiteError, OSError) as error:
+                log_failure('name_source_corrupt', error, file=path.name)
+                continue
             documents[path] = data
             workspaces[data['id']] = (path, data)
         research = {}
         for path in Path(research_dir).glob('*.json'):
-            data = json.loads(path.read_text(encoding='utf-8'))
+            try:
+                with document_transaction(path):
+                    data = read_json_document(path)
+                    originals[path] = path.read_text(encoding='utf-8')
+            except (SiteError, OSError) as error:
+                log_failure('name_source_corrupt', error, file=path.name)
+                continue
             documents[path] = data
             research[path] = data
             for key in data.get('interview_ids', []):
@@ -88,7 +104,6 @@ def normalize_names(projects_dir, research_dir, files_dir, archive_root, refresh
         renamed = assignments(records)
         if not renamed:
             return {}
-        originals = {p: p.read_text(encoding='utf-8') for p in documents}
         for key, (path, data) in workspaces.items():
             if 'w:' + key in renamed:
                 data['name'] = renamed['w:' + key]
@@ -101,16 +116,19 @@ def normalize_names(projects_dir, research_dir, files_dir, archive_root, refresh
         changes = {p: json.dumps(d, ensure_ascii=False, indent=2) for p,d in documents.items() if json.loads(originals[p]) != d}
         backup = Path(archive_root) / ('names-' + time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:8])
         backup.mkdir(parents=True)
-        (backup / 'originals.json').write_text(json.dumps({str(p): originals[p] for p in changes}, ensure_ascii=False), encoding='utf-8')
+        atomic_write_json(backup / 'originals.json', {str(p): originals[p] for p in changes})
         completed = []
         try:
             for path, text in changes.items():
-                temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
-                temporary.write_text(text, encoding='utf-8')
-                temporary.replace(path)
+                with document_transaction(path):
+                    if path.read_text(encoding='utf-8') != originals[path]:
+                        raise SiteError('资料正在更新，名称整理已停止，请刷新后重试', 409)
+                    atomic_write_json(path, json.loads(text))
                 completed.append(path)
         except Exception:
             for path in completed:
-                path.write_text(originals[path], encoding='utf-8')
+                with document_transaction(path):
+                    if path.read_text(encoding='utf-8') == changes[path]:
+                        atomic_write_json(path, json.loads(originals[path]))
             raise
         return renamed

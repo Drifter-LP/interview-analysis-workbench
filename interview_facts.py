@@ -3,6 +3,7 @@ import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from pathlib import Path
 from raw_theme_source import original_evidence, material_chunks
 
@@ -40,7 +41,8 @@ def limited_create(client, **kwargs):
 
 def ordered_parallel(function, values):
     with ThreadPoolExecutor(max_workers=2) as pool:
-        return list(pool.map(function, values))
+        futures = [pool.submit(copy_context().run, function, value) for value in values]
+        return [future.result() for future in futures]
 
 
 def atomic_json(path, value):

@@ -7,6 +7,7 @@ import json
 import os
 import re
 import socket
+import sqlite3
 import subprocess
 import sys
 import time
@@ -24,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 from site_store import Store, SiteError
 from site_boundary import is_audio_request
+from backend_observability import request_id, setup_request_tracking, log_failure, log_event
 
 ROOT = Path(__file__).resolve().parent
 HOME = Path(os.environ.get('SITE_HOME', str(ROOT / '.site-data'))).resolve()
@@ -292,11 +294,11 @@ async def security(request, call_next):
     try:
         if request.headers.get('host') != urlsplit(ORIGIN).netloc:
             raise SiteError('访问地址不正确', 400)
-        user = store.session(request.cookies.get(COOKIE, ''))
+        user = None if request.url.path == '/health' else store.session(request.cookies.get(COOKIE, ''))
         request.state.user = user
         if user and user['id'] in transferring:
             raise SiteError('资料正在保留到账号，请稍后刷新', 409)
-        public = request.url.path in ('/account', '/auth/login', '/auth/redeem', '/auth/reset-password', '/auth/guest', '/health')
+        public = request.url.path in ('/account', '/auth/login', '/auth/redeem', '/auth/reset-password', '/auth/guest', '/auth/logout', '/health')
         if not public and not user:
             response = HTMLResponse('<script>location.replace("/account")</script>', status_code=401) if request.url.path == '/' else JSONResponse({'detail': '请先登录'}, status_code=401)
             response.headers['Cache-Control'] = 'no-store'
@@ -304,10 +306,12 @@ async def security(request, call_next):
         if request.method not in ('GET', 'HEAD', 'OPTIONS'):
             if request.headers.get('origin') != ORIGIN:
                 raise SiteError('请求来源无效', 403)
-            if not public and (not user or request.headers.get('x-csrf-token') != user['csrf']):
+            if (not public or (request.url.path == '/auth/logout' and user)) and (not user or request.headers.get('x-csrf-token') != user['csrf']):
                 raise SiteError('登录校验已失效，请刷新页面', 403)
         response = await call_next(request)
     except SiteError as exc:
+        if exc.status >= 500:
+            log_failure('gateway_error', exc, status=exc.status)
         response = JSONResponse({'detail': str(exc)}, status_code=exc.status)
     cache_control = 'no-store'
     if getattr(request.state, 'static_ui', False) and response.status_code in (200,304):
@@ -318,9 +322,33 @@ async def security(request, call_next):
     return response
 
 
+setup_request_tracking(app, 'gateway')
+
+
 @app.get('/health')
 def health():
-    return {'ok': True}
+    checks = {}
+    try:
+        # mode=ro must not create a missing database or run Store initialization.
+        with contextlib.closing(sqlite3.connect(store.path.resolve().as_uri() + '?mode=ro', uri=True, timeout=.25)) as db:
+            db.execute('SELECT 1 FROM users LIMIT 1').fetchall()
+        checks['accounts'] = True
+    except Exception as exc:
+        checks['accounts'] = False
+        log_failure('health_accounts_failed', exc)
+    try:
+        checks['disk'] = shutil.disk_usage(HOME).free >= 100 * 1024 * 1024
+    except OSError as exc:
+        checks['disk'] = False
+        log_failure('health_disk_failed', exc)
+    # Observe only already-known processes; never start or contact a worker.
+    try:
+        checks['workers'] = all(item[0].poll() is None for item in list(workers.values()))
+    except Exception as exc:
+        checks['workers'] = False
+        log_failure('health_workers_failed', exc)
+    ok = all(checks.values())
+    return JSONResponse({'ok': ok, 'checks': checks}, status_code=200 if ok else 503)
 
 
 @app.get('/account', response_class=HTMLResponse)
@@ -362,6 +390,12 @@ async def warm_login_worker(secret):
 
 @app.post('/auth/{action}')
 async def auth(action: str, request: Request):
+    if action == 'logout':
+        store.logout(request.cookies.get(COOKIE, ''))
+        response = JSONResponse({'ok': True})
+        response.delete_cookie(COOKIE)
+        response.delete_cookie(PENDING)
+        return response
     data = await small_json(request)
     if action == 'guest':
         if request.state.user:
@@ -392,12 +426,6 @@ async def auth(action: str, request: Request):
             await asyncio.to_thread(store.change_password, user['id'], request.cookies.get(COOKIE, ''), data.get('current_password'), data.get('new_password'))
         response = JSONResponse({'ok': True})
         response.delete_cookie(COOKIE)
-        return response
-    elif action == 'logout':
-        store.logout(request.cookies.get(COOKIE, ''))
-        response = JSONResponse({'ok': True})
-        response.delete_cookie(COOKIE)
-        response.delete_cookie(PENDING)
         return response
     else:
         raise SiteError('未知操作', 404)
@@ -729,20 +757,34 @@ async def proxy_upstream(path: str, request: Request):
     port = await worker(request.state.user['id'])
     headers = {k: v for k, v in request.headers.items() if k.lower() in ('content-type', 'accept', 'range')}
     headers['X-Workbench-Worker'] = workers[request.state.user['id']][3]
+    headers['X-Request-ID'] = request_id.get()
     client=httpx.AsyncClient(trust_env=False, timeout=1800)
     try:
         req=client.build_request(request.method,f'http://127.0.0.1:{port}/{path}',params=request.query_params,content=body,headers=headers)
         result=await client.send(req,stream=True)
-    except Exception:
+    except Exception as exc:
+        log_failure('gateway_proxy_failed', exc)
         await client.aclose()
         raise
     async def close_upstream():
         await result.aclose()
         await client.aclose()
+    async def upstream_body():
+        try:
+            async for chunk in result.aiter_bytes():
+                yield chunk
+            log_event('gateway_body_completed', status=result.status_code)
+        except Exception as error:
+            log_failure('gateway_stream_failed', error, status=result.status_code)
+            raise
+        finally:
+            await close_upstream()
     output_headers = {k: v for k, v in result.headers.items() if k.lower() in ('content-type', 'content-disposition', 'content-range', 'accept-ranges')}
+    if result.status_code >= 500:
+        log_event('gateway_upstream_error', status=result.status_code)
     if not path and 'text/html' in result.headers.get('content-type', ''):
         content=await result.aread()
         await close_upstream()
         return Response(workspace_html(content, request, text_only, guest_style),status_code=result.status_code,headers=output_headers)
-    return StreamingResponse(result.aiter_bytes(),status_code=result.status_code,headers=output_headers,background=BackgroundTask(close_upstream))
+    return StreamingResponse(upstream_body(),status_code=result.status_code,headers=output_headers)
 

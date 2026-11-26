@@ -35,6 +35,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     assert.equal(await p.locator('.sb-recent-tag').count(),0);
     for(const label of await p.locator('.sb-recent-name').allTextContents())assert.ok(Array.from(label.replace(/…$/,'')).length<=5);
     const align=await p.evaluate(()=>{const a=document.querySelector('[data-view="workspace"] em').getBoundingClientRect(),b=document.querySelector('.sb-recent-name').getBoundingClientRect();return Math.abs(a.left-b.left)});assert.ok(align<1,'child label alignment '+align);
+    assert.equal(await p.locator('.nav-children .nav-item .nav-icon').first().isVisible(),false);
+    assert.ok(await p.locator('.nav-parent .nav-icon').first().isVisible());
+    assert.equal(await p.locator('.nav-children').first().evaluate(n=>getComputedStyle(n).borderLeftStyle),'solid');
     await p.locator('.sb-recent-item').first().waitFor();
     await p.locator('.sb-recent-item').first().focus();
     await p.evaluate(()=>window.__sidebarFocus=document.activeElement);
@@ -67,6 +70,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     await p.locator('#sbRecentBox .nav-parent').click();assert.equal(await p.locator('#sbRecentList').isVisible(),true);
     await p.locator(`.sb-recent-item[data-project-id="${ids[1]}"]`).click();await p.waitForFunction(id=>selected===id&&document.querySelector('#editor').classList.contains('active'),ids[1]);
     await p.locator('#sideToggle').click();assert.equal(await p.locator('#sbRecentList').isVisible(),false);assert.equal(await p.locator('#sbQuotaCard').isVisible(),false);
+    assert.ok(await p.locator('.nav-parent .nav-icon').first().isVisible(),'collapsed nav must keep primary icons');
+    assert.notEqual(await p.locator('.nav-children .nav-item .nav-icon').first().evaluate(n=>getComputedStyle(n).display),'none');
     await p.setViewportSize({width:390,height:844});assert.equal(await p.locator('#sbQuotaCard').isVisible(),false);
    }else if(role==='member'){
     assert.ok((await p.locator('#sbQuotaNums').innerText()).includes('/ 80'));

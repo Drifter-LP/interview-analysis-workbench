@@ -69,3 +69,103 @@
 @media(min-width:851px){.sidebar>.sb-quota-card~.sidebar-settings{margin-top:6px!important}}
 .shell.collapsed .sb-quota-card{display:none!important}
 @media(max-width:850px){.sb-quota-card{display:none!important}}
+
+/* Minimalist Sidebar: hide secondary icons, add 1.5px tree rail, and replace heavy solid active block with a 3px indicator bar */
+@media(min-width:851px){
+  .sidebar .nav-parent{
+    padding:9px 12px;
+    gap:10px;
+    font-size:13px;
+    color:#94b6bb;
+    border-radius:8px;
+  }
+  .sidebar .nav-parent .nav-icon{
+    width:16px;
+    height:16px;
+    flex:0 0 16px;
+    color:#8ab0b5;
+  }
+  .sidebar .nav-parent em{
+    font-weight:600;
+    letter-spacing:0.02em;
+  }
+  .sidebar .nav-parent b{
+    font-size:13px;
+    color:#7ea4a9;
+  }
+  .sidebar .nav-parent:hover{
+    background:rgba(255,255,255,0.04);
+    color:#dcebeb;
+  }
+
+  /* 1.5px vertical tree rail aligned directly under parent icon center (12px + 8px = 20px) */
+  .sidebar .nav-children{
+    position:relative;
+    padding:2px 0 6px 0;
+    margin-left:20px;
+    padding-left:18px;
+    border-left:1.5px solid rgba(162,202,206,0.18);
+  }
+  .sidebar .nav-group.open .nav-children{
+    display:grid;
+    gap:2px;
+  }
+
+  /* Hide redundant secondary & recent-interview icons */
+  .sidebar .nav-children .nav-item .nav-icon,
+  .sidebar .sb-recent-list .sb-recent-item .nav-icon{
+    display:none;
+  }
+
+  .sidebar .nav-children .nav-item,
+  .sidebar .sb-recent-list .sb-recent-item{
+    position:relative;
+    padding:8px 12px;
+    margin:0;
+    gap:8px;
+    font-size:14px;
+    border-radius:7px;
+    color:#b0ccd0;
+    background:transparent;
+    transition:background-color 150ms ease, color 150ms ease;
+  }
+
+  .sidebar .nav-children .nav-item:hover,
+  .sidebar .sb-recent-list .sb-recent-item:hover{
+    background:rgba(255,255,255,0.05);
+    color:#e9f4f4;
+  }
+
+  /* Lightweight 3px teal indicator bar on the rail + soft left-to-right fade tint */
+  .sidebar .nav-children .nav-item.active,
+  .sidebar .sb-recent-list .sb-recent-item[aria-current="page"]{
+    background:linear-gradient(90deg, rgba(36,188,181,0.16) 0%, rgba(36,188,181,0.03) 100%);
+    color:#ffffff;
+    font-weight:600;
+  }
+  .sidebar .nav-children .nav-item.active:hover,
+  .sidebar .sb-recent-list .sb-recent-item[aria-current="page"]:hover{
+    background:linear-gradient(90deg, rgba(36,188,181,0.22) 0%, rgba(36,188,181,0.05) 100%);
+  }
+  .sidebar .nav-children .nav-item.active::before,
+  .sidebar .sb-recent-list .sb-recent-item[aria-current="page"]::before{
+    content:"";
+    position:absolute;
+    left:-20px;
+    top:50%;
+    transform:translateY(-50%);
+    width:3px;
+    height:18px;
+    border-radius:999px;
+    background:#24bcb5;
+    box-shadow:0 0 8px rgba(36,188,181,0.55);
+  }
+
+  .sb-recent-empty{
+    padding:8px 12px;
+  }
+  /* Collapsed navigation must retain its only visible labels: the icons. */
+  .shell.collapsed .sidebar .nav-children{margin-left:0;padding-left:0;border-left:0}
+  .shell.collapsed .sidebar .nav-children .nav-item .nav-icon{display:block}
+  .shell.collapsed .sidebar .nav-children .nav-item.active::before{content:none}
+}

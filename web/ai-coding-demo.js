@@ -5,35 +5,50 @@
  const icons={more:'M5 12h.01M12 12h.01M19 12h.01',trash:'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',unlink:'M10 13a5 5 0 0 1-1-7l3-3a5 5 0 0 1 7 7l-1 1M14 11a5 5 0 0 1 1 7l-3 3a5 5 0 0 1-7-7l1-1M3 3l18 18',undo:'M4 10h9a6 6 0 0 1 0 12M4 10l5-5M4 10l5 5',save:'M5 3h12l4 4v14H3V3h2M7 3v6h10V3M7 21v-8h10v8',range:'M4 4h6M4 4v6M20 20h-6M20 20v-6M8 16l8-8M14 5l5 5',locate:'M12 3v3M12 18v3M3 12h3M18 12h3M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0',help:'M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4M12 17h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0'};
  function iconButton(name,kind,fn){const b=btn('',fn);b.className='ac-icon-button';b.title=name;b.setAttribute('aria-label',name);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',icons[kind]);svg.append(path);b.append(svg);return b;}
  const host=document.querySelector('#coding'),legacy=el('div','ac-legacy-coding');legacy.hidden=true;legacy.append(...host.childNodes);const page=el('section','ac-page');page.id='aiCodingDemo';host.append(legacy,page);
- const project=el('select'),status=el('span'),start=btn('开始AI编码',()=>run(false)),resume=btn('继续未完成批次',()=>run(true)),refresh=btn('刷新',()=>load());
+ const project=el('select'),status=el('span'),start=btn('',()=>run(false)),resume=btn('继续未完成批次',()=>run(true)),refresh=btn('刷新',()=>load());
+ function setStartButtonLabel(focused){
+  if(start.dataset.focused===String(focused)&&start.childElementCount)return;
+  start.dataset.focused=String(focused);
+  if(focused){
+   start.innerHTML='<svg class="ac-btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg><span>按焦点AI编码</span>';
+  }else{
+   start.textContent='开始AI编码';
+  }
+ }
+ setStartButtonLabel(false);
  if(guest){start.disabled=true;start.title=guestNotice;status.id='guestCodingNotice';start.setAttribute('aria-describedby',status.id);}
  project.setAttribute('aria-label','AI编码研究项目');resume.hidden=true;
  const progress=el('div','ac-progress');
 
- // Scheme A: Top Secondary Toolbar (Explore vs. Problem-Focused Coding + Inline Question & Dimension Pills)
+ // Scheme A (Polished): Top Secondary Toolbar with Unified Composite Input Container
  let codingMode='explore',modeFilter='all',focusQuestion='',focusDimensions=[];
  const modeSegments=el('div','ac-mode-segments');
  modeSegments.setAttribute('role','group');modeSegments.setAttribute('aria-label','AI编码模式切换');
- const exploreModeBtn=btn('探索编码',()=>setCodingMode('explore')),focusedModeBtn=btn('🎯 问题聚焦',()=>setCodingMode('focused'));
+ const exploreModeBtn=btn('探索编码',()=>setCodingMode('explore')),focusedModeBtn=btn('问题聚焦',()=>setCodingMode('focused'));
  modeSegments.append(exploreModeBtn,focusedModeBtn);
 
- const focusBar=el('div','ac-focus-bar');focusBar.hidden=true;
+ const focusComposite=el('div','ac-focus-composite');focusComposite.hidden=true;
+ const focusPrefix=el('span','ac-focus-prefix','研究焦点：');
  const focusInput=el('input','ac-focus-input');
  focusInput.type='text';focusInput.maxLength=300;
- focusInput.placeholder='输入想聚焦编码的研究问题（如：受访者如何权衡跨城观演成本与情绪价值？）';
+ focusInput.placeholder='输入研究问题（如：受访者的职业经历与感受）';
  focusInput.setAttribute('aria-label','聚焦编码研究问题');
+ const focusDivider=el('span','ac-focus-divider');focusDivider.setAttribute('aria-hidden','true');
  const focusTagsWrap=el('div','ac-focus-tags');
  const tagAddInput=el('input','ac-focus-tag-input');
  tagAddInput.type='text';tagAddInput.maxLength=24;
- tagAddInput.placeholder='＋ 关注维度 (回车)';
+ tagAddInput.placeholder='＋ 添加维度…';
  tagAddInput.setAttribute('aria-label','添加关注维度标签');
- focusBar.append(focusInput,focusTagsWrap);
 
- const clearFocusBtn=btn('清空焦点',()=>{
+ const clearFocusBtn=btn('×',()=>{
   focusQuestion='';focusDimensions=[];focusInput.value='';tagAddInput.value='';
   renderFocusTags();saveFocusDraft();window.workspaceHeader?.refresh();
  });
- clearFocusBtn.className='ac-focus-clear';
+ clearFocusBtn.className='ac-focus-clear-icon';
+ clearFocusBtn.title='清空当前研究焦点';
+ clearFocusBtn.setAttribute('aria-label','清空研究焦点');
+
+ focusComposite.append(focusPrefix,focusInput,focusDivider,focusTagsWrap,clearFocusBtn);
 
  function focusStorageKey(){return `wb_coding_focus_${pid||'default'}_${tid||'default'}`;}
  function saveFocusDraft(){
@@ -75,6 +90,7 @@
    pill.append(del);focusTagsWrap.append(pill);
   });
   focusTagsWrap.append(tagAddInput);
+  clearFocusBtn.hidden=!(focusQuestion.trim()||focusDimensions.length);
  }
  focusInput.oninput=()=>{
   focusQuestion=focusInput.value;
@@ -123,10 +139,15 @@
  }
 
  const grid=el('div','ac-grid'),left=el('aside','ac-list'),middle=el('section','ac-middle'),reviewCard=el('aside','ac-review'),reviewHeader=el('div','ac-review-head'),right=el('div','ac-review-body'),reviewFooter=el('div','ac-review-fixed-footer');reviewFooter.hidden=true;reviewHeader.append(el('h3','','编码审核'));reviewCard.append(reviewHeader,right,reviewFooter);
- const listHead=el('h3','','编码建议'),modeFilterBar=el('div','ac-mode-filter-bar'),filter=el('select'),list=el('div','ac-list-items');
+ const listHead=el('h3','','编码建议'),listControls=el('div','ac-list-controls'),modeFilterBar=el('div','ac-mode-filter-bar'),filter=el('select','ac-status-select'),list=el('div','ac-list-items');
  modeFilterBar.setAttribute('role','tablist');modeFilterBar.setAttribute('aria-label','按编码模式筛选');
- filter.setAttribute('aria-label','筛选审核状态');for(const [v,t] of [['all','全部状态'],['pending','待审核'],['accepted','已接受'],['modified','已修改'],['rejected','已拒绝'],['deleted','已删除（可恢复）']])filter.append(new Option(t,v));
- const listHeader=el('div','ac-list-head'),organizeButton=btn('整理编码',openOrganizer);organizeButton.className='ac-organize-button';organizeButton.disabled=true;const acceptAll=btn('接受全部AI编码',acceptAllCodes);acceptAll.className='ac-bulk-accept';acceptAll.disabled=true;listHeader.append(listHead,organizeButton);left.append(listHeader,modeFilterBar,filter,acceptAll,list);
+ filter.setAttribute('aria-label','筛选审核状态');for(const [v,t] of [['all','全部状态'],['pending','待审核'],['accepted','已接受'],['modified','已修改'],['rejected','已拒绝'],['deleted','已删除']])filter.append(new Option(t,v));
+ const listHeader=el('div','ac-list-head'),listHeadActions=el('div','ac-list-head-actions'),organizeButton=btn('整理编码',openOrganizer);organizeButton.className='ac-organize-button';organizeButton.disabled=true;
+ const acceptAll=btn('全部接受',acceptAllCodes);acceptAll.className='ac-bulk-accept';acceptAll.disabled=true;acceptAll.title='接受当前视图中全部可精确定位的待审核AI编码';
+ listHeadActions.append(acceptAll,organizeButton);
+ listHeader.append(listHead,listHeadActions);
+ listControls.append(modeFilterBar,filter);
+ left.append(listHeader,listControls,list);
  const sourceTitle=el('h3','','访谈原文'),sourceInfo=el('p','ac-note'),source=el('div','ac-source'),selectionInfo=el('span','ac-note','选中文字后可编码'),manual=btn('新建编码',()=>{closeSelectionMenu();newManual();}),attach=btn('加入当前编码',()=>{closeSelectionMenu();if(current()?.references[referenceIndex]?.validation!=='valid')confirmSelectionReference();else attachSelection();});
  const selectionMenu=el('div','ac-selection-popover');
  selectionMenu.setAttribute('role','menu');selectionMenu.setAttribute('aria-label','原文选区编码操作');manual.setAttribute('role','menuitem');attach.setAttribute('role','menuitem');selectionMenu.hidden=true;selectionMenu.append(selectionInfo,manual,attach);document.body.append(selectionMenu);
@@ -211,7 +232,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   const last=state.runs.at(-1);
   if(!continuing&&state.codes.length){
    const msg=isFocused
-    ?`将围绕当前研究焦点新增一轮「🎯 问题聚焦」编码建议，已有的 ${state.codes.length} 个编码（含探索编码与人工判断）全部保留。继续？`
+    ?`将围绕当前研究焦点新增一轮「问题聚焦」编码建议，已有的 ${state.codes.length} 个编码（含探索编码与人工判断）全部保留。继续？`
     :'重新运行将新增一轮开放式探索编码建议，已有编码和人工判断全部保留。继续？';
    if(!confirm(msg))return;
   }
@@ -246,8 +267,8 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   const exploreCount=pool.filter(c=>codeMode(c)==='explore').length;
   const focusedCount=pool.filter(c=>codeMode(c)==='focused').length;
   modeFilterBar.replaceChildren();
-  for(const [key,label,cnt] of [['all','全部',totalCount],['explore','探索',exploreCount],['focused','🎯 聚焦',focusedCount]]){
-   const b=btn(`${label} (${cnt})`,()=>setModeFilter(key));
+  for(const [key,label,cnt] of [['all','全部',totalCount],['explore','探索',exploreCount],['focused','聚焦',focusedCount]]){
+   const b=btn(`${label} ${cnt}`,()=>setModeFilter(key));
    b.className='ac-mode-filter-btn'+(modeFilter===key?' active':'');
    b.setAttribute('role','tab');
    b.setAttribute('aria-selected',String(modeFilter===key));
@@ -260,19 +281,27 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   acceptAll.disabled=guest||busy||!state||state.runs.some(r=>r.status==='running')||!state.codes.some(acceptCandidate);
   list.replaceChildren();
   const pool=(filter.value==='deleted'?state?.deleted_codes:state?.codes)||[];
-  for(const c of pool){
-   if(!matchesModeFilter(c))continue;
-   if(filter.value!=='deleted'&&filter.value!=='all'&&c.status!==filter.value)continue;
+  const visibleCodes=pool.filter(c=>matchesModeFilter(c)&&(filter.value==='deleted'||filter.value==='all'||c.status===filter.value));
+  // Auto-select the first visible code on initial load or filter switch so the right review pane is never an empty box
+  const creatingManual=!!(editing&&!editing.id);
+  if(!dirty&&!creatingManual&&!visibleCodes.some(c=>c.id===selected)){
+   selected=visibleCodes[0]?.id||'';
+   editing=null;
+   referenceIndex=0;
+  }
+  for(const c of visibleCodes){
    const b=btn('',()=>choose(c.id));
    b.className='ac-code'+(selected===c.id?' active':'');
    const headRow=el('div','ac-code-head');
    headRow.append(el('strong','',c.name));
    const isFoc=codeMode(c)==='focused';
-   const badgeText=isFoc?`🎯 ${c.focus_label?'聚焦·'+c.focus_label:'聚焦'}`:(c.origin==='manual'?'手动':'探索');
-   const badge=el('span','ac-code-mode-badge '+(isFoc?'is-focused':'is-explore'),badgeText);
-   if(isFoc&&c.focus_question)badge.title=`研究焦点：${c.focus_question}`;
+   const labelText=isFoc?(c.focus_label?`聚焦·${c.focus_label}`:'聚焦'):(c.origin==='manual'?'手动':'探索');
    const metaRow=el('small','ac-code-meta');
-   metaRow.append(badge,document.createTextNode(` ${c.references.length} 处引用 · ${c.deleted_at?'已删除':statusLabels[c.status]}${c.references.some(r=>r.validation!=='valid')?' · 需处理':''}`));
+   const modeSpan=el('span','ac-code-mode-text '+(isFoc?'is-focused':'is-explore'),labelText);
+   if(isFoc&&c.focus_question)modeSpan.title=`研究焦点：${c.focus_question}`;
+   const statText=` · ${c.references.length} 处引用 · ${c.deleted_at?'已删除':statusLabels[c.status]}${c.references.some(r=>r.validation!=='valid')?' · 需处理':''}`;
+   const statSpan=el('span','ac-code-stat-text',statText);
+   metaRow.append(modeSpan,statSpan);
    b.append(headRow,metaRow);
    list.append(b);
   }
@@ -281,7 +310,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
    if(guest){
     emptyBox.append(el('p','ac-note','选中原文即可添加手动编码。'));
    }else if(modeFilter==='focused'){
-    emptyBox.append(el('p','ac-note','当前尚无「🎯 问题聚焦」编码。请在上方工具条输入研究问题或关注维度，点击右上角「🎯 按焦点AI编码」。'));
+    emptyBox.append(el('p','ac-note','当前尚无「问题聚焦」编码。请在上方工具条输入研究问题或关注维度，点击右上角「按焦点AI编码」。'));
     if(pool.length>0){
      const showAllBtn=btn(`查看全部已有编码 (${pool.length})`,()=>setModeFilter('all'));
      showAllBtn.className='ac-show-all-link';
@@ -363,7 +392,7 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
    if(draft.focus_question)parts.push(draft.focus_question);
    if(draft.focus_label&&!parts.includes(draft.focus_label))parts.push(`#${draft.focus_label}`);
    else if(Array.isArray(draft.focus_dimensions)&&draft.focus_dimensions.length)parts.push(draft.focus_dimensions.map(x=>`#${x}`).join(' '));
-   focusBox.append(el('div','ac-focus-context-pill','🎯 '+parts.join(' · ')));
+   focusBox.append(el('div','ac-focus-context-pill',parts.join(' · ')));
    right.append(focusBox);
   }
   referenceIndex=Math.max(0,Math.min(referenceIndex,draft.references.length-1));const ref=draft.references[referenceIndex];
@@ -413,7 +442,7 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
  async function codeAction(action,referenceId){
   const c=current();if(!c?.id||busy)return;
   if(!checkDirty())return;
-  if(action==='delete'&&!confirm('删除整个编码“'+c.name+'”及其全部引用关联？\n不会删除访谈原文，可在“已删除（可恢复）”中恢复。'))return;
+  if(action==='delete'&&!confirm('删除整个编码“'+c.name+'”及其全部引用关联？\n不会删除访谈原文，可在“已删除”中恢复。'))return;
   const saved=[...state.codes,...(state.deleted_codes||[])].find(x=>x.id===c.id);
   if(!saved)return;
   busy=true;
@@ -456,18 +485,16 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
    exploreModeBtn.setAttribute('aria-pressed',String(!isFocused));
    focusedModeBtn.classList.toggle('active',isFocused);
    focusedModeBtn.setAttribute('aria-pressed',String(isFocused));
-   focusBar.hidden=!isFocused;
-   const hasFocusContent=!!(focusQuestion.trim()||focusDimensions.length);
-   clearFocusBtn.hidden=!isFocused||!hasFocusContent;
-   const nextStartLabel=isFocused?'🎯 按焦点AI编码':'开始AI编码';
-   if(start.textContent!==nextStartLabel)start.textContent=nextStartLabel;
+   focusComposite.hidden=!isFocused;
+   clearFocusBtn.hidden=!(focusQuestion.trim()||focusDimensions.length);
+   setStartButtonLabel(isFocused);
    config.module='研究分析';
    config.page='单篇访谈分析';
    config.selector=[...(config.selector||[]),...(scopeChoices.length>1?[project]:[])];
    config.status=[status];
    config.actions=[start,resume,refresh];
-   config.toolsLeft=guest?[]:isFocused?[modeSegments,focusBar]:[modeSegments];
-   config.toolsRight=(!guest&&isFocused&&hasFocusContent)?[clearFocusBtn]:[];
+   config.toolsLeft=guest?[]:isFocused?[modeSegments,focusComposite]:[modeSegments];
+   config.toolsRight=[];
   }
  };
 

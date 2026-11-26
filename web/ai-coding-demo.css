@@ -31,45 +31,79 @@
 .ac-review .ac-evidence-card{border:0;border-left:3px solid #008b81;border-radius:6px;background:#f4f9f7}
 .ac-grid .ac-review-fixed-footer .ac-review-toolbar{border:0;background:transparent}
 
-/* Scheme A: Top Secondary Toolbar for Explore vs. Problem-Focused AI Coding */
-.workspace-header .editor-tool-row:has(.ac-mode-segments){padding:6px 20px;gap:12px;flex-wrap:wrap;background:#fafDFC}
-.workspace-header .editor-tool-row:has(.ac-mode-segments) .editor-tool-left{display:flex;align-items:center;gap:10px;flex:1;min-width:260px;flex-wrap:wrap}
-.ac-mode-segments{display:inline-flex;align-items:center;height:32px;box-sizing:border-box;border:1px solid #dce6e9;border-radius:7px;overflow:hidden;background:#fff;flex-shrink:0}
-.ac-mode-segments>button{height:30px;border:0;border-radius:0;padding:0 11px;background:transparent;color:#35565e;font:12.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;white-space:nowrap;transition:background-color 150ms ease,color 150ms ease}
-.ac-mode-segments>button:hover{background:#f1f8f6}
-.ac-mode-segments>button.active{background:#009e96!important;color:#fff!important;font-weight:600}
+/* Scheme A (Polished): Monochrome Icon + Unified Composite Focus Input + 2-Row Left Header + Golden Grid Ratio */
+.ac-btn-svg{width:14px;height:14px;flex:none;vertical-align:-2px;margin-right:5px}
+.workspace-header .workspace-action-slot>button.workspace-primary{display:inline-flex;align-items:center;justify-content:center}
 
-.ac-focus-bar{display:flex;align-items:center;gap:8px;flex:1;min-width:240px;flex-wrap:wrap}
-.ac-focus-bar[hidden]{display:none!important}
-.ac-focus-input{flex:1 1 260px;min-width:180px;height:32px;margin:0;padding:0 11px;box-sizing:border-box;border:1.5px solid #12a298;border-radius:7px;background:#fff;color:#17313d;font:12.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;transition:box-shadow 150ms ease}
-.ac-focus-input:focus{outline:none;box-shadow:0 0 0 3px rgba(18,162,152,.16)}
-.ac-focus-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.ac-focus-pill{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 8px 0 10px;border:1px solid #a2dad2;border-radius:999px;background:#dcf5f0;color:#007e74;font:600 11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;white-space:nowrap}
-.ac-focus-pill-remove{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;padding:0;border:0;border-radius:50%;background:transparent;color:#007e74;font-size:13px;line-height:1;cursor:pointer}
+.workspace-header .editor-tool-row:has(.ac-mode-segments){padding:6px 20px;gap:10px;flex-wrap:wrap;background:#fafdfc}
+.workspace-header .editor-tool-row:has(.ac-mode-segments) .editor-tool-left{display:flex;align-items:center;gap:10px;flex:1;min-width:260px;flex-wrap:nowrap}
+.ac-mode-segments{display:inline-flex;align-items:center;height:32px;box-sizing:border-box;border:1px solid #d6e4e2;border-radius:7px;overflow:hidden;background:#f0f6f5;flex-shrink:0}
+.ac-mode-segments>button{height:30px;border:0;border-radius:0;padding:0 12px;background:transparent;color:#4a6b72;font:12.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;white-space:nowrap;transition:background-color 150ms ease,color 150ms ease}
+.ac-mode-segments>button:hover{background:rgba(255,255,255,.7)}
+.ac-mode-segments>button.active{background:#00968c!important;color:#fff!important;font-weight:600}
+
+/* Unified Composite Input Container */
+.ac-focus-composite{display:flex;align-items:center;gap:6px;flex:1;min-width:280px;min-height:32px;padding:2px 8px 2px 11px;box-sizing:border-box;border:1px solid #b6d8d4;border-radius:8px;background:#fff;transition:border-color 150ms ease,box-shadow 150ms ease}
+.ac-focus-composite:focus-within{border-color:#00968c;box-shadow:0 0 0 3px rgba(0,150,140,.13)}
+.ac-focus-composite[hidden]{display:none!important}
+.ac-focus-prefix{font-size:12px;font-weight:600;color:#00847a;white-space:nowrap;flex-shrink:0}
+.ac-focus-input{flex:1 1 200px;min-width:140px;height:26px;margin:0;padding:0;border:0;background:transparent;color:#17313d;font:12.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif}
+.ac-focus-input:focus{outline:none}
+.ac-focus-divider{width:1px;height:16px;background:#e2eceb;flex-shrink:0;margin:0 2px}
+.ac-focus-tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ac-focus-pill{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 6px 0 8px;border-radius:5px;background:#eaf7f4;color:#007e74;font:600 11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;white-space:nowrap}
+.ac-focus-pill-remove{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;padding:0;border:0;border-radius:50%;background:transparent;color:#007e74;font-size:12px;line-height:1;cursor:pointer}
 .ac-focus-pill-remove:hover{background:rgba(0,126,116,.14);color:#004f48}
-.ac-focus-tag-input{width:128px;height:28px;margin:0;padding:0 9px;box-sizing:border-box;border:1px dashed #9fcac4;border-radius:999px;background:#fff;color:#193740;font:11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif}
-.ac-focus-tag-input:focus{outline:none;border-style:solid;border-color:#009e96;width:148px}
-.ac-focus-clear{height:30px;padding:0 10px;border:1px solid #dce7e8;border-radius:7px;background:#fff;color:#587177;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;cursor:pointer;white-space:nowrap}
-.ac-focus-clear:hover{background:#f3f8f7;color:#17313d}
-.ac-focus-clear[hidden]{display:none!important}
+.ac-focus-tag-input{width:92px;height:24px;margin:0;padding:0 6px;box-sizing:border-box;border:0;background:transparent;color:#193740;font:11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif}
+.ac-focus-tag-input:focus{outline:none;width:118px}
+.ac-focus-tag-input::placeholder{color:#8aa2a6}
+.ac-focus-clear-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:#8ea6aa;font-size:15px;line-height:1;cursor:pointer;flex-shrink:0}
+.ac-focus-clear-icon:hover{background:#f0f6f5;color:#17313d}
+.ac-focus-clear-icon[hidden]{display:none!important}
 
-/* Left Panel Synchronized Mode Filter Tabs & Focus Badges */
-.ac-mode-filter-bar{display:flex;gap:3px;padding:3px;margin:0 0 6px;border:1px solid #dce7e7;border-radius:7px;background:#f4f9f8;flex:none}
-.ac-grid .ac-mode-filter-bar .ac-mode-filter-btn{flex:1;height:26px;padding:0 4px;border:0;border-radius:5px;background:transparent;color:#526e73;font:11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;white-space:nowrap;cursor:pointer}
-.ac-grid .ac-mode-filter-bar .ac-mode-filter-btn:hover{color:#087d74;background:rgba(255,255,255,.6)}
-.ac-grid .ac-mode-filter-bar .ac-mode-filter-btn.active{background:#fff;color:#008b81;font-weight:600;box-shadow:0 1px 3px rgba(16,40,46,.08)}
+/* Golden 3-Column Ratio: 274px List : 1fr Source : 336px Review */
+.ac-grid{grid-template-columns:274px minmax(340px,1fr) 336px}
+@media(max-width:1100px){.ac-grid{grid-template-columns:230px minmax(260px,1fr) 290px}}
 
+/* Left Panel: Compressed 2-Row Header */
+.ac-list-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex:none}
+.ac-list-head h3{margin:0;font-size:15px}
+.ac-list-head-actions{display:flex;align-items:center;gap:6px;flex:none}
+.ac-grid .ac-list-head-actions .ac-bulk-accept{margin:0;padding:3px 6px;border:0;background:transparent;color:#008a80;font-size:12px;font-weight:600;border-radius:5px}
+.ac-grid .ac-list-head-actions .ac-bulk-accept:not(:disabled):hover{background:#eaf7f4}
+.ac-grid .ac-list-head-actions .ac-organize-button{padding:4px 9px;font-size:11.5px;border-radius:6px;background:#f5faf9;border-color:#d4e4e2}
+
+.ac-list-controls{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid #e8f0ef;flex:none}
+.ac-mode-filter-bar{display:flex;align-items:center;gap:2px;margin:0;padding:0;border:0;background:transparent}
+.ac-grid .ac-mode-filter-bar .ac-mode-filter-btn{position:relative;height:26px;padding:0 7px;border:0;border-radius:5px;background:transparent;color:#688287;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;white-space:nowrap;cursor:pointer}
+.ac-grid .ac-mode-filter-bar .ac-mode-filter-btn:hover{color:#008278}
+.ac-grid .ac-mode-filter-bar .ac-mode-filter-btn.active{color:#008b81;font-weight:600;background:#eef8f6}
+.ac-grid .ac-list-controls .ac-status-select{width:auto;min-width:74px;max-width:88px;height:26px;margin:0;padding:0 4px;border:0;background:transparent;color:#4a6b72;font:12px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;cursor:pointer;text-align:right}
+
+/* Compact metadata keeps reference counts on one line. */
+.ac-grid .ac-code{padding:9px 10px;border-radius:7px;margin:1px 0}
+.ac-grid .ac-code.active{background:#e7f6f3;box-shadow:inset 3px 0 0 #00968c}
 .ac-code-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.ac-code-meta{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px!important;line-height:1.5}
-.ac-code-mode-badge{display:inline-flex;align-items:center;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600;line-height:1.5;white-space:nowrap;max-width:136px;overflow:hidden;text-overflow:ellipsis}
-.ac-code-mode-badge.is-focused{background:#daf4ef;color:#007d73;border:1px solid #b3e2da}
-.ac-code-mode-badge.is-explore{background:#eef3f3;color:#627b80}
+.ac-code-head strong{font-size:13px;line-height:1.45;color:#122e35}
+.ac-code-meta{display:flex;align-items:center;margin-top:4px!important;font-size:11.5px!important;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-code-mode-text{font-weight:600;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;max-width:116px}
+.ac-code-mode-text.is-focused{color:#00887e}
+.ac-code-mode-text.is-explore{color:#6a8287}
+.ac-code-stat-text{color:#687e84;flex:none;white-space:nowrap}
 
-.ac-empty-list-note{padding:8px 4px}
+.ac-empty-list-note{padding:10px 4px}
 .ac-grid .ac-show-all-link{margin-top:6px;width:100%;font-size:12px;background:#f4faf8;border-color:#cbe2de;color:#008278}
 .ac-grid .ac-show-all-link:hover{background:#e4f5f0}
 
 /* Right Review Panel: Focus Context Box */
 .ac-focus-context{margin:0 0 16px}
 .ac-focus-context label{margin-bottom:6px}
-.ac-focus-context-pill{padding:7px 10px;border:1px solid #b6e2da;border-radius:6px;background:#e8f7f4;color:#007a70;font-size:12px;font-weight:600;line-height:1.55;word-break:break-word}
+.ac-focus-context-pill{padding:7px 10px;border-radius:6px;background:#eef9f6;color:#007a70;font-size:12px;font-weight:600;line-height:1.55;word-break:break-word}
+
+@media(max-width:850px){
+  .workspace-header .editor-tool-row:has(.ac-mode-segments) .editor-tool-left{flex-wrap:wrap}
+  .ac-grid{grid-template-columns:minmax(0,1fr)}
+  .ac-focus-composite{min-width:0;width:100%;flex:1 0 100%;flex-wrap:wrap}
+  .ac-focus-input{flex-basis:calc(100% - 90px);min-width:0}
+  .ac-focus-tags{min-width:0;max-width:100%}
+}

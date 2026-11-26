@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
 (async()=>{
- const origin=process.env.FOCUS_QA_ORIGIN||'http://127.0.0.1:9902';
+ const origin=process.env.FOCUS_QA_ORIGIN||'http://127.0.0.1:9903';
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[],calls=[];
@@ -19,26 +19,36 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
    switchView('analysis','coding');await window.aiCodingDemo.activateCurrent();
   });
   await page.locator('.ac-code').first().waitFor();
+  assert.equal(await page.getByLabel('编码名称',{exact:true}).inputValue(),'探索建议','first code selected on load');
+  await page.getByLabel('筛选审核状态').selectOption('rejected');
+  assert.equal(await page.getByLabel('编码名称',{exact:true}).count(),0,'empty filter must not retain an unrelated review');
+  await page.getByLabel('筛选审核状态').selectOption('all');
   await page.locator('.ac-code').first().click();
   await page.getByLabel('编码名称',{exact:true}).fill('尚未保存的修改');
   page.once('dialog',d=>d.dismiss());
-  await page.getByRole('button',{name:'🎯 问题聚焦',exact:true}).click();
+  await page.getByRole('button',{name:'问题聚焦',exact:true}).click();
   assert.equal(await page.getByLabel('编码名称',{exact:true}).inputValue(),'尚未保存的修改');
   assert.equal(await page.getByLabel('聚焦编码研究问题').isVisible(),false);
   page.once('dialog',d=>d.accept());
-  await page.getByRole('button',{name:'🎯 问题聚焦',exact:true}).click();
+  await page.getByRole('button',{name:'问题聚焦',exact:true}).click();
   assert.equal(await page.locator('.ac-code').count(),1);
   await page.getByLabel('聚焦编码研究问题').fill('如何决定参加活动？');
   await page.getByLabel('添加关注维度标签').fill('出行成本');await page.getByLabel('添加关注维度标签').press('Enter');
   page.on('dialog',d=>d.accept());
-  await page.getByRole('button',{name:'🎯 按焦点AI编码',exact:true}).click();
+  await page.getByRole('button',{name:'按焦点AI编码',exact:true}).click();
   await page.waitForTimeout(200);assert.equal(calls.length,1);assert.equal(calls[0].mode,'focused');assert.deepEqual(calls[0].focus_dimensions,['出行成本']);
   await page.reload();await page.waitForFunction(()=>!!window.aiCodingDemo);
   await page.evaluate(async()=>{window.singleInterviewCodingContext={get:()=>({sourceId:'t',researchProjectId:'p'}),projects:()=>[{id:'p',name:'隔离测试项目',interview_ids:['t']}],setScope(){}};switchView('analysis','coding');await window.aiCodingDemo.activateCurrent();});
   await page.getByLabel('聚焦编码研究问题').waitFor();assert.equal(await page.getByLabel('聚焦编码研究问题').inputValue(),'如何决定参加活动？');
   if(await page.getByLabel('关闭操作指引',{exact:true}).isVisible())await page.getByLabel('关闭操作指引',{exact:true}).click();
-  await page.screenshot({path:path.resolve(__dirname,'../outputs/focused-coding-verified.png')});
-  for(const width of [720,390]){await page.setViewportSize({width,height:900});await page.waitForTimeout(100);assert.ok(await page.getByLabel('聚焦编码研究问题').isVisible());}
+  await page.screenshot({path:path.resolve(__dirname,'../outputs/coding-polish-desktop.png')});
+  for(const width of [720,390,375]){
+   await page.setViewportSize({width,height:900});await page.waitForTimeout(100);
+   const input=page.getByLabel('聚焦编码研究问题');assert.ok(await input.isVisible());
+   const box=await input.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,JSON.stringify(box));
+   const grid=await page.locator('.ac-grid').evaluate(n=>({width:n.clientWidth,scroll:n.scrollWidth}));assert.ok(grid.scroll<=grid.width+1,JSON.stringify(grid));
+  }
+  await page.screenshot({path:path.resolve(__dirname,'../outputs/coding-polish-mobile.png')});
   assert.deepEqual(errors,[]);
   const guest=await browser.newPage();
   assert.ok((await guest.request.post(origin+'/auth/guest',{headers:{Origin:origin},data:{}})).ok());

@@ -104,7 +104,26 @@
   quotaCard.type='button';quotaCard.className='sb-quota-card';quotaCard.id='sbQuotaCard';
   quotaCard.innerHTML='<div class="sb-quota-top"><span class="sb-quota-role" id="sbQuotaRole">今日额度</span><span class="sb-quota-nums" id="sbQuotaNums">—</span></div><div class="sb-quota-track" aria-hidden="true"><div class="sb-quota-fill" id="sbQuotaFill" style="width:0%"></div></div>';
   sidebar.insertBefore(quotaCard,settings);
-  quotaCard.onclick=()=>{if((window.workbenchSession||accountsEnabled)&&window.openAccountDrawer)window.openAccountDrawer();else settings.click();};
+  const arrow=document.createElement('span');arrow.className='sb-quota-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';quotaCard.append(arrow);
+  const quotaTip=document.createElement('div');quotaTip.id='sbQuotaTooltip';quotaTip.className='sb-quota-tooltip';quotaTip.setAttribute('role','tooltip');quotaTip.hidden=true;document.body.append(quotaTip);
+  let quotaExplanation='正在读取额度…',tipTimer=0,tipDismissed=false;
+  function hideQuotaTip(){clearTimeout(tipTimer);quotaTip.hidden=true;quotaCard.removeAttribute('aria-describedby');}
+  function positionQuotaTip(){
+    if(quotaTip.hidden)return;
+    const a=quotaCard.getBoundingClientRect();if(!a.width||!a.height){hideQuotaTip();return;}
+    quotaTip.style.left=Math.max(8,Math.min(a.right+10,innerWidth-quotaTip.offsetWidth-8))+'px';
+    quotaTip.style.top=Math.max(8,Math.min(a.top,innerHeight-quotaTip.offsetHeight-8))+'px';
+  }
+  function showQuotaTip(){clearTimeout(tipTimer);if(tipDismissed)return;quotaTip.textContent=quotaExplanation;quotaTip.hidden=false;quotaCard.setAttribute('aria-describedby',quotaTip.id);positionQuotaTip();}
+  function leaveQuotaTip(){clearTimeout(tipTimer);tipTimer=setTimeout(()=>{if(!quotaCard.matches(':hover')&&!quotaTip.matches(':hover')&&document.activeElement!==quotaCard)hideQuotaTip();},150);}
+  quotaCard.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch'){tipDismissed=false;showQuotaTip();}});
+  quotaCard.addEventListener('pointerleave',leaveQuotaTip);
+  quotaCard.addEventListener('focus',()=>{tipDismissed=false;showQuotaTip();});quotaCard.addEventListener('blur',leaveQuotaTip);
+  quotaTip.addEventListener('pointerenter',()=>clearTimeout(tipTimer));quotaTip.addEventListener('pointerleave',leaveQuotaTip);
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!quotaTip.hidden){tipDismissed=true;hideQuotaTip();event.stopPropagation();}},true);
+  window.addEventListener('resize',hideQuotaTip);document.addEventListener('scroll',positionQuotaTip,true);
+  quotaCard.onclick=()=>{tipDismissed=true;hideQuotaTip();if((window.workbenchSession||accountsEnabled)&&window.openAccountDrawer)window.openAccountDrawer();else settings.click();};
+  function explainQuota(text){quotaExplanation=text;quotaCard.removeAttribute('title');if(!quotaTip.hidden){quotaTip.textContent=text;positionQuotaTip();}}
   let recentSignature='',recentOpenSerial=0,quotaPending=false;
   function updateSidebarWidgets(){
     if(document.hidden)return;
@@ -144,7 +163,7 @@
   async function refreshSidebarQuota(){
     if(quotaPending||document.hidden)return;
     const label=quotaCard.querySelector('#sbQuotaRole'),nums=quotaCard.querySelector('#sbQuotaNums'),fill=quotaCard.querySelector('#sbQuotaFill'),track=fill.parentElement;
-    if(!window.workbenchSession&&!accountsEnabled){label.textContent='本地工作台';nums.textContent='设置';track.hidden=true;quotaCard.title='打开工作台设置';return;}
+    if(!window.workbenchSession&&!accountsEnabled){label.textContent='本地工作台';nums.textContent='设置';track.hidden=true;explainQuota('点击打开本地工作台设置');return;}
     try{
       quotaPending=true;const r=await fetch('/auth/me');if(!r.ok)throw Error();
       const me=await r.json(),admin=me.role==='admin',guest=me.role==='guest',used=Number(me.usage?.calls),limit=Number(me.daily_calls);
@@ -152,8 +171,9 @@
       label.textContent=guest?'试用额度':'今日额度';nums.textContent=used+' / '+(admin?'∞':limit)+' 次';
       track.hidden=false;fill.style.width=(admin?100:Math.min(100,used/limit*100))+'%';
       const hint=admin?'管理员每日额度不限':guest?'访客空间累计额度，不按日重置':'北京时间每天08:00重置';
-      quotaCard.title=hint+'；点击查看账号与额度';quotaCard.setAttribute('aria-label',label.textContent+'：'+nums.textContent+'。'+hint);
-    }catch{nums.textContent='暂不可用';track.hidden=true;quotaCard.title='额度读取失败，点击查看详情或重试';}
+      explainQuota('已用：'+used+' 次\n剩余：'+(admin?'不限':Math.max(0,limit-used)+' 次')+'\n'+hint+'\n点击查看账号与额度详情');
+      quotaCard.setAttribute('aria-label',label.textContent+'：'+nums.textContent+'。'+hint+'。点击查看账号与额度');
+    }catch{nums.textContent='暂不可用';track.hidden=true;explainQuota('额度读取失败，点击查看详情或重试');quotaCard.setAttribute('aria-label','额度暂不可用，点击查看详情或重试');}
     finally{quotaPending=false;}
   }
   window.updateSidebarWidgets=updateSidebarWidgets;window.refreshSidebarQuota=refreshSidebarQuota;

@@ -53,13 +53,19 @@
 .sb-recent-dot.is-review{background:#f59e0b}
 .sb-recent-item:focus-visible,.sb-quota-card:focus-visible{outline:2px solid #9fe3de;outline-offset:-2px}
 .sb-recent-empty{padding:9px 12px;color:#acc6cb;font-size:13px}
-.sb-quota-card{margin-top:auto;margin-bottom:4px;width:100%;padding:12px;border:1px solid rgba(172,198,203,.16);border-radius:10px;background:#10353c;color:#e4f0f1;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:9px;flex-shrink:0}
-.sb-quota-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
-.sb-quota-role{font-weight:600;white-space:nowrap}
+.sb-quota-card{position:relative;margin-top:auto;margin-bottom:4px;width:100%;padding:14px;border:1px solid rgba(172,198,203,.12);border-radius:8px;background:#10353c;color:#e4f0f1;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:10px;flex-shrink:0;transition:border-color 150ms ease,background-color 150ms ease}
+.sb-quota-card:hover,.sb-quota-card:focus-visible{border-color:#3a7679;background:#123b42}
+.sb-quota-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding-right:12px}
+.sb-quota-role{font-size:12px;font-weight:500;white-space:nowrap;color:#bfd4d5}
 .sb-quota-nums{font-size:12px;color:#9fd8d4;font-variant-numeric:tabular-nums;white-space:nowrap}
-.sb-quota-track{height:5px;border-radius:999px;background:#071b1f;overflow:hidden}
+.sb-quota-track{height:3px;border-radius:999px;background:#071b1f;overflow:hidden}
 .sb-quota-track[hidden]{display:none!important}
-.sb-quota-fill{height:100%;border-radius:999px;background:#20b9b1}
+.sb-quota-fill{height:100%;border-radius:999px;background:#27aaa3}
+.sb-quota-arrow{position:absolute;right:9px;top:10px;font-size:20px;line-height:20px;color:#a6d6d2;opacity:0;transition:opacity 150ms ease}
+.sb-quota-card:hover .sb-quota-arrow,.sb-quota-card:focus-visible .sb-quota-arrow{opacity:1}
+.sb-quota-tooltip{position:fixed;z-index:1080;max-width:min(270px,calc(100vw - 16px));padding:12px 14px;border:1px solid #c9dedd;border-radius:8px;background:#f7fbfa;color:#294b4e;font:13px/1.8 var(--font-sans);white-space:pre-line;box-shadow:0 4px 18px #102e3414}
+.sb-quota-tooltip[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.sb-quota-card,.sb-quota-arrow{transition:none}}
 @media(min-width:851px){.sidebar>.sb-quota-card~.sidebar-settings{margin-top:6px!important}}
 .shell.collapsed .sb-quota-card{display:none!important}
 @media(max-width:850px){.sb-quota-card{display:none!important}}

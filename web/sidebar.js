@@ -124,7 +124,7 @@
   window.addEventListener('resize',hideQuotaTip);document.addEventListener('scroll',positionQuotaTip,true);
   quotaCard.onclick=()=>{tipDismissed=true;hideQuotaTip();if((window.workbenchSession||accountsEnabled)&&window.openAccountDrawer)window.openAccountDrawer();else settings.click();};
   function explainQuota(text){quotaExplanation=text;quotaCard.removeAttribute('title');if(!quotaTip.hidden){quotaTip.textContent=text;positionQuotaTip();}}
-  let recentSignature='',recentOpenSerial=0,quotaPending=false;
+  let recentSignature='',recentOpening=null,quotaPending=false;
   function updateSidebarWidgets(){
     if(document.hidden)return;
     const rows=typeof projects!=='undefined'&&Array.isArray(projects)?projects:[];
@@ -132,7 +132,8 @@
     const sorted=rows.filter(p=>!p.hidden_in_library&&p.status==='completed').sort((a,b)=>(b.last_opened_at||b.created_at||0)-(a.last_opened_at||a.created_at||0)).slice(0,4);
     const libraryStatus=document.querySelector('#projectList>[role="status"]')?.textContent||'';
     const waiting=!sorted.length&&/正在读取访谈资料|访谈资料读取失败/.test(libraryStatus);
-    const signature=JSON.stringify([currentId,waiting?libraryStatus:'',sorted.map(p=>[p.id,p.name,p.edited_at,p.last_opened_at])]);
+    // The sorted IDs already capture a reorder; timestamp-only updates need no redraw.
+    const signature=JSON.stringify([currentId,waiting?libraryStatus:'',sorted.map(p=>[p.id,p.name,!!p.edited_at])]);
     if(signature===recentSignature)return;recentSignature=signature;
     if(waiting||!sorted.length){
       const status=document.createElement('div');status.className='sb-recent-empty';status.setAttribute('role','status');
@@ -142,6 +143,7 @@
     recentList.replaceChildren(...sorted.map(item=>{
       const revised=!!item.edited_at,fullName=String(item.name||'未命名访谈'),chars=Array.from(fullName);
       const btn=document.createElement('button');btn.type='button';btn.className='nav-item sb-recent-item';btn.dataset.projectId=String(item.id);
+      if(recentOpening?.id===String(item.id))btn.setAttribute('aria-busy','true');
       if(String(currentId)===String(item.id))btn.setAttribute('aria-current','page');
       const status=revised?'已修订，打开单篇访谈分析':'未修订，打开文字校订';
       btn.title=fullName+'（'+status+'）';btn.setAttribute('aria-label',fullName+'，'+status);
@@ -149,14 +151,22 @@
       const name=document.createElement('em');name.className='sb-recent-name';name.textContent=chars.length>5?chars.slice(0,5).join('')+'…':fullName;
       const dot=document.createElement('span');dot.className='sb-recent-dot'+(revised?'':' is-review');dot.setAttribute('aria-hidden','true');btn.append(name,dot);
       btn.onclick=async()=>{
-        const serial=++recentOpenSerial,isCurrent=()=>serial===recentOpenSerial;
+        const id=String(item.id);
+        if(recentOpening?.id===id)return;
+        if(recentOpening){
+          recentOpening.controller.abort();
+          recentList.querySelector('[aria-busy="true"]')?.removeAttribute('aria-busy');
+        }
+        const job={id,controller:new AbortController()},isCurrent=()=>recentOpening===job;
+        recentOpening=job;btn.setAttribute('aria-busy','true');
         try{
-          const options=revised?{targetTab:'familiarity',isCurrent}:{transcriptFirst:true,isCurrent};
-          if(!await openProject(item.id,null,options)||!isCurrent())return;
-          if(revised)switchView('analysis','familiarity');
-          item.last_opened_at=Date.now()/1000;updateSidebarWidgets();
-          api('/api/projects/'+encodeURIComponent(item.id)+'/opened',{method:'POST'}).then(result=>{item.last_opened_at=result.last_opened_at;updateSidebarWidgets();}).catch(error=>toast('最近打开记录未更新：'+error.message));
-        }catch(error){if(isCurrent())toast(error.message);}
+          const options={fromRecent:true,transcriptFirst:true,targetTab:revised?'familiarity':undefined,isCurrent,signal:job.controller.signal};
+          if(!await openProject(id,null,options)||!isCurrent())return;
+          const openedAt=Date.now()/1000;
+          item.last_opened_at=openedAt;updateSidebarWidgets();
+          api('/api/projects/'+encodeURIComponent(id)+'/opened',{method:'POST'}).then(result=>{if(item.last_opened_at===openedAt){item.last_opened_at=result.last_opened_at;updateSidebarWidgets();}}).catch(error=>{if(selected===id)toast('最近打开记录未更新：'+error.message);});
+        }catch(error){if(isCurrent()&&error.name!=='AbortError')toast(error.message);}
+        finally{if(isCurrent()){recentOpening=null;recentList.querySelector('[aria-busy="true"]')?.removeAttribute('aria-busy');}}
       };return btn;
     }));
   }

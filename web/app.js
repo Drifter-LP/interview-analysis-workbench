@@ -116,10 +116,10 @@ function loadInterviewAnalysis(job=interviewAnalysisRead){
  job.promise=api(`/api/projects/${encodeURIComponent(job.id)}/analysis-workspace`).then(data=>{
   if(interviewAnalysisRead!==job||selected!==job.id)return;
   analysisData=data||emptyAnalysis();interviewAnalysisRead=null;fillMetadata();
-  if($('#familiarity').classList.contains('active'))renderMemo();
+  if($('#analysis').classList.contains('active')&&$('#familiarity').classList.contains('active'))renderMemo();
   else if($('#coding').classList.contains('active')&&!window.aiCodingDemo)renderAnalysis();
  }).catch(error=>{
-  if(interviewAnalysisRead===job&&selected===job.id){job.error=error;job.promise=null;if($('#familiarity').classList.contains('active'))renderMemo();}
+  if(interviewAnalysisRead===job&&selected===job.id){job.error=error;job.promise=null;if($('#analysis').classList.contains('active')&&$('#familiarity').classList.contains('active'))renderMemo();}
   throw error;
  });
  return job.promise;
@@ -128,8 +128,8 @@ async function openProject(id,memoMaterial=null,options={}){
  const serial=++openInterviewSerial,codingOnly=options.targetTab==='coding',analysisOnly=['coding','familiarity'].includes(options.targetTab);
  const isCurrent=()=>serial===openInterviewSerial&&(!options.isCurrent||options.isCurrent());
  if(codingOnly)window.aiCodingDemo?.prepareSwitch?.();
- const base='/api/projects/'+encodeURIComponent(id), transcriptFirst=!analysisOnly&&(options.fromLibrary||options.transcriptFirst);
- const opened=transcriptFirst?await api(base+'/open-transcript'):null;
+ const base='/api/projects/'+encodeURIComponent(id), transcriptFirst=(!analysisOnly&&(options.fromLibrary||options.transcriptFirst))||(options.fromRecent&&options.targetTab==='familiarity');
+ const opened=transcriptFirst?await api(base+'/open-transcript',{signal:options.signal}):null;
  const meta=opened?.project??await api(base);if(!isCurrent())return false;
  if(meta.status!=='completed'){toast(meta.message||statusText(meta.status));return false;}
  const [t,a,r]=opened?[opened.transcript,null,null]:await Promise.all([api(base+'/transcript'),api(base+'/analysis-workspace'),analysisOnly?Promise.resolve(null):api('/api/research-projects').catch(()=>null)]);
@@ -137,7 +137,7 @@ async function openProject(id,memoMaterial=null,options={}){
  selected=id;selectedProject=meta;try{sessionStorage.setItem('wb_last_interview_id',String(id));}catch{}updateEditorEmptyGuide();currentMemoMaterial=memoMaterial||{type:'workspace',key:String(id)};pendingAccepted.clear();pendingRejected.clear();selectedCodeId=null;codingSelection=null;
  interviewAnalysisRead=transcriptFirst?{id,promise:null,error:null}:null;
  if(r)researchProjects=r;renderTranscript(t.text,t.annotations||[]);setCodingText(t.text);$('#memoSource').dataset.text=t.text;$('#editorTitle').textContent=selectedProject.name;$('#editorHint').textContent=t.edited?'已有校订稿':selectedProject.source_type==='transcript'?'已导入访谈稿':'当前为转录稿';$('#currentProject').textContent=selectedProject.name;$('#saveBtn').disabled=false;$('#optimizeBtn').disabled=false;$('#goAnalysisBtn').disabled=false;analysisData=transcriptFirst?null:(a||emptyAnalysis());renderEditorProjects();fillMetadata();
- if(transcriptFirst){switchView('editor');loadInterviewAnalysis().catch(()=>{});}
+ if(transcriptFirst){if(options.targetTab==='familiarity')switchView('analysis','familiarity');else switchView('editor');loadInterviewAnalysis().catch(()=>{});}
  else if(analysisOnly){renderMemoSwitcher();}else{renderAnalysis();renderMemo();switchView('editor');}
  return true;
 }

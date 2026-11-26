@@ -93,209 +93,74 @@
     body.querySelector('button')?.focus();
   };sidebar.append(settings);
 
-  // --- Sidebar Enrichment: Badges, Recent Interviews Switcher & Quota Mini-Card ---
-  const navEl=sidebar.querySelector('nav');
+  // Recent interviews share the same first/second-level navigation primitives.
   const recentBox=document.createElement('section');
-  recentBox.className='sb-recent-box';recentBox.id='sbRecentBox';recentBox.setAttribute('aria-label','最近打开的访谈');
-  recentBox.innerHTML='<div class="sb-recent-head"><span>最近访谈</span><small id="sbRecentCount"></small></div><div class="sb-recent-list" id="sbRecentList"></div>';
-  if(navEl)navEl.after(recentBox);
-
+  recentBox.className='nav-group open sb-recent-box';recentBox.id='sbRecentBox';
+  recentBox.innerHTML='<button type="button" class="nav-parent" aria-expanded="true" aria-controls="sbRecentList"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><em>最近访谈</em><b>⌄</b></button><div class="nav-children sb-recent-list" id="sbRecentList"></div>';
+  sidebar.querySelector('nav').append(recentBox);
+  const recentToggle=recentBox.querySelector('.nav-parent'),recentList=recentBox.querySelector('#sbRecentList');
+  recentToggle.onclick=()=>{const open=recentBox.classList.toggle('open');recentToggle.setAttribute('aria-expanded',String(open));recentList.hidden=!open;};
   const quotaCard=document.createElement('button');
   quotaCard.type='button';quotaCard.className='sb-quota-card';quotaCard.id='sbQuotaCard';
-  quotaCard.setAttribute('aria-label','查看账号与今日调用额度');
-  quotaCard.innerHTML='<div class="sb-quota-top"><span class="sb-quota-role" id="sbQuotaRole">工作台状态</span><span class="sb-quota-nums" id="sbQuotaNums">—</span></div><div class="sb-quota-track" aria-hidden="true"><div class="sb-quota-fill" id="sbQuotaFill" style="width:0%"></div></div><small class="sb-quota-sub" id="sbQuotaSub">点击查看账号与额度详情</small>';
+  quotaCard.innerHTML='<div class="sb-quota-top"><span class="sb-quota-role" id="sbQuotaRole">今日额度</span><span class="sb-quota-nums" id="sbQuotaNums">—</span></div><div class="sb-quota-track" aria-hidden="true"><div class="sb-quota-fill" id="sbQuotaFill" style="width:0%"></div></div>';
   sidebar.insertBefore(quotaCard,settings);
-  quotaCard.onclick=()=>{
-    if((window.workbenchSession||accountsEnabled)&&window.openAccountDrawer)window.openAccountDrawer();
-    else settings.click();
-  };
+  quotaCard.onclick=()=>{if((window.workbenchSession||accountsEnabled)&&window.openAccountDrawer)window.openAccountDrawer();else settings.click();};
   let recentSignature='',recentOpenSerial=0,quotaPending=false;
-
-  function ensureBadge(selector){
-    const item=sidebar.querySelector(selector);
-    if(!item)return null;
-    let badge=item.querySelector('.sb-nav-badge');
-    if(!badge){
-      badge=document.createElement('span');
-      badge.className='sb-nav-badge';
-      badge.hidden=true;
-      item.append(badge);
-    }
-    return badge;
-  }
-
   function updateSidebarWidgets(){
     if(document.hidden)return;
-    const allProjects=Array.isArray(window.projects)?window.projects:(typeof projects!=='undefined'&&Array.isArray(projects)?projects:[]);
-    const allResearch=Array.isArray(window.researchProjects)?window.researchProjects:(typeof researchProjects!=='undefined'&&Array.isArray(researchProjects)?researchProjects:[]);
+    const rows=typeof projects!=='undefined'&&Array.isArray(projects)?projects:[];
     const currentId=typeof selected!=='undefined'?selected:null;
-    const currentAnalysis=typeof analysisData!=='undefined'?analysisData:null;
-
-    const visible=allProjects.filter(p=>!p.hidden_in_library);
-    const completed=visible.filter(p=>p.status==='completed');
-    const pendingReview=completed.filter(p=>!p.edited_at);
-
-    // 1. Update Navigation Badges
-    const bWorkspace=ensureBadge('.nav-item[data-view="workspace"]');
-    if(bWorkspace){
-      bWorkspace.hidden=!visible.length;
-      bWorkspace.textContent=String(visible.length);
+    const sorted=rows.filter(p=>!p.hidden_in_library&&p.status==='completed').sort((a,b)=>(b.last_opened_at||b.created_at||0)-(a.last_opened_at||a.created_at||0)).slice(0,4);
+    const libraryStatus=document.querySelector('#projectList>[role="status"]')?.textContent||'';
+    const waiting=!sorted.length&&/正在读取访谈资料|访谈资料读取失败/.test(libraryStatus);
+    const signature=JSON.stringify([currentId,waiting?libraryStatus:'',sorted.map(p=>[p.id,p.name,p.edited_at,p.last_opened_at])]);
+    if(signature===recentSignature)return;recentSignature=signature;
+    if(waiting||!sorted.length){
+      const status=document.createElement('div');status.className='sb-recent-empty';status.setAttribute('role','status');
+      status.textContent=waiting?(libraryStatus.includes('失败')?'资料读取失败，请在资料页重试':'正在读取最近访谈…'):'暂无最近访谈';
+      recentList.replaceChildren(status);return;
     }
-    const bEditor=ensureBadge('.nav-item[data-view="editor"]');
-    if(bEditor){
-      if(pendingReview.length){
-        bEditor.hidden=false;
-        bEditor.classList.add('is-warn');
-        bEditor.textContent=pendingReview.length+' 待校';
-      }else{
-        bEditor.hidden=true;
-        bEditor.classList.remove('is-warn');
-      }
-    }
-    const bSingle=ensureBadge('.nav-item[data-tab="familiarity"]');
-    if(bSingle){
-      const codeCount=(currentAnalysis?.codes||[]).length;
-      if(codeCount>0){
-        bSingle.hidden=false;
-        bSingle.textContent=codeCount+' 编码';
-      }else if(completed.length>0){
-        bSingle.hidden=false;
-        bSingle.textContent=completed.length+' 篇';
-      }else{
-        bSingle.hidden=true;
-      }
-    }
-    if(!window.WORKBENCH_GUEST){
-      const bCross=ensureBadge('.nav-item[data-tab="focused"]');
-      if(bCross){
-        if(allResearch.length>0){
-          bCross.hidden=false;
-          bCross.textContent=allResearch.length+' 项目';
-        }else{
-          bCross.hidden=true;
-        }
-      }
-    }
-
-    // 2. Update Recent Interviews Quick List
-    const recentList=document.getElementById('sbRecentList');
-    const recentCount=document.getElementById('sbRecentCount');
-    if(recentList&&recentCount){
-      const sorted=[...completed].sort((a,b)=>(b.last_opened_at||b.created_at||0)-(a.last_opened_at||a.created_at||0));
-      const libraryStatus=document.querySelector('#projectList>[role="status"]')?.textContent||'';
-      const waiting=!sorted.length&&/正在读取访谈资料|访谈资料读取失败/.test(libraryStatus);
-      const signature=JSON.stringify([currentId,completed.length,waiting?libraryStatus:'',sorted.slice(0,4).map(p=>[p.id,p.name,p.edited_at,p.last_opened_at])]);
-      if(signature===recentSignature)return;
-      recentSignature=signature;
-      recentCount.textContent=completed.length?completed.length+' 篇':'';
-      if(waiting){
-        const status=document.createElement('div');status.className='sb-recent-empty';status.setAttribute('role','status');
-        status.textContent=libraryStatus.includes('失败')?'访谈资料暂不可用，请在资料页重试':'正在读取最近访谈…';recentList.replaceChildren(status);
-      }else if(!sorted.length){
-        recentList.innerHTML='<div class="sb-recent-empty"><span>暂无已导入的访谈稿</span><br><button type="button" data-sb-demo>＋ 载入示例访谈</button></div>';
-        const demoBtn=recentList.querySelector('[data-sb-demo]');
-        if(demoBtn)demoBtn.onclick=()=>{
-          if(typeof window.loadDemoSample==='function')window.loadDemoSample('editor',demoBtn);
-          else document.getElementById('importTranscriptBtn')?.click();
-        };
-      }else{
-        const topItems=sorted.slice(0,4);
-        recentList.replaceChildren(...topItems.map(item=>{
-          const btn=document.createElement('button');
-          btn.type='button';
-          btn.dataset.projectId=String(item.id);
-          const isCurrent=currentId&&String(item.id)===String(currentId);
-          btn.className='sb-recent-item'+(isCurrent?' is-current':'');
-          if(isCurrent)btn.setAttribute('aria-current','true');
-          btn.title=item.name+(item.edited_at?'（已校订）':'（待校订）');
-          const dot=document.createElement('span');
-          dot.className='sb-recent-dot'+(!item.edited_at?' is-review':'');
-          const name=document.createElement('span');
-          name.className='sb-recent-name';
-          name.textContent=item.name;
-          const tag=document.createElement('span');
-          tag.className='sb-recent-tag';
-          tag.textContent=isCurrent?'当前':(!item.edited_at?'待校':'');
-          btn.append(dot,name,tag);
-          btn.onclick=async()=>{
-            if(typeof openProject!=='function')return;
-            const serial=++recentOpenSerial,isCurrent=()=>serial===recentOpenSerial;
-            try{
-            const inAnalysis=document.getElementById('analysis')?.classList.contains('active');
-            const inCoding=inAnalysis&&document.getElementById('coding')?.classList.contains('active');
-            const inMemo=inAnalysis&&document.getElementById('familiarity')?.classList.contains('active');
-            if(inCoding){
-              if(!await openProject(item.id,null,{targetTab:'coding',isCurrent})||!isCurrent())return;
-              if(typeof switchView==='function')switchView('analysis','coding');
-            }else if(inMemo){
-              if(!await openProject(item.id,null,{targetTab:'familiarity',isCurrent})||!isCurrent())return;
-              if(typeof switchView==='function')switchView('analysis','familiarity');
-            }else{
-              if(!await openProject(item.id,null,{transcriptFirst:true,isCurrent})||!isCurrent())return;
-            }
-            item.last_opened_at=Date.now()/1000;
-            updateSidebarWidgets();
-            api('/api/projects/'+encodeURIComponent(item.id)+'/opened',{method:'POST'}).then(result=>{
-              item.last_opened_at=result.last_opened_at;updateSidebarWidgets();
-            }).catch(error=>toast('最近打开记录未更新：'+error.message));
-            }catch(error){if(isCurrent())toast(error.message);}
-          };
-          return btn;
-        }));
-      }
-    }
+    recentList.replaceChildren(...sorted.map(item=>{
+      const revised=!!item.edited_at,fullName=String(item.name||'未命名访谈'),chars=Array.from(fullName);
+      const btn=document.createElement('button');btn.type='button';btn.className='nav-item sb-recent-item';btn.dataset.projectId=String(item.id);
+      if(String(currentId)===String(item.id))btn.setAttribute('aria-current','page');
+      const status=revised?'已修订，打开单篇访谈分析':'未修订，打开文字校订';
+      btn.title=fullName+'（'+status+'）';btn.setAttribute('aria-label',fullName+'，'+status);
+      btn.innerHTML='<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>';
+      const name=document.createElement('em');name.className='sb-recent-name';name.textContent=chars.length>5?chars.slice(0,5).join('')+'…':fullName;
+      const dot=document.createElement('span');dot.className='sb-recent-dot'+(revised?'':' is-review');dot.setAttribute('aria-hidden','true');btn.append(name,dot);
+      btn.onclick=async()=>{
+        const serial=++recentOpenSerial,isCurrent=()=>serial===recentOpenSerial;
+        try{
+          const options=revised?{targetTab:'familiarity',isCurrent}:{transcriptFirst:true,isCurrent};
+          if(!await openProject(item.id,null,options)||!isCurrent())return;
+          if(revised)switchView('analysis','familiarity');
+          item.last_opened_at=Date.now()/1000;updateSidebarWidgets();
+          api('/api/projects/'+encodeURIComponent(item.id)+'/opened',{method:'POST'}).then(result=>{item.last_opened_at=result.last_opened_at;updateSidebarWidgets();}).catch(error=>toast('最近打开记录未更新：'+error.message));
+        }catch(error){if(isCurrent())toast(error.message);}
+      };return btn;
+    }));
   }
-
   async function refreshSidebarQuota(){
     if(quotaPending||document.hidden)return;
-    const roleEl=document.getElementById('sbQuotaRole');
-    const numsEl=document.getElementById('sbQuotaNums');
-    const fillEl=document.getElementById('sbQuotaFill');
-    const track=fillEl?.parentElement;
-    const subEl=document.getElementById('sbQuotaSub');
-    if(!roleEl||!numsEl||!fillEl||!subEl)return;
-    const boot=window.workbenchSession;
-    if(!boot&&!accountsEnabled){
-      const allProjects=typeof projects!=='undefined'&&Array.isArray(projects)?projects:[];
-      const done=allProjects.filter(p=>p.status==='completed').length;
-      roleEl.textContent='本地工作台';
-      numsEl.textContent=done+' 篇就绪';
-      track.hidden=true;
-      subEl.textContent='点击打开工作台设置与回收站';
-      quotaCard.setAttribute('aria-label','打开本地工作台设置');
-      return;
-    }
-    if(boot){
-      const isGuest=boot.role==='guest',isAdmin=boot.role==='admin';
-      roleEl.textContent=isGuest?'访客试用空间':isAdmin?(boot.username+' · 管理员'):boot.username;
-    }
+    const label=quotaCard.querySelector('#sbQuotaRole'),nums=quotaCard.querySelector('#sbQuotaNums'),fill=quotaCard.querySelector('#sbQuotaFill'),track=fill.parentElement;
+    if(!window.workbenchSession&&!accountsEnabled){label.textContent='本地工作台';nums.textContent='设置';track.hidden=true;quotaCard.title='打开工作台设置';return;}
     try{
-      quotaPending=true;
-      const r=await fetch('/auth/me');
-      if(!r.ok)throw new Error('额度读取失败');
-      const me=await r.json();
-      if(!me||!me.usage||!Number.isFinite(Number(me.usage.calls)))throw new Error('额度数据无效');
-      const isGuest=me.role==='guest',isAdmin=me.role==='admin';
-      const used=Number(me.usage.calls),limit=Number(me.daily_calls);
-      if(!isAdmin&&!(Number.isFinite(limit)&&limit>0))throw new Error('额度上限无效');
-      roleEl.textContent=isGuest?'访客试用空间':isAdmin?(me.username+' · 管理员'):me.username;
-      numsEl.textContent=isAdmin?('今日 '+used+' 次'):((isGuest?'累计 ':'')+used+' / '+limit+' 次');
-      track.hidden=isAdmin;
-      const pct=isAdmin?0:Math.min(100,Math.round(used/limit*100));
-      fillEl.style.width=pct+'%';
-      subEl.textContent=isGuest?'空间累计 20 次 · 不按日重置':isAdmin?'每日额度不限 · 点击管理成员与统计':'北京时间 08:00 重置 · 点击查看详情';
-    }catch{
-      numsEl.textContent='暂不可用';track.hidden=true;subEl.textContent='额度读取失败 · 点击查看详情或重试';
-    }finally{quotaPending=false;}
+      quotaPending=true;const r=await fetch('/auth/me');if(!r.ok)throw Error();
+      const me=await r.json(),admin=me.role==='admin',guest=me.role==='guest',used=Number(me.usage?.calls),limit=Number(me.daily_calls);
+      if(!Number.isFinite(used)||(!admin&&!(limit>0)))throw Error();
+      label.textContent=guest?'试用额度':'今日额度';nums.textContent=used+' / '+(admin?'∞':limit)+' 次';
+      track.hidden=false;fill.style.width=(admin?100:Math.min(100,used/limit*100))+'%';
+      const hint=admin?'管理员每日额度不限':guest?'访客空间累计额度，不按日重置':'北京时间每天08:00重置';
+      quotaCard.title=hint+'；点击查看账号与额度';quotaCard.setAttribute('aria-label',label.textContent+'：'+nums.textContent+'。'+hint);
+    }catch{nums.textContent='暂不可用';track.hidden=true;quotaCard.title='额度读取失败，点击查看详情或重试';}
+    finally{quotaPending=false;}
   }
-
-  window.updateSidebarWidgets=updateSidebarWidgets;
-  window.refreshSidebarQuota=refreshSidebarQuota;
+  window.updateSidebarWidgets=updateSidebarWidgets;window.refreshSidebarQuota=refreshSidebarQuota;
   document.addEventListener('interview-library-updated',updateSidebarWidgets);
   document.addEventListener('click',()=>requestAnimationFrame(updateSidebarWidgets));
   setTimeout(()=>{updateSidebarWidgets();refreshSidebarQuota();},250);
-  setInterval(updateSidebarWidgets,2500);
-  setInterval(()=>{if(!document.hidden)refreshSidebarQuota();},60000);
+  setInterval(()=>{updateSidebarWidgets();},2500);
+  setInterval(refreshSidebarQuota,60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){updateSidebarWidgets();refreshSidebarQuota();}});
-
 })();

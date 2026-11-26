@@ -9,8 +9,124 @@
  if(guest){start.disabled=true;start.title=guestNotice;status.id='guestCodingNotice';start.setAttribute('aria-describedby',status.id);}
  project.setAttribute('aria-label','AI编码研究项目');resume.hidden=true;
  const progress=el('div','ac-progress');
+
+ // Scheme A: Top Secondary Toolbar (Explore vs. Problem-Focused Coding + Inline Question & Dimension Pills)
+ let codingMode='explore',modeFilter='all',focusQuestion='',focusDimensions=[];
+ const modeSegments=el('div','ac-mode-segments');
+ modeSegments.setAttribute('role','group');modeSegments.setAttribute('aria-label','AI编码模式切换');
+ const exploreModeBtn=btn('探索编码',()=>setCodingMode('explore')),focusedModeBtn=btn('🎯 问题聚焦',()=>setCodingMode('focused'));
+ modeSegments.append(exploreModeBtn,focusedModeBtn);
+
+ const focusBar=el('div','ac-focus-bar');focusBar.hidden=true;
+ const focusInput=el('input','ac-focus-input');
+ focusInput.type='text';focusInput.maxLength=300;
+ focusInput.placeholder='输入想聚焦编码的研究问题（如：受访者如何权衡跨城观演成本与情绪价值？）';
+ focusInput.setAttribute('aria-label','聚焦编码研究问题');
+ const focusTagsWrap=el('div','ac-focus-tags');
+ const tagAddInput=el('input','ac-focus-tag-input');
+ tagAddInput.type='text';tagAddInput.maxLength=24;
+ tagAddInput.placeholder='＋ 关注维度 (回车)';
+ tagAddInput.setAttribute('aria-label','添加关注维度标签');
+ focusBar.append(focusInput,focusTagsWrap);
+
+ const clearFocusBtn=btn('清空焦点',()=>{
+  focusQuestion='';focusDimensions=[];focusInput.value='';tagAddInput.value='';
+  renderFocusTags();saveFocusDraft();window.workspaceHeader?.refresh();
+ });
+ clearFocusBtn.className='ac-focus-clear';
+
+ function focusStorageKey(){return `wb_coding_focus_${pid||'default'}_${tid||'default'}`;}
+ function saveFocusDraft(){
+  try{localStorage.setItem(focusStorageKey(),JSON.stringify({mode:codingMode,question:focusQuestion,dimensions:focusDimensions}));}catch{}
+ }
+ function loadFocusDraft(serverFocus){
+  let loaded=null;
+  try{const raw=localStorage.getItem(focusStorageKey());if(raw)loaded=JSON.parse(raw);}catch{}
+  const sourceFocus=(loaded&&(loaded.question||loaded.dimensions?.length))?loaded:(serverFocus||loaded);
+  if(sourceFocus){
+   codingMode=sourceFocus.mode==='focused'?'focused':'explore';
+   focusQuestion=String(sourceFocus.question||'');
+   focusDimensions=Array.isArray(sourceFocus.dimensions)?sourceFocus.dimensions.map(x=>String(x||'').trim()).filter(Boolean).slice(0,8):[];
+  }else{
+   codingMode='explore';focusQuestion='';focusDimensions=[];
+  }
+  focusInput.value=focusQuestion;
+  renderFocusTags();
+ }
+ function addFocusDimension(raw){
+  const val=String(raw||'').trim().replace(/^#+/,'').trim().slice(0,24);
+  if(!val)return false;
+  if(focusDimensions.includes(val)){tagAddInput.value='';return false;}
+  if(focusDimensions.length>=8){toast('最多添加 8 个关注维度标签');return false;}
+  focusDimensions.push(val);tagAddInput.value='';
+  renderFocusTags();saveFocusDraft();window.workspaceHeader?.refresh();
+  return true;
+ }
+ function removeFocusDimension(idx){
+  focusDimensions.splice(idx,1);
+  renderFocusTags();saveFocusDraft();window.workspaceHeader?.refresh();
+ }
+ function renderFocusTags(){
+  focusTagsWrap.replaceChildren();
+  focusDimensions.forEach((dim,idx)=>{
+   const pill=el('span','ac-focus-pill',`#${dim}`);
+   const del=btn('×',e=>{e.stopPropagation();removeFocusDimension(idx);});
+   del.className='ac-focus-pill-remove';del.title=`移除维度 #${dim}`;del.setAttribute('aria-label',`移除维度 ${dim}`);
+   pill.append(del);focusTagsWrap.append(pill);
+  });
+  focusTagsWrap.append(tagAddInput);
+ }
+ focusInput.oninput=()=>{
+  focusQuestion=focusInput.value;
+  saveFocusDraft();
+  clearFocusBtn.hidden=!(focusQuestion.trim()||focusDimensions.length);
+ };
+ focusInput.onkeydown=e=>{
+  if(e.key==='Enter'&&!e.isComposing){
+   e.preventDefault();
+   if(!start.disabled)run(false);
+  }
+ };
+ tagAddInput.onkeydown=e=>{
+  if((e.key==='Enter'||e.key===','||e.key==='，')&&!e.isComposing){
+   e.preventDefault();
+   addFocusDimension(tagAddInput.value);
+  }else if(e.key==='Backspace'&&!tagAddInput.value&&focusDimensions.length){
+   removeFocusDimension(focusDimensions.length-1);
+  }
+ };
+ tagAddInput.onblur=()=>{if(tagAddInput.value.trim())addFocusDimension(tagAddInput.value);};
+ renderFocusTags();
+
+ function codeMode(c){return c?.coding_mode==='focused'?'focused':'explore';}
+ function matchesModeFilter(c){
+  if(modeFilter==='all')return true;
+  return codeMode(c)===modeFilter;
+ }
+ function setCodingMode(nextMode,linkFilter=true){
+  if(!checkDirty())return;
+  codingMode=nextMode==='focused'?'focused':'explore';
+  if(linkFilter){
+   modeFilter=codingMode==='focused'?'focused':'explore';
+   selected='';editing=null;dirty=false;range=null;
+  }
+  saveFocusDraft();
+  if(state)render();
+  else window.workspaceHeader?.refresh();
+  if(codingMode==='focused')setTimeout(()=>focusInput.focus(),30);
+ }
+ function setModeFilter(nextFilter){
+  if(!checkDirty())return;
+  modeFilter=nextFilter;
+  selected='';editing=null;dirty=false;range=null;
+  render();
+ }
+
  const grid=el('div','ac-grid'),left=el('aside','ac-list'),middle=el('section','ac-middle'),reviewCard=el('aside','ac-review'),reviewHeader=el('div','ac-review-head'),right=el('div','ac-review-body'),reviewFooter=el('div','ac-review-fixed-footer');reviewFooter.hidden=true;reviewHeader.append(el('h3','','编码审核'));reviewCard.append(reviewHeader,right,reviewFooter);
- const listHead=el('h3','','编码建议'),filter=el('select'),list=el('div','ac-list-items');filter.setAttribute('aria-label','筛选审核状态');for(const [v,t] of [['all','全部'],['pending','待审核'],['accepted','已接受'],['modified','已修改'],['rejected','已拒绝'],['deleted','已删除（可恢复）']])filter.append(new Option(t,v));const listHeader=el('div','ac-list-head'),organizeButton=btn('整理编码',openOrganizer);organizeButton.className='ac-organize-button';organizeButton.disabled=true;const acceptAll=btn('接受全部AI编码',acceptAllCodes);acceptAll.className='ac-bulk-accept';acceptAll.disabled=true;listHeader.append(listHead,organizeButton);left.append(listHeader,filter,acceptAll,list);
+ const listHead=el('h3','','编码建议'),modeFilterBar=el('div','ac-mode-filter-bar'),filter=el('select'),list=el('div','ac-list-items');
+ modeFilterBar.setAttribute('role','tablist');modeFilterBar.setAttribute('aria-label','按编码模式筛选');
+ filter.setAttribute('aria-label','筛选审核状态');for(const [v,t] of [['all','全部状态'],['pending','待审核'],['accepted','已接受'],['modified','已修改'],['rejected','已拒绝'],['deleted','已删除（可恢复）']])filter.append(new Option(t,v));
+ const listHeader=el('div','ac-list-head'),organizeButton=btn('整理编码',openOrganizer);organizeButton.className='ac-organize-button';organizeButton.disabled=true;const acceptAll=btn('接受全部AI编码',acceptAllCodes);acceptAll.className='ac-bulk-accept';acceptAll.disabled=true;listHeader.append(listHead,organizeButton);left.append(listHeader,modeFilterBar,filter,acceptAll,list);
  const sourceTitle=el('h3','','访谈原文'),sourceInfo=el('p','ac-note'),source=el('div','ac-source'),selectionInfo=el('span','ac-note','选中文字后可编码'),manual=btn('新建编码',()=>{closeSelectionMenu();newManual();}),attach=btn('加入当前编码',()=>{closeSelectionMenu();if(current()?.references[referenceIndex]?.validation!=='valid')confirmSelectionReference();else attachSelection();});
  const selectionMenu=el('div','ac-selection-popover');
  selectionMenu.setAttribute('role','menu');selectionMenu.setAttribute('aria-label','原文选区编码操作');manual.setAttribute('role','menuitem');attach.setAttribute('role','menuitem');selectionMenu.hidden=true;selectionMenu.append(selectionInfo,manual,attach);document.body.append(selectionMenu);
@@ -46,7 +162,7 @@ source.tabIndex=0;source.setAttribute('aria-label','编码访谈原文');middle.
  function checkDirty(){return !dirty||confirm('当前编码修改尚未保存，放弃这些修改？');}
  function updateReviewStatus(){const note=reviewCard.querySelector('.ac-save-state'),save=reviewCard.querySelector('[aria-label="保存修改"]');if(note){note.textContent=dirty?'修改未保存':current()?.status==='pending'?'AI建议已自动保存':'已保存';note.classList.toggle('ac-unsaved',dirty);}if(save)save.disabled=!dirty||busy;}
  function markDirty(){const saved=state?.codes.find(c=>c.id===editing?.id);dirty=!saved||editing.name!==saved.name||editing.definition!==saved.definition||JSON.stringify(editing.references)!==JSON.stringify(saved.references);updateReviewStatus();}
-function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=true;clearTimeout(timer);++token;state=null;selected='';editing=null;dirty=false;range=null;referenceIndex=0;closeSelectionMenu();list.replaceChildren();source.replaceChildren();sourceInfo.textContent='';right.replaceChildren();reviewFooter.replaceChildren();reviewFooter.hidden=true;reviewHeader.replaceChildren(el('h3','','编码审核'));progress.textContent=message;status.textContent=message;start.disabled=true;resume.hidden=true;}
+function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=true;clearTimeout(timer);++token;state=null;selected='';editing=null;dirty=false;range=null;referenceIndex=0;closeSelectionMenu();list.replaceChildren();modeFilterBar.replaceChildren();source.replaceChildren();sourceInfo.textContent='';right.replaceChildren();reviewFooter.replaceChildren();reviewFooter.hidden=true;reviewHeader.replaceChildren(el('h3','','编码审核'));progress.textContent=message;status.textContent=message;start.disabled=true;resume.hidden=true;}
  async function activateCurrent(){
   const context=window.singleInterviewCodingContext.get(),sourceId=String(context.sourceId||'');
   if(state&&sourceId===tid&&(guest||!context.researchProjectId||context.researchProjectId===pid)){render();return;}
@@ -55,7 +171,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   if(!sourceId&&window.renderQuickInterviewGuide)window.renderQuickInterviewGuide(source,'coding');
   window.workspaceHeader?.refresh();if(!sourceId)return;
   try{
-   if(guest){await load();return;}
+   if(guest){await load(true);return;}
    peers=window.singleInterviewCodingContext.projects?.()||[];
    if(!window.aiCodingContext.resolve(peers,sourceId,context.researchProjectId,previousPid).project)peers=await request('/api/research-projects?summaries=true');
    if(serial!==activation)return;
@@ -63,30 +179,60 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
    project.replaceChildren(...scopeChoices.map(p=>new Option(p.name,p.id)));
    if(!scope.project){resetContext('该访谈尚未归入研究项目，请先在访谈资料中将它加入项目。');return;}
    pid=String(scope.project.id);project.value=pid;window.singleInterviewCodingContext.setScope?.(pid);
-   await load();
+   await load(true);
   }catch(e){if(serial===activation){resetContext('编码读取失败：'+e.message);warn(e);}}
   finally{if(serial===activation)window.workspaceHeader?.refresh();}
  }
- function acceptCandidate(c){const chars=Array.from(state?.sources[state.current_hash]?.text||'');return c.origin==='ai'&&c.status==='pending'&&!c.deleted_at&&c.source_hash===state.current_hash&&c.references.length>0&&c.references.every(r=>r.validation==='valid'&&Number.isInteger(r.start)&&Number.isInteger(r.end)&&r.start>=0&&r.end>r.start&&r.end<=chars.length&&chars.slice(r.start,r.end).join('')===r.quote);}
+ function acceptCandidate(c){
+  if(!matchesModeFilter(c))return false;
+  const chars=Array.from(state?.sources[state.current_hash]?.text||'');
+  return c.origin==='ai'&&c.status==='pending'&&!c.deleted_at&&c.source_hash===state.current_hash&&c.references.length>0&&c.references.every(r=>r.validation==='valid'&&Number.isInteger(r.start)&&Number.isInteger(r.end)&&r.start>=0&&r.end>r.start&&r.end<=chars.length&&chars.slice(r.start,r.end).join('')===r.quote);
+ }
  async function acceptAllCodes(){
   if(busy||!state)return;if(dirty)return toast('请先保存当前修改，再批量接受。');
   const count=state.codes.filter(acceptCandidate).length;if(!count)return;
-  if(!confirm(`接受当前访谈中 ${count} 个可精确定位的待审核AI编码？\n需处理、历史原文版本、已拒绝及人工修改的编码不变。\n原文定位准确不代表编码含义正确，请确认你已审阅。`))return;
+  const scopeLabel=modeFilter==='focused'?'聚焦':modeFilter==='explore'?'探索':'';
+  if(!confirm(`接受当前视图中 ${count} 个可精确定位的待审核${scopeLabel}AI编码？\n需处理、历史原文版本、已拒绝及人工修改的编码不变。\n原文定位准确不代表编码含义正确，请确认你已审阅。`))return;
   const owner=endpoint(),version=token;busy=true;acceptAll.disabled=true;
-  try{const d=await request(owner+'/accept-all','POST',{confirmed:true,revision:state.revision});if(owner!==endpoint()||version!==token)return;state=d.coding;editing=null;dirty=false;busy=false;render();toast(`已接受 ${d.accepted_count} 个AI编码，结果已保存。`);}catch(e){warn(e);}finally{busy=false;if(state)renderList();}
+  try{const d=await request(owner+'/accept-all','POST',{confirmed:true,revision:state.revision,coding_mode:modeFilter});if(owner!==endpoint()||version!==token)return;state=d.coding;editing=null;dirty=false;busy=false;render();toast(`已接受 ${d.accepted_count} 个AI编码，结果已保存。`);}catch(e){warn(e);}finally{busy=false;if(state)renderList();}
  }
  function activate(){if(!checkDirty())return;switchView('analysis','coding');}
- async function load(){if(!tid||(!guest&&!pid))return;const version=++token;clearTimeout(timer);try{const d=await request(endpoint());if(version!==token)return;state=d;if(!dirty)editing=null;render();if(d.runs.some(r=>r.status==='running'))timer=setTimeout(()=>load(),1800);}catch(e){if(version===token){warn(e);status.textContent='读取失败';window.workspaceHeader?.refresh();}}}
- project.onchange=async()=>{if(!checkDirty()){project.value=pid;return;}const next=project.value;resetContext('正在读取此项目下的编码…');pid=next;window.singleInterviewCodingContext.setScope?.(pid);await load();};
+ async function load(initial=false){if(!tid||(!guest&&!pid))return;const version=++token;clearTimeout(timer);try{const d=await request(endpoint());if(version!==token)return;state=d;if(initial){loadFocusDraft(d.last_focus);const hasFocused=d.codes.some(c=>codeMode(c)==='focused'),hasExplore=d.codes.some(c=>codeMode(c)==='explore');modeFilter=codingMode==='focused'?(hasFocused?'focused':'all'):(hasExplore&&hasFocused?'all':'all');}if(!dirty)editing=null;render();if(d.runs.some(r=>r.status==='running'))timer=setTimeout(()=>load(false),1800);}catch(e){if(version===token){warn(e);status.textContent='读取失败';window.workspaceHeader?.refresh();}}}
+ project.onchange=async()=>{if(!checkDirty()){project.value=pid;return;}const next=project.value;resetContext('正在读取此项目下的编码…');pid=next;window.singleInterviewCodingContext.setScope?.(pid);await load(true);};
  filter.onchange=()=>{if(!checkDirty()){filter.value=previousFilter;return;}previousFilter=filter.value;selected='';editing=null;dirty=false;range=null;render();};
- async function run(continuing){if(guest||busy||!state||!checkDirty())return;const last=state.runs.at(-1);if(!continuing&&state.codes.length&&!confirm('重新编码将新增一轮待审核建议，已有编码和人工判断全部保留。继续？'))return;busy=true;start.disabled=resume.disabled=true;try{await request(endpoint()+'/run','POST',continuing?{resume_run_id:last?.id}:{});editing=null;dirty=false;await load();}catch(e){warn(e);}finally{busy=false;start.disabled=resume.disabled=false;}}
+ async function run(continuing){
+  if(guest||busy||!state||!checkDirty())return;
+  if(!continuing&&tagAddInput.value.trim())addFocusDimension(tagAddInput.value);
+  const isFocused=codingMode==='focused';
+  if(!continuing&&isFocused&&!focusQuestion.trim()&&!focusDimensions.length){
+   focusInput.focus();
+   return toast('请先在顶栏二级工具条输入研究问题或添加关注维度');
+  }
+  const last=state.runs.at(-1);
+  if(!continuing&&state.codes.length){
+   const msg=isFocused
+    ?`将围绕当前研究焦点新增一轮「🎯 问题聚焦」编码建议，已有的 ${state.codes.length} 个编码（含探索编码与人工判断）全部保留。继续？`
+    :'重新运行将新增一轮开放式探索编码建议，已有编码和人工判断全部保留。继续？';
+   if(!confirm(msg))return;
+  }
+  busy=true;start.disabled=resume.disabled=true;
+  try{
+   const payload=continuing
+    ?{resume_run_id:last?.id}
+    :{mode:codingMode,focus_question:focusQuestion.trim(),focus_dimensions:focusDimensions};
+   if(!continuing)modeFilter=isFocused?'focused':'explore';
+   await request(endpoint()+'/run','POST',payload);
+   editing=null;dirty=false;await load(false);
+  }catch(e){warn(e);}finally{busy=false;start.disabled=resume.disabled=false;}
+ }
  function choose(id){if(!checkDirty())return;selected=id;editing=null;dirty=false;referenceIndex=0;range=null;if(window.innerWidth<=850&&typeof setMobilePane==='function')setMobilePane('review');render();scrollToRef();}
- function nextCode(){const codes=state?.codes||[],index=codes.findIndex(c=>c.id===selected);return index<0?null:codes.slice(index+1).find(c=>filter.value==='all'||c.status===filter.value)||null;}
+ function nextCode(){const codes=(state?.codes||[]).filter(matchesModeFilter),index=codes.findIndex(c=>c.id===selected);return index<0?null:codes.slice(index+1).find(c=>filter.value==='all'||c.status===filter.value)||null;}
  function advanceCode(){if(busy)return;const next=nextCode();if(next)choose(next.id);else toast('当前列表已无下一处编码。');}
  function current(){return editing||[...(state?.codes||[]),...(state?.deleted_codes||[])].find(c=>c.id===selected);}
  function scrollToRef(){const c=current(),ref=c?.references[referenceIndex];let mark;if(ref?.validation==='valid')mark=[...source.querySelectorAll('mark')].find(m=>Number(m.dataset.start)<=ref.start&&Number(m.dataset.end)>ref.start);else mark=source.querySelector('[data-assist="match"]')||source.querySelector('[data-assist="block"]');mark?.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
  function render(){closeSelectionMenu();if(!state)return;const run=state.runs.at(-1),running=run?.status==='running',pending=state.codes.filter(c=>c.status==='pending').length,unresolved=state.codes.flatMap(c=>c.references).filter(r=>r.validation!=='valid').length;
-  const indexStage=run?.index_preparation;status.textContent=running?(indexStage&&indexStage.status!=='completed'?'正在准备话题索引…':'正在编码'):indexStage?.status==='failed'?'话题索引准备失败，可继续':run&&run.status!=='completed'?'编码部分完成或失败':pending?'编码完成 · 存在待审核建议':state.codes.length?'编码及审核已完成':'尚未开始编码';
+  const runFocus=run?.focus?.mode==='focused';
+  const indexStage=run?.index_preparation;status.textContent=running?(indexStage&&indexStage.status!=='completed'?'正在准备话题索引…':runFocus?'正在按焦点编码…':'正在编码'):indexStage?.status==='failed'?'话题索引准备失败，可继续':run&&run.status!=='completed'?'编码部分完成或失败':pending?'编码完成 · 存在待审核建议':state.codes.length?'编码及审核已完成':'尚未开始编码';
   status.title=run?.error||(indexStage?.status==='completed'?(indexStage.reused?'已复用共享话题索引':'已建立并保存共享话题索引'):'');
   start.disabled=guest||!!running;resume.hidden=guest||!run||!['failed','partial'].includes(run.status);resume.disabled=guest||!!running;project.disabled=false;
   if(guest)status.textContent=guestNotice;
@@ -94,9 +240,66 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   for(const b of run?.batches||[]){if(b.status==='failed'){const info=el('span','ac-error',' 批次失败：'+(b.attempts.at(-1)?.error||'可继续'));progress.append(info);}}
   renderList();renderSource();renderReview();window.workspaceHeader?.refresh();
  }
- function renderList(){organizeButton.disabled=guest||!state||!state.codes.some(c=>c.status!=='rejected');acceptAll.disabled=guest||busy||!state||state.runs.some(r=>r.status==='running')||!state.codes.some(acceptCandidate);list.replaceChildren();for(const c of (filter.value==='deleted'?state?.deleted_codes:state?.codes)||[]){if(filter.value!=='deleted'&&filter.value!=='all'&&c.status!==filter.value)continue;const b=btn('',()=>choose(c.id));b.className='ac-code'+(selected===c.id?' active':'');b.append(el('strong','',c.name),el('small','',`${c.references.length} 处引用 · ${c.deleted_at?'已删除':statusLabels[c.status]}${c.references.some(r=>r.validation!=='valid')?' · 需处理':''}`));list.append(b);}if(!list.childElementCount)list.append(el('p','ac-note',guest?'选中原文即可添加手动编码。':'暂无编码。'));}
+ function renderModeFilterBar(){
+  const pool=(filter.value==='deleted'?state?.deleted_codes:state?.codes)||[];
+  const totalCount=pool.length;
+  const exploreCount=pool.filter(c=>codeMode(c)==='explore').length;
+  const focusedCount=pool.filter(c=>codeMode(c)==='focused').length;
+  modeFilterBar.replaceChildren();
+  for(const [key,label,cnt] of [['all','全部',totalCount],['explore','探索',exploreCount],['focused','🎯 聚焦',focusedCount]]){
+   const b=btn(`${label} (${cnt})`,()=>setModeFilter(key));
+   b.className='ac-mode-filter-btn'+(modeFilter===key?' active':'');
+   b.setAttribute('role','tab');
+   b.setAttribute('aria-selected',String(modeFilter===key));
+   modeFilterBar.append(b);
+  }
+ }
+ function renderList(){
+  renderModeFilterBar();
+  organizeButton.disabled=guest||!state||!state.codes.some(c=>c.status!=='rejected');
+  acceptAll.disabled=guest||busy||!state||state.runs.some(r=>r.status==='running')||!state.codes.some(acceptCandidate);
+  list.replaceChildren();
+  const pool=(filter.value==='deleted'?state?.deleted_codes:state?.codes)||[];
+  for(const c of pool){
+   if(!matchesModeFilter(c))continue;
+   if(filter.value!=='deleted'&&filter.value!=='all'&&c.status!==filter.value)continue;
+   const b=btn('',()=>choose(c.id));
+   b.className='ac-code'+(selected===c.id?' active':'');
+   const headRow=el('div','ac-code-head');
+   headRow.append(el('strong','',c.name));
+   const isFoc=codeMode(c)==='focused';
+   const badgeText=isFoc?`🎯 ${c.focus_label?'聚焦·'+c.focus_label:'聚焦'}`:(c.origin==='manual'?'手动':'探索');
+   const badge=el('span','ac-code-mode-badge '+(isFoc?'is-focused':'is-explore'),badgeText);
+   if(isFoc&&c.focus_question)badge.title=`研究焦点：${c.focus_question}`;
+   const metaRow=el('small','ac-code-meta');
+   metaRow.append(badge,document.createTextNode(` ${c.references.length} 处引用 · ${c.deleted_at?'已删除':statusLabels[c.status]}${c.references.some(r=>r.validation!=='valid')?' · 需处理':''}`));
+   b.append(headRow,metaRow);
+   list.append(b);
+  }
+  if(!list.childElementCount){
+   const emptyBox=el('div','ac-empty-list-note');
+   if(guest){
+    emptyBox.append(el('p','ac-note','选中原文即可添加手动编码。'));
+   }else if(modeFilter==='focused'){
+    emptyBox.append(el('p','ac-note','当前尚无「🎯 问题聚焦」编码。请在上方工具条输入研究问题或关注维度，点击右上角「🎯 按焦点AI编码」。'));
+    if(pool.length>0){
+     const showAllBtn=btn(`查看全部已有编码 (${pool.length})`,()=>setModeFilter('all'));
+     showAllBtn.className='ac-show-all-link';
+     emptyBox.append(showAllBtn);
+    }
+   }else if(modeFilter==='explore'&&pool.length>0){
+    emptyBox.append(el('p','ac-note','当前筛选下暂无探索编码。'));
+    const showAllBtn=btn(`查看全部已有编码 (${pool.length})`,()=>setModeFilter('all'));
+    showAllBtn.className='ac-show-all-link';
+    emptyBox.append(showAllBtn);
+   }else{
+    emptyBox.append(el('p','ac-note','暂无编码。'));
+   }
+   list.append(emptyBox);
+  }
+ }
  function renderSource(){const c=current();shownHash=c?.source_hash||state.current_hash;const text=state.sources[shownHash]?.text||'',chars=Array.from(text),bindings=[];sourceInfo.textContent=`${shownHash===state.current_hash?'当前原文':'历史原文快照（原文已更新）'} · 版本 ${shownHash.slice(0,12)} · 字符范围从0开始、末位不包含`;
-  for(const code of state.codes){if(code.source_hash!==shownHash||code.status==='rejected')continue;for(const ref of code.references)if(ref.validation==='valid')bindings.push({start:ref.start,end:ref.end,id:code.id,name:code.name});}
+  for(const code of state.codes){if(code.source_hash!==shownHash||code.status==='rejected'||!matchesModeFilter(code))continue;for(const ref of code.references)if(ref.validation==='valid')bindings.push({start:ref.start,end:ref.end,id:code.id,name:code.name});}
   if(editing&&!editing.deleted_at){for(let i=bindings.length-1;i>=0;i--)if(bindings[i].id===editing.id)bindings.splice(i,1);for(const ref of editing.references)if(ref.validation==='valid')bindings.push({...ref,id:editing.id,name:editing.name});}
   const hint=window.aiCodingLocator.locateUnresolved(c?.references[referenceIndex],c,state);if(hint){bindings.push({start:hint.start,end:hint.end,assist:'block'});for(const span of hint.fragments)bindings.push({...span,assist:'match'});sourceInfo.textContent+=' · 黄色仅为待确认引用的查找辅助';}
   const events=new Map();for(const b of bindings){if(!events.has(b.start))events.set(b.start,{add:[],remove:[]});if(!events.has(b.end))events.set(b.end,{add:[],remove:[]});events.get(b.start).add.push(b);events.get(b.end).remove.push(b);}const points=[...new Set([0,chars.length,...events.keys()])].sort((a,b)=>a-b),active=new Set(),frag=document.createDocumentFragment();
@@ -106,7 +309,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
 const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.contains(document.activeElement))return;if(!state||!s||s.isCollapsed||!source.contains(s.anchorNode)||!source.contains(s.focusNode)){closeSelectionMenu();return;}const r=s.getRangeAt(0),prefix=r.cloneRange();prefix.selectNodeContents(source);prefix.setEnd(r.startContainer,r.startOffset);const a=Array.from(prefix.toString()).length,q=r.toString(),b=a+Array.from(q).length;const expected=Array.from(state.sources[shownHash].text).slice(a,b).join('');if(q!==expected){range=null;closeSelectionMenu();return;}range={start:a,end:b,quote:q,validation:'valid',source_hash:shownHash};attach.disabled=busy||!current()||!!current().deleted_at||current().source_hash!==shownHash;attach.textContent=current()?.references[referenceIndex]?.validation!=='valid'?'用选区确认此引用':'加入当前编码';selectionInfo.textContent=`已选 ${b-a} 字`;const bounds=source.getBoundingClientRect(),rects=[...r.getClientRects()].filter(x=>x.bottom>bounds.top&&x.top<bounds.bottom&&x.width);if(!rects.length){closeSelectionMenu();return;}const rect=rects.at(-1);selectionMenu.hidden=false;const box=selectionMenu.getBoundingClientRect(),gap=8,left=Math.max(gap,Math.min(rect.left,innerWidth-box.width-gap)),below=rect.bottom+gap,top=below+box.height<=Math.min(innerHeight-gap,bounds.bottom)?below:Math.max(gap,Math.min(rect.top-box.height-gap,innerHeight-box.height-gap));selectionMenu.style.left=`${left}px`;selectionMenu.style.top=`${top}px`;};
  source.onmouseup=captureSelection;source.onkeyup=e=>{if(e.key!=='Escape')captureSelection();};
  document.addEventListener('selectionchange',captureSelection);
- function newManual(){if(!range)return toast('请先在中间原文中选择片段');if(!checkDirty())return;selected='';editing={name:'',definition:'',source_hash:range.source_hash,source_id:tid,status:'modified',references:[{...range}],reason:'研究者手动编码'};dirty=true;referenceIndex=0;renderReview();}
+ function newManual(){if(!range)return toast('请先在中间原文中选择片段');if(!checkDirty())return;selected='';editing={name:'',definition:'',source_hash:range.source_hash,source_id:tid,coding_mode:codingMode,status:'modified',references:[{...range}],reason:'研究者手动编码'};dirty=true;referenceIndex=0;renderReview();}
  function attachSelection(){const c=current();if(c?.deleted_at)return toast('请先恢复该编码');if(!c||!range)return toast('请先选择编码和原文片段');if(c.source_hash!==range.source_hash)return toast('不能混用不同原文版本');editing=JSON.parse(JSON.stringify(c));editing.references.push({...range});dirty=true;referenceIndex=editing.references.length-1;renderReview();renderSource();}
 
  async function confirmSelectionReference(){
@@ -153,6 +356,16 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
   nameGroup.append(el('label','','编码名称'),name);definitionGroup.append(el('label','','编码说明'),definition);
   const reason=el('details','ac-reason'),reasonSummary=el('summary','','AI建议理由');
   reason.append(reasonSummary,el('p','ac-note',draft.reason));right.append(nameGroup);
+  if(codeMode(draft)==='focused'&&(draft.focus_question||draft.focus_label||(draft.focus_dimensions&&draft.focus_dimensions.length))){
+   const focusBox=el('section','ac-focus-context');
+   focusBox.append(el('label','','关联研究焦点'));
+   const parts=[];
+   if(draft.focus_question)parts.push(draft.focus_question);
+   if(draft.focus_label&&!parts.includes(draft.focus_label))parts.push(`#${draft.focus_label}`);
+   else if(Array.isArray(draft.focus_dimensions)&&draft.focus_dimensions.length)parts.push(draft.focus_dimensions.map(x=>`#${x}`).join(' '));
+   focusBox.append(el('div','ac-focus-context-pill','🎯 '+parts.join(' · ')));
+   right.append(focusBox);
+  }
   referenceIndex=Math.max(0,Math.min(referenceIndex,draft.references.length-1));const ref=draft.references[referenceIndex];
   const refs=el('select','ac-reference-picker');refs.setAttribute('aria-label','当前编码引用');
   draft.references.forEach((r,i)=>refs.append(new Option(`${i+1} / ${draft.references.length}${r.validation==='valid'?'':' · 需处理'}`,i)));
@@ -232,7 +445,31 @@ const captureSelection=()=>{const s=window.getSelection();if(selectionMenu.conta
    }
   });
  }
- window.aiCodingDemo={activate,activateCurrent,prepareSwitch(){++activation;resetContext('正在读取当前访谈的编码…');},canLeave:checkDirty,configure(config){config.module='研究分析';config.page='单篇访谈分析';config.selector=[...(config.selector||[]),...(scopeChoices.length>1?[project]:[])];config.status=[status];config.actions=[start,resume,refresh];config.toolsLeft=[];config.toolsRight=[];}};
+ window.aiCodingDemo={
+  activate,
+  activateCurrent,
+  prepareSwitch(){++activation;resetContext('正在读取当前访谈的编码…');},
+  canLeave:checkDirty,
+  configure(config){
+   const isFocused=codingMode==='focused';
+   exploreModeBtn.classList.toggle('active',!isFocused);
+   exploreModeBtn.setAttribute('aria-pressed',String(!isFocused));
+   focusedModeBtn.classList.toggle('active',isFocused);
+   focusedModeBtn.setAttribute('aria-pressed',String(isFocused));
+   focusBar.hidden=!isFocused;
+   const hasFocusContent=!!(focusQuestion.trim()||focusDimensions.length);
+   clearFocusBtn.hidden=!isFocused||!hasFocusContent;
+   const nextStartLabel=isFocused?'🎯 按焦点AI编码':'开始AI编码';
+   if(start.textContent!==nextStartLabel)start.textContent=nextStartLabel;
+   config.module='研究分析';
+   config.page='单篇访谈分析';
+   config.selector=[...(config.selector||[]),...(scopeChoices.length>1?[project]:[])];
+   config.status=[status];
+   config.actions=[start,resume,refresh];
+   config.toolsLeft=guest?[]:isFocused?[modeSegments,focusBar]:[modeSegments];
+   config.toolsRight=(!guest&&isFocused&&hasFocusContent)?[clearFocusBtn]:[];
+  }
+ };
 
  window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 })();

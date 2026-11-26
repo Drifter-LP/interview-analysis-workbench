@@ -1,4 +1,4 @@
-"""Single-transcript open coding: immutable source snapshots, append-only AI runs."""
+"""Single-transcript open & focused coding: immutable source snapshots, append-only AI runs."""
 import hashlib
 import json
 from pathlib import Path
@@ -18,9 +18,44 @@ PROMPT = '''你是质性访谈开放式编码助手，不撰写纪要、主题�
 只输出JSON对象：{"codes":[{"name":"编码名称","definition":"说明","reason":"建议理由","references":[{"unit_id":"u1","quote":"逐字引文","occurrence":1}]}]}。
 references不可为空，reason简要说明为何该原文支持这个编码；同含义多个片段合在一个code内。无可靠建议时codes为空。'''
 
+FOCUSED_PROMPT = '''你是质性访谈聚焦编码（Focused Coding）助手，不撰写纪要、主题发现或理论模型。
+只依据units中的逐字原文，100%围绕research_focus中的核心研究问题（question）与重点关注维度（dimensions），为直接相关、隐含相关或构成反例的具体行动、经验、认知、情绪、评价和情境提出聚焦编码。
+注意力严格锁定在research_focus上：凡是与该研究问题或关注维度无关的寒暄、背景闲聊或支线话题一律跳过，严禁为无关内容强行凑数编码；若当前原文块与研究焦点无实质关联，直接输出{"codes":[]}。
+将dimensions视为分析透镜而非机械关键词，不要仅做字面词汇匹配，要捕捉受访者围绕该问题表现出的深层机制、权衡策略或隐含态度。
+名称简短具体，定义说明具体含义及边界。同一种含义复用一致名称与定义；含义不同不能因词语相同就合并。同一片段可有多个编码，同一编码可有多处引用。已有编码仅供参考，允许新增，不修改已有编码。
+提问只作为语境，不将提问者假设当作受访者观点；含义不明保持谨慎。保留否定、条件、主体和表达性质，不虚构事实或解释，不建多级编码树。
+每处引用必须是某个unit内部连续逐字原文，禁止改写、拼接和省略号替换。occurrence是该quote在指定unit中从左到右的第几次逐字出现，从1开始，用于消除重复引文歧义。不要估计全篇字符位置，程序按unit及精确quote恢复并验证范围。
+只输出JSON对象：{"codes":[{"name":"编码名称","definition":"说明","reason":"建议理由（首句请点明该原文如何回应研究问题或对应哪个关注维度）","focus_tag":"命中的关注维度或焦点简述","references":[{"unit_id":"u1","quote":"逐字引文","occurrence":1}]}]}。
+references不可为空；同含义多个片段合在一个code内。当前批次无相关焦点内容时codes为空。'''
+
 def digest(text): return hashlib.sha256(text.encode('utf-8')).hexdigest()
 def now(): return time.time()
 def uid(): return uuid.uuid4().hex
+
+def normalize_focus(body):
+    if not isinstance(body, dict):
+        return {'mode': 'explore', 'question': '', 'dimensions': []}
+    if body.get('mode', 'explore') not in ('explore', 'focused'):
+        raise HTTPException(400, '编码模式无效')
+    mode = body.get('mode', 'explore')
+    question = body.get('focus_question') or ''
+    if not isinstance(question, str) or len(question) > 300:
+        raise HTTPException(400, '研究问题须为不超过300字的文本')
+    question = question.strip()
+    raw_dims = body.get('focus_dimensions')
+    if raw_dims is not None and (not isinstance(raw_dims, list) or len(raw_dims) > 8 or any(not isinstance(x, str) or len(x) > 32 for x in raw_dims)):
+        raise HTTPException(400, '关注维度须为最多8项、每项不超过32字的文本列表')
+    dims = []
+    if isinstance(raw_dims, list):
+        for item in raw_dims:
+            val = str(item or '').strip().lstrip('#').strip()[:32]
+            if val and val not in dims:
+                dims.append(val)
+            if len(dims) >= 8:
+                break
+    if mode == 'focused' and not question and not dims:
+        raise HTTPException(400, '聚焦编码模式下，请先输入研究问题或添加至少一个关注维度')
+    return {'mode': mode, 'question': question, 'dimensions': dims}
 
 def bulk_acceptable(code,d):
     if code.get('origin')!='ai' or code.get('status')!='pending' or code.get('deleted_at') or code.get('source_hash')!=d['current_hash']:return False
@@ -90,7 +125,11 @@ def validate_codes(reply, units, text):
                 if text[start:end]==quote:ref.update(start=start,end=end,validation='valid')
             if ref['validation']!='valid':ref['error']='引用或出现序号无法精确匹配，需人工选择范围'
             refs.append(ref)
-        result.append({k:item[k].strip() for k in ('name','definition','reason')}|{'references':refs})
+        focus_tag=item.get('focus_tag').strip()[:32] if isinstance(item.get('focus_tag'),str) and item.get('focus_tag').strip() else ''
+        entry={k:item[k].strip() for k in ('name','definition','reason')}|{'references':refs}
+        if focus_tag:
+            entry['focus_tag']=focus_tag
+        result.append(entry)
     return result
 
 def register(app,research_path,transcript_path,read_metadata,files_dir,project_dir=None):
@@ -161,6 +200,8 @@ def register(app,research_path,transcript_path,read_metadata,files_dir,project_d
                     save(pid,tid,d)
             with file_lock(p):
                 d=load(pid,tid);run=next(r for r in d['runs'] if r['id']==runid);units=run['units']
+                focus=run.get('focus') or {'mode':'explore','question':'','dimensions':[]}
+                is_focused=focus.get('mode')=='focused' and bool(focus.get('question') or focus.get('dimensions'))
             for index,batch in enumerate(units):
                 with file_lock(p):
                     d=load(pid,tid);run=next(r for r in d['runs'] if r['id']==runid)
@@ -172,17 +213,28 @@ def register(app,research_path,transcript_path,read_metadata,files_dir,project_d
                     artifact=p.parent/'calls'/runid/f'batch-{index+1}-attempt-{len(b["attempts"])}.json'
                     try:
                         def capture(response):write_json(artifact,response)
-                        reply=request_json(client,model=MODEL,prompt=PROMPT,payload={'units':[{'unit_id':u['unit_id'],'text':u['text']} for u in batch],'existing_codes':existing},budget=7000,on_response=capture)
+                        batch_payload={'units':[{'unit_id':u['unit_id'],'text':u['text']} for u in batch],'existing_codes':existing}
+                        if is_focused:
+                            batch_payload['research_focus']={'question':focus.get('question',''),'dimensions':focus.get('dimensions',[])}
+                        reply=request_json(client,model=MODEL,prompt=FOCUSED_PROMPT if is_focused else PROMPT,payload=batch_payload,budget=7000,on_response=capture)
                         codes=validate_codes(reply,batch,text)
                         with file_lock(p):
                             d=load(pid,tid);run=next(r for r in d['runs'] if r['id']==runid);b=run['batches'][index];b['attempts'][-1]['status']='completed';b['status']='completed'
+                            default_focus_label=(focus.get('dimensions') or [''])[0] or (focus.get('question') or '')[:14]
                             for c in codes:
                                 # Only identical definitions within the same AI run are reused; never overwrite prior/manual codes.
                                 target=next((x for x in d['codes'] if x.get('run_id')==runid and x['name']==c['name'] and x['definition']==c['definition'] and x['status']=='pending'),None)
                                 if target:
                                     target['references'].extend(c['references']);target['updated_at']=now();target['revision']+=1
                                     target['ai_original']['references'].extend(json.loads(json.dumps(c['references'])))
-                                else:d['codes'].append(c|{'id':uid(),'source_id':tid,'source_hash':run['source_hash'],'run_id':runid,'origin':'ai','status':'pending','revision':0,'created_at':now(),'updated_at':now(),'ai_original':json.loads(json.dumps(c))})
+                                else:
+                                    focus_meta={
+                                        'coding_mode':'focused' if is_focused else 'explore',
+                                        'focus_question':focus.get('question','') if is_focused else '',
+                                        'focus_dimensions':list(focus.get('dimensions') or []) if is_focused else [],
+                                        'focus_label':(c.get('focus_tag') or default_focus_label) if is_focused else ''
+                                    }
+                                    d['codes'].append(c|focus_meta|{'id':uid(),'source_id':tid,'source_hash':run['source_hash'],'run_id':runid,'origin':'ai','status':'pending','revision':0,'created_at':now(),'updated_at':now(),'ai_original':json.loads(json.dumps(c))})
                             if artifact.exists():
                                 a=read_json(artifact);b['attempts'][-1].update(finish_reason=a['choices'][0]['finish_reason'],usage=a.get('usage'))
                             save(pid,tid,d)
@@ -226,7 +278,8 @@ def register(app,research_path,transcript_path,read_metadata,files_dir,project_d
             d=load(pid,tid)
             if body.get('confirmed') is not True:raise HTTPException(400,'请确认批量接受')
             if body.get('revision')!=d['revision']:raise HTTPException(409,'编码已变化，请刷新后重新确认数量')
-            chosen=[c for c in d['codes'] if bulk_acceptable(c,d)]
+            mode_scope=body.get('coding_mode')
+            chosen=[c for c in d['codes'] if bulk_acceptable(c,d) and (mode_scope not in ('explore','focused') or (c.get('coding_mode') or 'explore')==mode_scope)]
             if not chosen:return {'coding':d,'accepted_count':0}
             at=now()
             for c in chosen:c.update(status='accepted',revision=c['revision']+1,updated_at=at)
@@ -247,7 +300,9 @@ def register(app,research_path,transcript_path,read_metadata,files_dir,project_d
                 if not run or run['status']=='completed':raise HTTPException(409,'没有可继续的批次')
             else:
                 if not d['sources'][d['current_hash']]['text'].strip():raise HTTPException(400,'访谈没有有效原文')
-                run={'id':uid(),'source_hash':d['current_hash'],'status':'running','created_at':now(),'model':MODEL,'thinking':False,'segmentation':'awaiting-shared-topic-index','units':[],'batches':[],'index_preparation':{'status':'pending','attempts':[]}};d['runs'].append(run)
+                focus=normalize_focus(body)
+                d['last_focus']=focus
+                run={'id':uid(),'source_hash':d['current_hash'],'status':'running','created_at':now(),'model':MODEL,'thinking':False,'focus':focus,'segmentation':'awaiting-shared-topic-index','units':[],'batches':[],'index_preparation':{'status':'pending','attempts':[]}};d['runs'].append(run)
             run['status']='running';run.pop('error',None);save(pid,tid,d);jobs.add((pid,tid));threading.Thread(target=batch_run,args=(pid,tid,run['id']),daemon=True).start()
             return {'run_id':run['id']}
 
@@ -332,7 +387,7 @@ def register(app,research_path,transcript_path,read_metadata,files_dir,project_d
             name=name.strip();definition=definition.strip()
             if not name or not definition or not checked:raise HTTPException(400,'名称、说明和引用不能为空')
             if not code:
-                code={'id':uid(),'source_id':tid,'source_hash':h,'origin':'manual','run_id':None,'reason':'研究者手动编码','revision':-1,'created_at':now()};d['codes'].append(code)
+                code={'id':uid(),'source_id':tid,'source_hash':h,'origin':'manual','coding_mode':body.get('coding_mode') if body.get('coding_mode') in ('explore','focused') else 'explore','run_id':None,'reason':'研究者手动编码','revision':-1,'created_at':now()};d['codes'].append(code)
             code.update(name=name,definition=definition,references=checked,status=status,updated_at=now(),revision=code['revision']+1)
             code.setdefault('ai_original',{'name':name,'definition':definition,'references':checked} if code['origin']=='ai' else None)
             save(pid,tid,d);return d

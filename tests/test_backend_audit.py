@@ -283,15 +283,19 @@ def isolated_main():
                             text = '受访者：基层医院需要完善服务。'
                             if stage == 'merge':
                                 text = '甲' * 6500 + '\n\n' + '乙' * 6500
+                            text += '\n'+__import__('uuid').uuid4().hex
                             self.transcript.write_text(text, encoding='utf-8-sig')
                             failed = self.memo_response(content, finish_reason)
                             valid=json.dumps(dict(participant_identity='未说明',interview_date='未说明',interview_topic='未说明',summary='无明确观点',viewpoints=[]))
-                            responses = ([self.memo_response(valid), self.memo_response(valid)]+[failed]*3
-                                         if stage == 'merge' else [failed]*3)
-                            with patch('ai_run.time.sleep'),patch.object(web, 'limited_create', side_effect=responses) as create, patch.object(web, 'atomic_write_json', wraps=web.atomic_write_json) as save:
+                            def reply(client, **request):
+                                payload=json.loads(request['messages'][1]['content'])
+                                if stage=='part' or 'partial_memos' in payload:return failed
+                                if 'units' in payload:return self.memo_response('{"selected_ids":[]}')
+                                return self.memo_response(valid)
+                            with patch('ai_run.time.sleep'),patch.object(web, 'limited_create', side_effect=reply) as create, patch.object(web, 'atomic_write_json', wraps=web.atomic_write_json) as save:
                                 response = self.client.post('/api/projects/sample/familiarity-memo', json={'refresh': True})
                             self.assertEqual(response.status_code, 502, response.text)
-                            self.assertEqual(create.call_count, len(responses))
+                            self.assertEqual(create.call_count, 7 if stage=='merge' else 3)
                             save.assert_not_called()
                             if existing:
                                 self.assertEqual(path.read_bytes(), original)
@@ -316,6 +320,8 @@ def isolated_main():
                         storage.atomic_write_json(path, original)
                         self.transcript.write_text('受访者：原稿。'+kind, encoding='utf-8-sig')
                         def concurrent_edit(client, **kwargs):
+                            if 'units' in json.loads(kwargs['messages'][1]['content']):
+                                return self.memo_response('{"selected_ids":[]}')
                             if kind == 'memo':
                                 storage.atomic_write_json(path, {'codes':[{'id':'keep'}], 'familiarity_memo':{'summary':'manual'}})
                             else:
@@ -340,10 +346,21 @@ def isolated_main():
                 }]}
                 path = web.analysis_path('sample')
                 storage.atomic_write_json(path, {'codes': [{'name': 'keep'}]})
-                with patch.object(web, 'limited_create', return_value=self.memo_response(json.dumps(payload))) as create:
+                from indexed_memo import build_source_index
+                units=build_source_index(text)['units']
+                first=next(u for u in units if quote in u['text'])
+                other=next(u for u in units if second in u['text'])
+                payload['viewpoints'][0]['evidence']=[first['id']]
+                payload['viewpoints'][0]['points'][0]['evidence']=[other['id'],first['id']]
+                quote,second=first['text'],other['text']
+                def reply(client, **request):
+                    body=json.loads(request['messages'][1]['content'])
+                    value={'selected_ids':[first['id'],other['id']]} if 'units' in body else payload
+                    return self.memo_response(json.dumps(value))
+                with patch.object(web, 'limited_create', side_effect=reply) as create:
                     response = self.client.post('/api/projects/sample/familiarity-memo', json={'refresh': True})
                 self.assertEqual(response.status_code, 200, response.text)
-                create.assert_called_once()
+                self.assertEqual(create.call_count,2)
                 memo = response.json()['memo']
                 saved = storage.read_json_document(path)
                 self.assertEqual(saved['familiarity_memo'], memo)

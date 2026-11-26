@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent
 MODULES = '''
 ai_coding_demo ai_run analysis_contracts audio_follow audio_pairing backend_network backend_storage backend_observability coding_organizer
 concept_first_network correction_speed dimension_definition evidence_nodes
-finding_boundary finding_definition finding_review finding_review_pipeline indexed_theme
+finding_boundary finding_definition finding_review finding_review_pipeline indexed_memo indexed_theme
 interview_coding interview_facts interview_library interview_move interview_names
 interview_reference_index interview_trash_api network_batches node_gates node_quality
 raw_theme_source review_storage run_accounts run_cloud site_ai_guard site_app site_boundary

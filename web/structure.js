@@ -38,8 +38,8 @@
     setShowing(true);
   };
   const originalRenderMemo = renderMemo;
-  renderMemo = function () {
-    originalRenderMemo();
+  renderMemo = function (...args) {
+    originalRenderMemo(...args);
     if (showing) draw();
   };
 })();

@@ -12,13 +12,13 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   const ids=['recent-qa-a','recent-qa-b','recent-qa-editor'];
   const fixture=Object.fromEntries(ids.map((id,i)=>[id,{id,name:'虚构访谈 '+i,status:'completed',source_type:'transcript',created_at:200-i,edited_at:i<2?1:null}]));
   const transcript=id=>({text:'受访者：测试原文 '+id,edited:!!fixture[id].edited_at,annotations:[]});
-  let slow='',failMemo=false,failText=false;
+  let slow='',failMemo=false,failText=false,memoGate=null,releaseMemo;
   await page.route(/\/api\/projects\/recent-qa-/,async route=>{
    const [,id,action='']=new URL(route.request().url()).pathname.match(/projects\/(recent-qa-[^/]+)(?:\/(.*))?$/);
    calls.push({id,action});
    let status=200,json;
    if(action==='opened')json={last_opened_at:Date.now()/1000};
-   else if(action==='analysis-workspace'){await delay(650);if(failMemo){failMemo=false;status=502;json={detail:'模拟纪要读取失败'};}else json={metadata:{},familiarity_memo:{topic:'',interview_topic:'模拟纪要 '+id,viewpoints:[],evidence:[]}};}
+   else if(action==='analysis-workspace'){await (memoGate||delay(650));if(failMemo){failMemo=false;status=502;json={detail:'模拟纪要读取失败'};}else json={metadata:{},familiarity_memo:{topic:'',interview_topic:'模拟纪要 '+id,viewpoints:[],evidence:[]}};}
    else{await delay(slow===id?550:150);if(action==='open-transcript'&&failText){failText=false;status=503;json={detail:'模拟原文读取失败'};}else json=action==='open-transcript'?{project:fixture[id],transcript:transcript(id)}:action==='transcript'?transcript(id):fixture[id];}
    // An aborted read is no longer a browser response.
    await route.fulfill({status,json}).catch(()=>{});
@@ -33,11 +33,12 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   await page.evaluate(async id=>{await openProject(id,null,{targetTab:'familiarity'});switchView('analysis','familiarity');},a);
   await text(a).waitFor();
   const oldMs=performance.now()-startOld;
+  memoGate=new Promise(resolve=>{releaseMemo=resolve;});
   const startNew=performance.now();await link(b).click();await text(b).waitFor();
   const newMs=performance.now()-startNew;
-  assert.ok(newMs+250<oldMs,JSON.stringify({oldMs,newMs}));
   assert.match(await page.locator('#memoStatus').textContent(),/正在读取/);
   assert.ok(await page.locator('#generateMemoBtn').isDisabled());
+  releaseMemo();memoGate=null;
   await page.waitForFunction(id=>document.querySelector('#memoTopic')?.value==='模拟纪要 '+id,b);
   assert.equal(calls.filter(c=>c.id===b&&c.action==='open-transcript').length,1);
   assert.equal(calls.filter(c=>c.id===b&&(c.action===''||c.action==='transcript')).length,0);
@@ -52,11 +53,13 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   await page.locator('#memoPanel').getByRole('button',{name:'重试',exact:true}).click();
   await page.waitForFunction(id=>document.querySelector('#memoTopic')?.value==='模拟纪要 '+id,a);
   const beforePicker=calls.length;
+  memoGate=new Promise(resolve=>{releaseMemo=resolve;});
   await page.evaluate(id=>openMaterialMemo('workspace',id),b);
   await text(b).waitFor();
   assert.match(await page.locator('#memoStatus').textContent(),/正在读取/);
   assert.ok(calls.slice(beforePicker).some(x=>x.id===b&&x.action==='open-transcript'));
   assert.ok(!calls.slice(beforePicker).some(x=>x.id===b&&(x.action===''||x.action==='transcript')));
+  releaseMemo();memoGate=null;
   await page.waitForFunction(id=>document.querySelector('#memoTopic')?.value==='模拟纪要 '+id,b);
   await link(ids[2]).click();
   await page.locator('#editor.active').waitFor();

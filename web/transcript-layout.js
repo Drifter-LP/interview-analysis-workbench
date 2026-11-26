@@ -43,6 +43,21 @@
  editor.addEventListener('keydown',event=>{if(event.key==='Backspace'&&!event.ctrlKey&&!event.metaKey&&!event.altKey)outdentLine(event);});
  window.formatTranscriptTurns=(text,root=editor)=>{
   const labels=[...text.matchAll(/^(?:[\t ]*)(说话人\s*\d+|访谈者|受访者|访问员|访问人|提问人|采访者|[\u4e00-\u9fff]{2,5})([：:])/gm)];
+  if(!labels.length)return;
+  // Plain text has no annotation/highlight nodes to preserve. Build all turns
+  // in one pass instead of repeatedly walking the already formatted DOM.
+  if(root.childNodes.length===1&&root.firstChild.nodeType===Node.TEXT_NODE&&root.firstChild.data===text){
+   const fragment=document.createDocumentFragment();
+   if(labels[0].index)fragment.append(text.slice(0,labels[0].index));
+   for(let i=0;i<labels.length;i++){
+    const label=labels[i],end=labels[i+1]?.index??text.length;
+    const turn=document.createElement('span'),name=document.createElement('span'),body=document.createElement('span');
+    turn.className='transcript-turn';name.className='transcript-speaker';body.className='transcript-speech';
+    name.textContent=label[0];body.textContent=text.slice(label.index+label[0].length,end);
+    turn.append(name,body);fragment.append(turn);
+   }
+   root.replaceChildren(fragment);return;
+  }
   function point(offset){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let total=0,n;while(n=walker.nextNode()){if(n.parentElement.closest('.change-popover'))continue;if(offset<=total+n.length)return [n,offset-total];total+=n.length;}return null;}
   for(let i=labels.length-1;i>=0;i--){const label=labels[i],end=i+1<labels.length?labels[i+1].index:text.length;const a=point(label.index),b=point(end);if(!a||!b)continue;const range=document.createRange();range.setStart(...a);range.setEnd(...b);const turn=document.createElement('span');turn.className='transcript-turn';turn.append(range.extractContents());range.insertNode(turn);
    const walker=document.createTreeWalker(turn,NodeFilter.SHOW_TEXT);let n,total=0,last;while(n=walker.nextNode()){if(n.parentElement.closest('.change-popover'))continue;if(total+n.length>=label[0].length){last=[n,label[0].length-total];break;}total+=n.length;}

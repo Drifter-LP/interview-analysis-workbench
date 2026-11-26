@@ -307,7 +307,7 @@ renameScript.src = '/assets/rename.js?v=20261012-cascade-2';
 document.body.append(renameScript);
 
 const structureScript = document.createElement('script');
-structureScript.src = '/assets/structure.js?v=20261005-unified-top-2';
+structureScript.src = '/assets/structure.js?v=recent-render-1';
 document.body.append(structureScript);
 
 const navigationScript = document.createElement('script');

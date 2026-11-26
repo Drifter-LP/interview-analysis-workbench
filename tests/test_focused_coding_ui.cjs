@@ -41,6 +41,22 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
   await page.evaluate(async()=>{window.singleInterviewCodingContext={get:()=>({sourceId:'t',researchProjectId:'p'}),projects:()=>[{id:'p',name:'隔离测试项目',interview_ids:['t']}],setScope(){}};switchView('analysis','coding');await window.aiCodingDemo.activateCurrent();});
   await page.getByLabel('聚焦编码研究问题').waitFor();assert.equal(await page.getByLabel('聚焦编码研究问题').inputValue(),'如何决定参加活动？');
   if(await page.getByLabel('关闭操作指引',{exact:true}).isVisible())await page.getByLabel('关闭操作指引',{exact:true}).click();
+  const add=page.getByLabel('添加关注维度标签');
+  await add.fill('职业经历');await add.press('Enter');
+  await add.fill('职业感受');await add.press('Enter');
+  const remove=name=>page.getByRole('button',{name:'移除维度 '+name,exact:true});
+  const style=await remove('职业经历').evaluate(n=>{
+   const s=getComputedStyle(n), box=n.getBoundingClientRect();
+   return [s.borderTopWidth,s.backgroundColor,s.boxShadow,box.width,box.height,n.querySelector('svg').getBoundingClientRect().width];
+  });
+  assert.deepEqual(style,['0px','rgba(0, 0, 0, 0)','none',24,24,9]);
+  await page.locator('.ac-focus-tags').screenshot({path:path.resolve(__dirname,'../outputs/focus-tag-close-verified.png')});
+  await remove('职业经历').focus();await page.keyboard.press('Enter');
+  assert.equal(await remove('职业经历').count(),0);
+  assert.ok(await remove('职业感受').evaluate(n=>document.activeElement===n));
+  await remove('职业感受').click();
+  assert.equal(await remove('职业感受').count(),0);
+  assert.equal(await remove('出行成本').count(),1);
   await page.screenshot({path:path.resolve(__dirname,'../outputs/coding-polish-desktop.png')});
   for(const width of [720,390,375]){
    await page.setViewportSize({width,height:900});await page.waitForTimeout(100);

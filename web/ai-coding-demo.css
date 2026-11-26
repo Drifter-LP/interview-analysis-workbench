@@ -52,8 +52,10 @@
 .ac-focus-divider{width:1px;height:16px;background:#e2eceb;flex-shrink:0;margin:0 2px}
 .ac-focus-tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .ac-focus-pill{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 6px 0 8px;border-radius:5px;background:#eaf7f4;color:#007e74;font:600 11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;white-space:nowrap}
-.ac-focus-pill-remove{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;padding:0;border:0;border-radius:50%;background:transparent;color:#007e74;font-size:12px;line-height:1;cursor:pointer}
-.ac-focus-pill-remove:hover{background:rgba(0,126,116,.14);color:#004f48}
+.workspace-header .editor-tool-row .ac-focus-pill>.ac-focus-pill-remove{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:0 0 24px;width:24px;height:24px;min-height:24px;margin:0;padding:0;border:0;border-radius:4px;background:transparent;box-shadow:none;color:#007e74;cursor:pointer}
+.ac-focus-pill-remove svg{display:block;width:9px;height:9px;pointer-events:none}
+.workspace-header .editor-tool-row .ac-focus-pill>.ac-focus-pill-remove:hover{background:transparent;color:#004f48}
+.workspace-header .editor-tool-row .ac-focus-pill>.ac-focus-pill-remove:focus-visible{outline:2px solid #007e74;outline-offset:-3px}
 .ac-focus-tag-input{width:92px;height:24px;margin:0;padding:0 6px;box-sizing:border-box;border:0;background:transparent;color:#193740;font:11.5px "PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif}
 .ac-focus-tag-input:focus{outline:none;width:118px}
 .ac-focus-tag-input::placeholder{color:#8aa2a6}

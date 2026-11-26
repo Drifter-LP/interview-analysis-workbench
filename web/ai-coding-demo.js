@@ -85,7 +85,12 @@
   focusTagsWrap.replaceChildren();
   focusDimensions.forEach((dim,idx)=>{
    const pill=el('span','ac-focus-pill',`#${dim}`);
-   const del=btn('×',e=>{e.stopPropagation();removeFocusDimension(idx);});
+   const del=btn('',e=>{
+    e.stopPropagation();const keepFocus=document.activeElement===del;
+    removeFocusDimension(idx);
+    if(keepFocus)(focusTagsWrap.querySelectorAll('.ac-focus-pill-remove')[idx]||tagAddInput).focus();
+   });
+   del.innerHTML='<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m2.5 2.5 7 7m0-7-7 7"/></svg>';
    del.className='ac-focus-pill-remove';del.title=`移除维度 #${dim}`;del.setAttribute('aria-label',`移除维度 ${dim}`);
    pill.append(del);focusTagsWrap.append(pill);
   });

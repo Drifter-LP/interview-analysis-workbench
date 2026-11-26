@@ -11,13 +11,19 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
    assert.ok(auth.ok());await p.goto(origin+(role==='guest'?'/?guest=1':'/'));await p.locator('#sbQuotaCard').waitFor();
    await p.waitForFunction(()=>/次/.test(document.querySelector('#sbQuotaNums').textContent));
    if(role==='admin'){
-    assert.equal(await p.locator('.sb-quota-track').isVisible(),false);
+    assert.equal(await p.locator('.sb-quota-track').isVisible(),true);
+    assert.ok((await p.locator('#sbQuotaNums').innerText()).includes('/ ∞'));
     const me=await (await p.request.get(origin+'/auth/me')).json(),ids=[];
     for(const name of ['第一份虚构访谈：出行与费用','第二份虚构访谈：这是一份很长很长的标题以检查溢出']){
      const r=await p.request.post(origin+'/api/transcript-projects',{headers:{Origin:origin,'X-CSRF-Token':me.csrf},multipart:{transcript:{name:name+'.txt',mimeType:'text/plain',buffer:Buffer.from('访谈者：平时怎样出行？\n受访者：我乘地铁，但没有因为费用拒绝出行。')}}});
      assert.ok(r.ok(),await r.text());ids.push((await r.json()).id);
     }
+    const revised=await p.request.put(origin+'/api/projects/'+ids[0]+'/transcript',{headers:{Origin:origin,'X-CSRF-Token':me.csrf},data:{text:'访谈者：平时怎样出行？\n受访者：我乘地铁。'}});assert.ok(revised.ok());
     await p.evaluate(async()=>{await loadProjects();window.updateSidebarWidgets()});
+    assert.equal(await p.locator('.sb-nav-badge').count(),0);
+    assert.equal(await p.locator('.sb-recent-tag').count(),0);
+    for(const label of await p.locator('.sb-recent-name').allTextContents())assert.ok(Array.from(label.replace(/…$/,'')).length<=5);
+    const align=await p.evaluate(()=>{const a=document.querySelector('[data-view="workspace"] em').getBoundingClientRect(),b=document.querySelector('.sb-recent-name').getBoundingClientRect();return Math.abs(a.left-b.left)});assert.ok(align<1,'child label alignment '+align);
     await p.locator('.sb-recent-item').first().waitFor();
     await p.locator('.sb-recent-item').first().focus();
     await p.evaluate(()=>window.__sidebarFocus=document.activeElement);
@@ -25,6 +31,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     assert.ok(await p.evaluate(()=>window.__sidebarFocus===document.activeElement&&window.__sidebarFocus.isConnected),'unchanged list must preserve focus');
     await p.locator(`.sb-recent-item[data-project-id="${ids[0]}"]`).click();
     await p.waitForFunction(id=>selected===id,ids[0]);
+    await p.waitForFunction(()=>document.querySelector('#familiarity').classList.contains('active'));
     assert.ok(await p.locator(`.sb-recent-item[data-project-id="${ids[0]}"]`).getAttribute('aria-current'));
     await p.evaluate(()=>switchView('analysis','familiarity'));
     await p.route('**/api/projects/'+ids[1]+'**',async route=>{await new Promise(r=>setTimeout(r,500));await route.continue()});
@@ -43,7 +50,11 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     assert.ok(geometry.settings<=geometry.height,JSON.stringify(geometry));
     await p.setViewportSize({width:1440,height:960});
     await p.screenshot({path:path.resolve(__dirname,'../outputs/sidebar-enrichment-admin.png')});
-    await p.locator('#sideToggle').click();assert.equal(await p.locator('#sbRecentBox').isVisible(),false);assert.equal(await p.locator('#sbQuotaCard').isVisible(),false);
+    const footer=await p.locator('.site-icp-footer').boundingBox();assert.ok(footer.x>1100&&footer.y>900);
+    await p.locator('#sbRecentBox .nav-parent').click();assert.equal(await p.locator('#sbRecentList').isVisible(),false);
+    await p.locator('#sbRecentBox .nav-parent').click();assert.equal(await p.locator('#sbRecentList').isVisible(),true);
+    await p.locator(`.sb-recent-item[data-project-id="${ids[1]}"]`).click();await p.waitForFunction(id=>selected===id&&document.querySelector('#editor').classList.contains('active'),ids[1]);
+    await p.locator('#sideToggle').click();assert.equal(await p.locator('#sbRecentList').isVisible(),false);assert.equal(await p.locator('#sbQuotaCard').isVisible(),false);
     await p.setViewportSize({width:390,height:844});assert.equal(await p.locator('#sbQuotaCard').isVisible(),false);
    }else if(role==='member'){
     assert.ok((await p.locator('#sbQuotaNums').innerText()).includes('/ 80'));
@@ -51,8 +62,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     await p.evaluate(()=>window.refreshSidebarQuota());assert.equal(await p.locator('#sbQuotaNums').innerText(),'暂不可用');
     await p.unroute('**/auth/me');await p.evaluate(()=>window.refreshSidebarQuota());assert.ok((await p.locator('#sbQuotaNums').innerText()).includes('/ 80'));
    }else{
-    assert.ok((await p.locator('#sbQuotaNums').innerText()).startsWith('累计 '));
-    assert.ok((await p.locator('#sbQuotaSub').innerText()).includes('不按日重置'));
+    assert.equal(await p.locator('#sbQuotaRole').innerText(),'试用额度');
+    assert.ok((await p.locator('#sbQuotaCard').getAttribute('title')).includes('不按日重置'));
     assert.equal(await p.locator('.nav-item[data-tab="focused"] .sb-nav-badge').count(),0);
     await p.screenshot({path:path.resolve(__dirname,'../outputs/sidebar-enrichment-guest.png')});
    }

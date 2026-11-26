@@ -256,3 +256,9 @@ body.cm-guide-enabled .quick-guide-card {
     max-width: 340px;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-tour-root *, .cm-reopen-pill, .cm-target-highlight {
+    transition: none !important;
+  }
+}

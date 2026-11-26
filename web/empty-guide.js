@@ -453,6 +453,7 @@
   window.addEventListener('scroll', scheduleSync, true);
   window.addEventListener('hashchange', scheduleSync);
   window.addEventListener('popstate', scheduleSync);
+  document.addEventListener('toggle', scheduleSync, true);
   document.addEventListener('click', () => setTimeout(scheduleSync, 40));
 
   const mainEl = document.querySelector('main');
@@ -464,6 +465,11 @@
       attributes: true,
       attributeFilter: ['class', 'hidden', 'open']
     });
+  }
+  // Dialogs live outside main; opening one must suppress the coachmark too.
+  const modalObserver = new MutationObserver(scheduleSync);
+  for (const dialog of document.querySelectorAll('dialog')) {
+    modalObserver.observe(dialog, { attributes: true, attributeFilter: ['open'] });
   }
 
   const headerEl = document.querySelector('.workspace-header');

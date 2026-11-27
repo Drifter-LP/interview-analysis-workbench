@@ -303,7 +303,7 @@ $('#themeHistorySelect').onchange = async event => {
 };
 
 const renameScript = document.createElement('script');
-renameScript.src = '/assets/rename.js?v=20261012-cascade-2';
+renameScript.src = '/assets/rename.js?v=single-five-1';
 document.body.append(renameScript);
 
 const structureScript = document.createElement('script');

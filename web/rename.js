@@ -142,11 +142,17 @@
   const toggle = document.createElement('button'), menu = document.createElement('div');
   toggle.type = 'button'; toggle.className = 'soft'; toggle.setAttribute('aria-haspopup', 'true');
   menu.className = 'comparison-history-list'; menu.hidden = true;
-  const holder = document.createElement('div'); holder.style.position = 'relative';
+  const holder = document.createElement('div'); holder.className='single-interview-picker'; holder.style.position = 'relative';
   picker.after(holder); holder.append(toggle, menu); picker.hidden = true;
+  const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('zh',{granularity:'grapheme'}):null;
   function syncPicker() {
-    const text = (picker.selectedOptions[0]?.textContent || '切换访谈稿') + ' ▾';
+    const option=picker.selectedOptions[0],full=option?.textContent||'切换访谈稿';
+    const chars=option?.value?(segmenter?Array.from(segmenter.segment(full),x=>x.segment):Array.from(full)):[];
+    const text=(chars.length>5?chars.slice(0,5).join('')+'…':full)+' ▾';
     if (toggle.textContent !== text) toggle.textContent = text;
+    if(toggle.title!==full)toggle.title=full;
+    const label=option?.value?'选择访谈稿：'+full:'选择访谈稿';
+    if(toggle.getAttribute('aria-label')!==label)toggle.setAttribute('aria-label',label);
   }
   menu.classList.add('memo-cascade-menu');
   toggle.setAttribute('aria-expanded','false');

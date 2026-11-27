@@ -114,7 +114,7 @@
     if(window.WORKBENCH_GUEST)config.module='研究分析';
     config.page='单篇访谈分析';
     const picker=find('#memoInterviewSelect');picker.hidden=!!memoSelector;
-    if(memoSelector){memoSelector.classList.add('memo-selector-control');const toggle=memoSelector.querySelector('button');toggle.title=picker.selectedOptions[0]?.textContent||'请选择访谈稿';toggle.setAttribute('aria-label','选择访谈稿');}
+    if(memoSelector)memoSelector.classList.add('memo-selector-control');
     config.selector=id==='sourceSearch'?[find('#sourceSearchInterview')]:[memoSelector||picker];config.status=id==='sourceSearch'?[]:id==='coding'?[find('#codingStatus')]:[find('#memoStatus')];
     config.actions=id==='sourceSearch'?[]:id==='coding'?[find('#saveAnalysisBtn'),find('#aiCodeBtn')]:[find('#saveMemoBtn'),find('#generateMemoBtn')];
     if(id==='coding'){

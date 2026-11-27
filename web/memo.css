@@ -479,6 +479,7 @@
 .memo-meta input{flex:1;min-width:0;width:100%;margin:0 0 0 -4px;padding:2px 4px;border:0;border-radius:4px;background:transparent;color:var(--ink);font:600 13.5px/1.5 var(--font-sans);text-overflow:clip}
 .memo-meta #memoTopic{font-weight:500;color:#17313d}
 .memo-meta input:hover,.memo-meta input:focus{outline:0;box-shadow:none;background:#f1f7f6}
+.memo-panel :is(input,summary,[contenteditable]):focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .memo-summary{padding:18px 0 18px;border-bottom:1px solid var(--line)}
 .memo-summary h3{margin:0;font-size:15.5px;font-weight:700;color:var(--ink)}
 .memo-summary-head .soft{padding:5px 10px;font-size:12.5px}

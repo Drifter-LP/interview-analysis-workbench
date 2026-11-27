@@ -476,6 +476,11 @@ async def update_profile(request: Request):
 
 
 
+
+@app.get('/auth/changelog')
+def get_changelog():
+    return {'items': store.list_changelogs()}
+
 @app.get('/auth/users')
 def users(request: Request):
     if request.state.user['role'] != 'admin':
@@ -507,6 +512,8 @@ async def admin(action: str, request: Request):
                               calls=data.get('daily_calls', 80),
                               reset_id=data.get('id') if action == 'reset' else None)
         return {'url': ORIGIN + ('/account#reset=' if action == 'reset' else '/account#invite=') + result['token'], 'expires_at': result['expires_at']}
+    if action == 'changelog':
+        return {'items': store.save_changelog(user['id'], data)}
     if action == 'update':
         store.update_user(user['id'], data.get('id'), data.get('active'), data.get('daily_calls'))
         if not data.get('active') and data.get('id') in workers:

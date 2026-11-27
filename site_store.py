@@ -389,6 +389,73 @@ class Store:
             if changed:
                 db.execute('INSERT INTO audit VALUES(?,?,?,?)', (time.time(), user_id, 'update_profile', user_id))
 
+    def list_changelogs(self):
+        default_items = [{
+            'id': 'seed-20261126',
+            'date': '2026-11-26',
+            'content': '1. 访谈编码新增「问题聚焦」模式，支持按问题与维度编码。\n2. 左侧边栏与成员管理界面精简，支持更换头像配色与用户名。',
+            'created_at': 1764144000.0,
+            'seeded': True
+        }]
+        with self.db() as db:
+            row = db.execute("SELECT value FROM site_settings WHERE key='changelogs'").fetchone()
+        if not row:
+            return default_items
+        try:
+            items = json.loads(row['value'])
+            if not isinstance(items, list) or not items:
+                return default_items
+            items.sort(key=lambda x: (str(x.get('date') or ''), float(x.get('created_at') or 0)), reverse=True)
+            return items
+        except (ValueError, TypeError):
+            return default_items
+
+    def save_changelog(self, actor, data):
+        if not isinstance(data, dict):
+            raise SiteError('请求格式无效')
+        with self.db(True) as db:
+            if not db.execute('SELECT 1 FROM users WHERE id=? AND role="admin" AND active=1', (actor,)).fetchone():
+                raise SiteError('需要管理员权限', 403)
+            row = db.execute("SELECT value FROM site_settings WHERE key='changelogs'").fetchone()
+            try:
+                items = json.loads(row['value']) if row else []
+                if not isinstance(items, list):
+                    items = []
+            except (ValueError, TypeError):
+                items = []
+            if not items:
+                items = self.list_changelogs()
+            if data.get('delete') and isinstance(data.get('id'), str):
+                items = [x for x in items if x.get('id') != data['id']]
+                db.execute("INSERT INTO site_settings(key,value) VALUES('changelogs',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (json.dumps(items, ensure_ascii=False),))
+                db.execute('INSERT INTO audit VALUES(?,?,?,?)', (time.time(), actor, 'delete_changelog', data['id']))
+                return self.list_changelogs()
+            date_str = str(data.get('date') or '').strip()
+            if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date_str):
+                raise SiteError('请选择有效的展示日期（YYYY-MM-DD）')
+            content = str(data.get('content') or '').strip()
+            if not content or len(content) > 1000:
+                raise SiteError('通知内容不能为空且不超过 1000 字')
+            entry = {
+                'id': 'cl-' + secrets.token_hex(6),
+                'date': date_str,
+                'content': content,
+                'created_at': time.time(),
+                'seeded': False
+            }
+            target_id = data.get('id')
+            if isinstance(target_id, str) and target_id:
+                items = [x for x in items if x.get('id') != target_id]
+            else:
+                items = [x for x in items if not (x.get('date') == date_str and x.get('seeded'))]
+            items.insert(0, entry)
+            items.sort(key=lambda x: (str(x.get('date') or ''), float(x.get('created_at') or 0)), reverse=True)
+            items = items[:30]
+            db.execute("INSERT INTO site_settings(key,value) VALUES('changelogs',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (json.dumps(items, ensure_ascii=False),))
+            db.execute('INSERT INTO audit VALUES(?,?,?,?)', (time.time(), actor, 'save_changelog', date_str))
+        return self.list_changelogs()
+
+
 
     def reserve(self, user_id, model, tokens):
         day = datetime.now(timezone.utc).strftime('%Y-%m-%d')

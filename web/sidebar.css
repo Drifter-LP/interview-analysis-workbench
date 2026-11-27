@@ -169,3 +169,57 @@
   .shell.collapsed .sidebar .nav-children .nav-item .nav-icon{display:block}
   .shell.collapsed .sidebar .nav-children .nav-item.active::before{content:none}
 }
+
+/* Sidebar Bell Icon (Inline with Settings row, zero added height) & Centered Frosted-Glass Changelog Modal */
+.sidebar{position:relative}
+@media(min-width:851px){
+  .sidebar>.sidebar-settings{width:calc(100% - 38px)}
+  .shell.collapsed .sidebar>.sidebar-settings{width:100%}
+}
+.sb-notify-bell{position:absolute;right:18px;bottom:18px;width:32px;height:32px;padding:0;border:1px solid rgba(172,198,203,.16);border-radius:8px;background:rgba(16,53,60,.75);color:#b4cacc;display:grid;place-items:center;cursor:pointer;transition:background-color 150ms ease,color 150ms ease,border-color 150ms ease}
+.sb-notify-bell svg{width:16px;height:16px}
+.sb-notify-bell:hover,.sb-notify-bell[aria-expanded="true"]{background:#14464e;border-color:#2ea8a0;color:#fff}
+.sb-notify-dot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#24d0a8;box-shadow:0 0 0 2px #0c3035}
+.sb-notify-dot[hidden]{display:none!important}
+@keyframes wb-bell-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}55%{transform:rotate(12deg)}80%{transform:rotate(-6deg)}}
+.sb-notify-bell.is-ringing svg{animation:wb-bell-shake 340ms ease}
+.shell.collapsed .sb-notify-bell{display:none!important}
+@media(max-width:850px){.sb-notify-bell{display:none!important}}
+
+.wb-cl-backdrop{position:fixed;inset:0;z-index:1120;display:grid;place-items:center;padding:16px;background:rgba(14,42,47,.26);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity 220ms ease;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif}
+.wb-cl-backdrop[hidden]{display:none!important}
+.wb-cl-card{width:min(428px,calc(100vw - 32px));padding:24px 28px 20px;border:1px solid #d5e6e4;border-radius:16px;background:#fff;color:#163238;box-shadow:0 18px 48px rgba(10,36,40,.16),0 4px 12px rgba(10,36,40,.06);transition:transform 240ms cubic-bezier(.22,1,.36,1),opacity 220ms ease;box-sizing:border-box}
+.wb-cl-card [hidden]{display:none!important}
+.wb-cl-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wb-cl-title{margin:0;font-size:18px;font-weight:700;color:#10282e;line-height:1.35}
+.wb-cl-head-right{display:flex;align-items:center;gap:10px}
+.wb-cl-date{font-size:12.5px;color:#7e969a;font-variant-numeric:tabular-nums}
+.wb-cl-link-btn,.wb-cl-secondary-link{padding:2px 4px;border:0;background:transparent;color:#008a80;font:12.5px inherit;cursor:pointer}
+.wb-cl-link-btn:hover,.wb-cl-secondary-link:hover{text-decoration:underline}
+.wb-cl-content{margin:18px 0 22px;font-size:14px;line-height:1.8;color:#28464c;white-space:pre-wrap;word-break:break-word}
+
+.wb-cl-history{margin:0 0 18px;padding-top:12px;border-top:1px solid #e8f1f0;max-height:180px;overflow:auto;display:grid;gap:12px}
+.wb-cl-history-date{display:block;font-size:12px;color:#789094;margin-bottom:3px;font-variant-numeric:tabular-nums}
+.wb-cl-history-text{margin:0;font-size:13px;line-height:1.65;color:#3d5c62;white-space:pre-wrap}
+
+.wb-cl-foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wb-cl-foot>.wb-cl-primary:only-child,.wb-cl-foot>.wb-cl-secondary-link[hidden]+.wb-cl-primary{margin-left:auto}
+.wb-cl-primary{height:36px;padding:0 22px;border:0;border-radius:8px;background:#009288;color:#fff;font:600 13px inherit;cursor:pointer;transition:background-color 140ms ease}
+.wb-cl-primary:hover{background:#007f76}
+.wb-cl-primary:disabled{opacity:.6;cursor:wait}
+.wb-cl-cancel{height:36px;padding:0 16px;border:1px solid #d2e2e0;border-radius:8px;background:#fff;color:#587278;font:13px inherit;cursor:pointer}
+.wb-cl-cancel:hover{background:#f4f9f8;color:#163238}
+
+.wb-cl-form{margin-top:18px;display:grid;gap:18px}
+.wb-cl-field{display:grid;gap:8px}
+.wb-cl-label-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.wb-cl-field label{font-size:12.5px;color:#46646a}
+.wb-cl-date-shortcuts{display:inline-flex;gap:4px}
+.wb-cl-date-shortcuts button{padding:2px 7px;border:1px solid #d4e6e3;border-radius:5px;background:#f3faf8;color:#008278;font:11.5px inherit;cursor:pointer}
+.wb-cl-date-shortcuts button:hover{background:#e3f4f0}
+.wb-cl-input,.wb-cl-textarea{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #c2d8d6;border-radius:8px;background:#fff;color:#10282e;font:13.5px/1.65 inherit}
+.wb-cl-input{height:38px}
+.wb-cl-textarea{min-height:96px;resize:vertical}
+.wb-cl-input:focus,.wb-cl-textarea:focus{outline:none;border-color:#009288;box-shadow:0 0 0 3px rgba(0,146,136,.12)}
+.wb-cl-error{margin:0;font-size:12.5px;color:#b83c34}
+.wb-cl-compose-foot{justify-content:flex-end}

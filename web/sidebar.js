@@ -193,4 +193,268 @@
   setInterval(()=>{updateSidebarWidgets();},2500);
   setInterval(refreshSidebarQuota,60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){updateSidebarWidgets();refreshSidebarQuota();}});
+
+  // Sidebar Bell & Centered Frosted-Glass Daily Update Notification + Admin Composer
+  const notifyBell=document.createElement('button');
+  notifyBell.type='button';notifyBell.className='sb-notify-bell';notifyBell.id='sbNotifyBell';
+  notifyBell.title='更新通知';notifyBell.setAttribute('aria-label','更新通知');notifyBell.setAttribute('aria-haspopup','dialog');notifyBell.setAttribute('aria-expanded','false');
+  notifyBell.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="sb-notify-dot" id="sbNotifyDot" hidden></span>';
+  sidebar.append(notifyBell);
+
+  const clBackdrop=document.createElement('div');
+  clBackdrop.className='wb-cl-backdrop';clBackdrop.id='wbChangelogBackdrop';clBackdrop.hidden=true;
+  clBackdrop.innerHTML=`
+    <div class="wb-cl-card" id="wbChangelogCard" role="dialog" aria-modal="true" aria-labelledby="wbClHeading">
+      <div id="wbClReadView">
+        <div class="wb-cl-head">
+          <h3 class="wb-cl-title" id="wbClHeading">更新通知</h3>
+          <div class="wb-cl-head-right">
+            <span class="wb-cl-date" id="wbClDate"></span>
+            <button type="button" class="wb-cl-link-btn" id="wbClOpenCompose" hidden>拟定新通知 ›</button>
+          </div>
+        </div>
+        <div class="wb-cl-content" id="wbClContent"></div>
+        <div class="wb-cl-history" id="wbClHistoryBox" hidden></div>
+        <div class="wb-cl-foot">
+          <button type="button" class="wb-cl-secondary-link" id="wbClToggleHistory" hidden>历史通知</button>
+          <button type="button" class="wb-cl-primary" id="wbClOkBtn">知道了</button>
+        </div>
+      </div>
+      <div id="wbClComposeView" hidden>
+        <div class="wb-cl-head">
+          <h3 class="wb-cl-title">拟定更新通知</h3>
+          <button type="button" class="wb-cl-link-btn" id="wbClBackRead">返回查看 ›</button>
+        </div>
+        <form class="wb-cl-form" id="wbClForm">
+          <div class="wb-cl-field">
+            <div class="wb-cl-label-row">
+              <label for="wbClDateInput">展示日期（到达该日期后，成员打开网页自动弹出一次）</label>
+              <div class="wb-cl-date-shortcuts">
+                <button type="button" data-offset="1">明天生效</button>
+                <button type="button" data-offset="0">今天生效</button>
+              </div>
+            </div>
+            <input type="date" id="wbClDateInput" class="wb-cl-input" required>
+          </div>
+          <div class="wb-cl-field">
+            <label for="wbClTextInput">通知内容（直接按行输入，保持简明）</label>
+            <textarea id="wbClTextInput" class="wb-cl-textarea" rows="4" maxlength="1000" placeholder="1. 访谈编码新增「问题聚焦」模式，支持按问题与维度编码。\n2. 左侧边栏与成员管理界面精简，支持更换头像配色与用户名。" required></textarea>
+          </div>
+          <p class="wb-cl-error" id="wbClError" role="alert" hidden></p>
+          <div class="wb-cl-foot wb-cl-compose-foot">
+            <button type="button" class="wb-cl-cancel" id="wbClCancelCompose">取消</button>
+            <button type="submit" class="wb-cl-primary" id="wbClSubmitBtn">保存并发布</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.append(clBackdrop);
+
+  const clCard=clBackdrop.querySelector('#wbChangelogCard');
+  const clReadView=clBackdrop.querySelector('#wbClReadView');
+  const clComposeView=clBackdrop.querySelector('#wbClComposeView');
+  const clDateEl=clBackdrop.querySelector('#wbClDate');
+  const clContentEl=clBackdrop.querySelector('#wbClContent');
+  const clHistoryBox=clBackdrop.querySelector('#wbClHistoryBox');
+  const clToggleHistory=clBackdrop.querySelector('#wbClToggleHistory');
+  const clOpenCompose=clBackdrop.querySelector('#wbClOpenCompose');
+  const clBackRead=clBackdrop.querySelector('#wbClBackRead');
+  const clOkBtn=clBackdrop.querySelector('#wbClOkBtn');
+  const clForm=clBackdrop.querySelector('#wbClForm');
+  const clDateInput=clBackdrop.querySelector('#wbClDateInput');
+  const clTextInput=clBackdrop.querySelector('#wbClTextInput');
+  const clErrorEl=clBackdrop.querySelector('#wbClError');
+  const clCancelCompose=clBackdrop.querySelector('#wbClCancelCompose');
+  const clSubmitBtn=clBackdrop.querySelector('#wbClSubmitBtn');
+  const notifyDot=notifyBell.querySelector('#sbNotifyDot');
+
+  let changelogItems=[{
+    id:'seed-20261126',
+    date:'2026-11-26',
+    content:'1. 访谈编码新增「问题聚焦」模式，支持按问题与维度编码。\n2. 左侧边栏与成员管理界面精简，支持更换头像配色与用户名。',
+    seeded:true
+  }];
+  let currentClItem=changelogItems[0];
+  let clClosing=false;
+
+  function localDateStr(offsetDays=0){
+    const d=new Date();
+    d.setDate(d.getDate()+offsetDays);
+    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function isAdminUser(){
+    return window.workbenchSession?.role==='admin';
+  }
+  function getActiveChangelog(items=changelogItems){
+    const today=localDateStr(0);
+    return items.find(x=>String(x.date||'')<=today)||items[0]||null;
+  }
+  function getSeenId(){
+    try{return localStorage.getItem('wb_seen_changelog_id')||'';}catch{return '';}
+  }
+  function setSeenId(id){
+    if(!id)return;
+    try{localStorage.setItem('wb_seen_changelog_id',String(id));}catch{}
+  }
+  function syncUnreadDot(){
+    const today=localDateStr(0);
+    const dueItem=changelogItems.find(x=>String(x.date||'')<=today);
+    const unread=!!(dueItem&&getSeenId()!==dueItem.id);
+    notifyDot.hidden=!unread;
+  }
+  function renderChangelogReadView(item=getActiveChangelog()){
+    currentClItem=item||changelogItems[0];
+    clReadView.hidden=false;
+    clComposeView.hidden=true;
+    clOpenCompose.hidden=!isAdminUser();
+    clDateEl.textContent=currentClItem?.date||'';
+    clContentEl.textContent=currentClItem?.content||'暂无更新通知';
+    const others=changelogItems.filter(x=>x.id!==currentClItem?.id);
+    clToggleHistory.hidden=others.length===0;
+    clHistoryBox.hidden=true;
+    clToggleHistory.textContent=`历史通知 (${others.length})`;
+    clHistoryBox.replaceChildren(...others.slice(0,8).map(entry=>{
+      const row=document.createElement('div');row.className='wb-cl-history-item';
+      const d=document.createElement('span');d.className='wb-cl-history-date';d.textContent=entry.date;
+      const p=document.createElement('p');p.className='wb-cl-history-text';p.textContent=entry.content;
+      row.append(d,p);return row;
+    }));
+  }
+  function openChangelogModal(mode='read'){
+    if(clClosing)return;
+    clCard.style.transition='none';
+    clCard.style.transform='translate(0,0) scale(1)';
+    clCard.style.opacity='1';
+    clBackdrop.style.opacity='1';
+    clBackdrop.hidden=false;
+    notifyBell.setAttribute('aria-expanded','true');
+    requestAnimationFrame(()=>{clCard.style.transition='';});
+    if(mode==='compose'&&isAdminUser()){
+      showComposeView();
+    }else{
+      renderChangelogReadView();
+      clOkBtn.focus();
+    }
+  }
+  function dismissChangelogToBell(){
+    if(clBackdrop.hidden||clClosing)return;
+    if(currentClItem?.id)setSeenId(currentClItem.id);
+    syncUnreadDot();
+    notifyBell.setAttribute('aria-expanded','false');
+    const cr=clCard.getBoundingClientRect(),br=notifyBell.getBoundingClientRect();
+    const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if(!reducedMotion&&br.width>0&&cr.width>0){
+      clClosing=true;
+      const dx=(br.left+br.width/2)-(cr.left+cr.width/2);
+      const dy=(br.top+br.height/2)-(cr.top+cr.height/2);
+      clCard.style.transform=`translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(0.08)`;
+      clCard.style.opacity='0';
+      clBackdrop.style.opacity='0';
+      notifyBell.classList.remove('is-ringing');
+      void notifyBell.offsetWidth;
+      notifyBell.classList.add('is-ringing');
+      setTimeout(()=>{
+        clBackdrop.hidden=true;
+        clCard.style.transform='';
+        clCard.style.opacity='';
+        clBackdrop.style.opacity='';
+        clClosing=false;
+      },240);
+    }else{
+      clBackdrop.hidden=true;
+    }
+  }
+  function showComposeView(){
+    clReadView.hidden=true;
+    clComposeView.hidden=false;
+    clErrorEl.hidden=true;
+    clErrorEl.textContent='';
+    if(!clDateInput.value)clDateInput.value=localDateStr(1);
+    if(!clTextInput.value&&currentClItem)clTextInput.value=currentClItem.content||'';
+    clTextInput.focus();
+  }
+
+  notifyBell.onclick=e=>{
+    e.stopPropagation();
+    if(!clBackdrop.hidden)dismissChangelogToBell();
+    else openChangelogModal('read');
+  };
+  clOkBtn.onclick=()=>dismissChangelogToBell();
+  clBackdrop.onclick=e=>{if(e.target===clBackdrop)dismissChangelogToBell();};
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!clBackdrop.hidden){
+      e.preventDefault();
+      dismissChangelogToBell();
+    }
+  });
+  clToggleHistory.onclick=()=>{
+    const next=clHistoryBox.hidden;
+    clHistoryBox.hidden=!next;
+    clToggleHistory.textContent=next?'收起历史':`历史通知 (${changelogItems.length-1})`;
+  };
+  clOpenCompose.onclick=()=>showComposeView();
+  clBackRead.onclick=()=>renderChangelogReadView();
+  clCancelCompose.onclick=()=>renderChangelogReadView();
+  for(const b of clBackdrop.querySelectorAll('.wb-cl-date-shortcuts button')){
+    b.onclick=()=>{clDateInput.value=localDateStr(Number(b.dataset.offset)||0);};
+  }
+  clForm.onsubmit=async e=>{
+    e.preventDefault();
+    const date=clDateInput.value.trim(),content=clTextInput.value.trim();
+    if(!date||!content)return;
+    clErrorEl.hidden=true;clSubmitBtn.disabled=true;clSubmitBtn.textContent='正在发布…';
+    try{
+      const r=await fetch('/auth/admin/changelog',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',...(window.workbenchSession?.csrf?{'X-CSRF-Token':window.workbenchSession.csrf}:{})},
+        body:JSON.stringify({date,content})
+      });
+      if(r.status===404){
+        const localEntry={id:'cl-'+Date.now(),date,content,created_at:Date.now()/1000,seeded:false};
+        changelogItems=[localEntry,...changelogItems.filter(x=>x.date!==date)];
+      }else{
+        const data=await r.json();
+        if(!r.ok)throw Error(data.detail||'发布失败');
+        if(Array.isArray(data.items)&&data.items.length)changelogItems=data.items;
+      }
+      currentClItem=changelogItems[0];
+      syncUnreadDot();
+      renderChangelogReadView(currentClItem);
+      if(typeof toast==='function')toast(date>localDateStr(0)?`更新通知已保存，将于 ${date} 自动向成员展示`:'更新通知已发布生效');
+    }catch(err){
+      clErrorEl.textContent=err.message||String(err);
+      clErrorEl.hidden=false;
+    }finally{
+      clSubmitBtn.disabled=false;clSubmitBtn.textContent='保存并发布';
+    }
+  };
+
+  async function initChangelog(){
+    try{
+      const r=await fetch('/auth/changelog');
+      if(r.ok){
+        const data=await r.json();
+        if(Array.isArray(data?.items)&&data.items.length)changelogItems=data.items;
+      }
+    }catch{}
+    syncUnreadDot();
+    const today=localDateStr(0);
+    const dueItem=changelogItems.find(x=>String(x.date||'')<=today);
+    if(dueItem&&getSeenId()!==dueItem.id){
+      const allowAutoPopup=!dueItem.seeded||!navigator.webdriver||window.__forceChangelogPopup;
+      if(allowAutoPopup){
+        setTimeout(()=>{
+          if(clBackdrop.hidden&&!document.querySelector('dialog[open]')){
+            renderChangelogReadView(dueItem);
+            openChangelogModal('read');
+          }
+        },380);
+      }
+    }
+  }
+  setTimeout(initChangelog,320);
+  window.workbenchChangelog={open:openChangelogModal,dismiss:dismissChangelogToBell,refresh:initChangelog};
+
 })();

@@ -11,7 +11,7 @@
 .account-drawer h2{font-size:18px;font-weight:700}
 .wb-account-close{display:grid;place-items:center;border:0;background:transparent;color:var(--wb-account-muted);width:32px;height:32px;padding:6px}
 .wb-account-close svg{width:20px;height:20px}
-.wb-account-person{display:flex;gap:12px;align-items:center;margin:0 0 14px}
+.wb-account-person{display:flex;gap:12px;align-items:center;min-height:44px;margin:0 0 14px}
 .wb-account-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#e2f2ed;color:var(--wb-account-teal);font-size:15px;font-weight:700}
 .wb-account-person strong{display:block;font-size:15px}
 .wb-account-person-actions{position:relative;margin-left:auto;align-self:center;padding-bottom:5px;margin-bottom:-5px}
@@ -40,7 +40,7 @@
 .wb-account-number{font-size:15px;line-height:1.2;font-weight:700}.wb-account-unit{font-size:15px;margin-left:7px;color:var(--wb-account-muted)}
 .wb-account-limit{background:#e0eee9;color:var(--wb-account-teal);border-radius:18px;padding:4px 10px;font-weight:700;font-size:14px;white-space:nowrap}
 .wb-account-track{height:6px;background:#d2e9e2;border-radius:4px;overflow:hidden}
-.wb-account-fill{height:100%;background:var(--wb-account-teal);border-radius:inherit}
+.wb-account-fill{height:100%;width:0%;background:var(--wb-account-teal);border-radius:inherit;transition:width 220ms ease}
 .wb-account-note{font-size:13px;color:var(--wb-account-muted);margin-top:7px!important}
 .wb-account-guest-space{margin-top:10px}
 .wb-account-guest-space strong{font-weight:600}
@@ -60,7 +60,10 @@
 .wb-account-chart svg{display:block;width:100%;height:112px;overflow:visible}
 .wb-account-footer{margin-top:14px;padding-top:0}
 .wb-account-footer-inner{margin-top:8px;border-top:1px solid var(--wb-account-line);padding-top:12px}
-.wb-account-logout{border:0;background:none;color:var(--wb-account-muted);padding:0;font-size:15px}
+.wb-account-logout{display:inline-flex;align-items:center;justify-content:center;border:1px solid #eec6c2;border-radius:7px;background:#fef5f4;color:#ba3a34;padding:6px 14px;font-size:13px;font-weight:500;transition:background-color 140ms ease,border-color 140ms ease}
+.wb-account-logout:hover{background:#fdeceb;border-color:#e3a8a2}
+.wb-account-guest-login-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:var(--wb-account-teal);color:#fff;padding:7px 14px;font-size:13px;font-weight:600;text-decoration:none}
+.wb-account-guest-login-btn:hover{background:#00756c}
 .wb-account-footer small{display:block;margin-top:7px;color:var(--wb-account-muted);font-size:12px}
 .wb-account-message{white-space:pre-wrap;overflow-wrap:anywhere;color:#99601f;font-size:13px}
 .wb-account-message:not(:empty){padding:12px 0}
@@ -129,11 +132,11 @@
 .wb-account-edit-name{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--wb-account-muted);opacity:.72;transition:background-color 140ms ease,color 140ms ease,opacity 140ms ease}
 .wb-account-edit-name svg{width:13px;height:13px}
 .wb-account-edit-name:hover{background:#edf5f2;color:var(--wb-account-teal);opacity:1}
-.wb-account-name-form{display:flex;align-items:center;gap:6px;margin-bottom:2px}
-.wb-account-name-input{width:148px;height:28px;padding:0 8px;border:1px solid #b5d6d2;border-radius:6px;font-size:13.5px;color:var(--wb-account-ink);background:#fff}
+.wb-account-name-form{display:flex;align-items:center;gap:6px;margin:0}
+.wb-account-name-input{width:142px;height:26px;padding:0 8px;border:1px solid #b5d6d2;border-radius:6px;font-size:13.5px;color:var(--wb-account-ink);background:#fff}
 .wb-account-name-input:focus{outline:none;border-color:var(--wb-account-teal);box-shadow:0 0 0 2px rgba(0,139,129,.14)}
-.wb-account-name-save{height:28px;padding:0 10px;border:0;border-radius:6px;background:var(--wb-account-teal);color:#fff;font-size:12.5px;font-weight:600}
-.wb-account-name-cancel{height:28px;padding:0 8px;border:1px solid var(--wb-account-line);border-radius:6px;background:#fff;color:var(--wb-account-muted);font-size:12.5px}
+.wb-account-name-save{height:26px;padding:0 9px;border:0;border-radius:6px;background:var(--wb-account-teal);color:#fff;font-size:12px;font-weight:600;flex:none}
+.wb-account-name-cancel{height:26px;padding:0 8px;border:1px solid var(--wb-account-line);border-radius:6px;background:#fff;color:var(--wb-account-muted);font-size:12px;flex:none}
 
 /* Gestalt Proximity 8pt Spacing Grid (8px intra-group / 16px padding / 24px inter-group) */
 .wb-account-member-head{margin-top:4px;margin-bottom:16px}
@@ -177,3 +180,5 @@
 .wb-account-setting-btn:hover{background:#eff8f6;border-color:#9fc9c3}
 .wb-account-setting-btn.wb-account-danger{background:#fef5f4;border-color:#eec6c2;color:#ba3a34}
 .wb-account-setting-btn.wb-account-danger:hover{background:#fdeceb;border-color:#e3a8a2}
+
+.wb-account-toast{margin-left:auto;padding:4px 10px;border:1px solid #b8e1da;border-radius:999px;background:#e6f6f2;color:#0d766e;font-size:12px;font-weight:600;white-space:nowrap}

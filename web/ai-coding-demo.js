@@ -261,7 +261,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   const indexStage=run?.index_preparation;status.textContent=running?(indexStage&&indexStage.status!=='completed'?'正在准备话题索引…':runFocus?'正在按焦点编码…':'正在编码'):indexStage?.status==='failed'?'话题索引准备失败，可继续':run&&run.status!=='completed'?'编码部分完成或失败':pending?'编码完成 · 存在待审核建议':state.codes.length?'编码及审核已完成':'尚未开始编码';
   status.title=run?.error||(indexStage?.status==='completed'?(indexStage.reused?'已复用共享话题索引':'已建立并保存共享话题索引'):'');
   start.disabled=guest||!!running;resume.hidden=guest||!run||!['failed','partial'].includes(run.status);resume.disabled=guest||!!running;project.disabled=false;
-  if(guest)status.textContent=guestNotice;
+  if(guest){status.textContent=guestNotice+' ';const loginA=el('a','guest-inline-login','去登录 →');loginA.href='/account?preserve=1';status.append(loginA);}
   progress.textContent=run?`本轮 ${run.batches.filter(b=>b.status==='completed').length}/${run.batches.length} 批完成 · ${state.codes.length} 个编码 · ${pending} 个待审核 · ${unresolved} 处引用需处理${run.error?' · '+run.error:''}`:'请选择访谈后开始；也可直接选中原文手动编码。';
   for(const b of run?.batches||[]){if(b.status==='failed'){const info=el('span','ac-error',' 批次失败：'+(b.attempts.at(-1)?.error||'可继续'));progress.append(info);}}
   renderList();renderSource();renderReview();window.workspaceHeader?.refresh();

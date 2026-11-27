@@ -8,7 +8,7 @@
       trigger.disabled = row.querySelector('[data-open]').disabled;
       const submenu = document.createElement('div'); submenu.className = 'library-move-submenu'; submenu.hidden = true;
       const targets = researchProjects.filter(p => p.id !== group);
-      if (!targets.length) submenu.textContent = '暂无其他项目';
+      if (!targets.length) { if (window.WORKBENCH_GUEST) { submenu.innerHTML = '<div style="padding:6px 8px;font-size:12px;line-height:1.5;color:#587177">试用模式暂不支持项目分组<br><a href="/account?preserve=1" style="color:#008b81;font-weight:600;text-decoration:underline">登录正式账号以新建项目 →</a></div>'; } else { submenu.textContent = '暂无其他项目'; } }
       for (const target of targets) {
         const button = document.createElement('button'); button.type = 'button'; button.textContent = '▱　' + target.name; button.title = target.name;
         button.onclick = async event => {

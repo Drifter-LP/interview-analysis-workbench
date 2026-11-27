@@ -22,3 +22,7 @@
 .guest-feature-tip[data-side="below"]::before,.guest-feature-tip[data-side="above"]::before {left:var(--guest-tip-arrow);top:-5px;transform:rotate(135deg)}
 .guest-feature-tip[data-side="above"]::before {top:auto;bottom:-5px;transform:rotate(-45deg)}
 .guest-feature-tip[hidden],.guest-feature-tip [hidden] {display:none!important}
+
+.guest-tip-login {display:inline-flex;align-items:center;margin-top:8px;padding:4px 10px;border-radius:6px;background:#008b81;color:#fff;font-size:12px;font-weight:600;text-decoration:none}
+.guest-tip-login:hover {background:#00736a}
+.guest-inline-login {margin-left:8px;color:#008b81;font-weight:600;text-decoration:underline;text-underline-offset:2px}

@@ -390,6 +390,8 @@ async def warm_login_worker(secret):
 
 @app.post('/auth/{action}')
 async def auth(action: str, request: Request):
+    if action == 'profile':
+        return await update_profile(request)
     if action == 'logout':
         store.logout(request.cookies.get(COOKIE, ''))
         response = JSONResponse({'ok': True})
@@ -453,7 +455,6 @@ def account_profile(request: Request):
 def me(request: Request):
     return account_profile(request)
 
-@app.post('/auth/profile')
 async def update_profile(request: Request):
     user = request.state.user
     if not user or user['role'] == 'guest':

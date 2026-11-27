@@ -373,12 +373,12 @@ class Store:
                         raise SiteError('该用户名已被占用', 409)
                     db.execute('UPDATE users SET username=? WHERE id=?', (clean_name, user_id))
                     if row['role'] == 'admin':
-                        setting = db.execute("SELECT value FROM site_settings WHERE key='admin_binding'").fetchone()
+                        setting = db.execute("SELECT value FROM site_settings WHERE key='legacy_owner'").fetchone()
                         if setting:
                             binding = json.loads(setting['value'])
                             if binding.get('username') == row['username']:
                                 binding['username'] = clean_name
-                                db.execute("UPDATE site_settings SET value=? WHERE key='admin_binding'", (json.dumps(binding, sort_keys=True),))
+                                db.execute("UPDATE site_settings SET value=? WHERE key='legacy_owner'", (json.dumps(binding, sort_keys=True),))
                     changed = True
             if new_avatar is not None:
                 if not isinstance(new_avatar, str):

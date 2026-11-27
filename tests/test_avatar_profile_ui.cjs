@@ -1,0 +1,23 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict'),path=require('node:path');
+(async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{
+ const p=await b.newPage({viewport:{width:1280,height:960}}),base='http://127.0.0.1:9896',errors=[];
+ p.on('pageerror',e=>errors.push(e.message));
+ assert.ok((await p.request.post(base+'/auth/login',{headers:{Origin:base},data:{username:'qa_owner',password:'temporary-qa-login-123'}})).ok());
+ await p.goto(base+'/');await p.waitForFunction(()=>window.openAccountDrawer);await p.evaluate(()=>window.openAccountDrawer());
+ await p.waitForFunction(()=>document.querySelector('.wb-account-role').textContent==='管理员');
+ assert.equal(await p.locator('.wb-account-avatar-content').count(),1);
+ await p.locator('.wb-account-avatar').click();await p.locator('.wb-account-avatar-popover').waitFor();
+ const response=p.waitForResponse(r=>r.url().endsWith('/auth/profile')&&r.request().method()==='POST');
+ await p.locator('[data-preset="preset:ocean"]').click();assert.ok((await response).ok());
+ await p.waitForFunction(()=>document.querySelector('[data-preset="preset:ocean"]').getAttribute('aria-checked')==='true');
+ assert.equal((await (await p.request.get(base+'/auth/me')).json()).avatar,'preset:ocean');
+ await p.locator('.wb-account-close').click();await p.evaluate(()=>window.openAccountDrawer());
+ await p.waitForTimeout(700);assert.equal(await p.locator('.wb-account-avatar-content').count(),1);
+ await p.screenshot({path:path.resolve(__dirname,'../outputs/account-avatar-qa.png')});
+ const me=await (await p.request.get(base+'/auth/me')).json();
+ assert.equal((await p.request.post(base+'/auth/profile',{headers:{Origin:base},data:{avatar:'preset:rose'}})).status(),403);
+ assert.equal((await p.request.post(base+'/auth/profile',{headers:{Origin:base,'X-CSRF-Token':me.csrf},data:{avatar:'javascript:bad'}})).status(),400);
+ const guest=await b.newPage();await guest.request.post(base+'/auth/guest',{headers:{Origin:base},data:{}});
+ const g=await (await guest.request.get(base+'/auth/me')).json();assert.equal((await guest.request.post(base+'/auth/profile',{headers:{Origin:base,'X-CSRF-Token':g.csrf},data:{avatar:'preset:rose'}})).status(),403);
+ assert.deepEqual(errors,[]);console.log('PASS avatar preset save/reopen, real profile endpoint, CSRF, invalid input, guest denial, no page errors');
+}finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

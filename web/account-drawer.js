@@ -391,7 +391,7 @@
    $('.wb-account-number').textContent='—';$('.wb-account-name').textContent='正在读取…';$('.wb-account-role').textContent='';$('.wb-account-guest-space').hidden=true;passwordEntry.hidden=true;
    dlg.showModal();$('.wb-account-close').focus();
    const boot=window.workbenchSession;
-   if(boot){$('.wb-account-name').textContent=boot.role==='guest'?'访客':boot.username;$('.wb-account-avatar').textContent=boot.role==='guest'?'访':boot.username.slice(0,1).toUpperCase();$('.wb-account-role').textContent=boot.role==='admin'?'管理员':boot.role==='guest'?'访客 · 临时空间':'普通成员';}
+   if(boot){me=boot;$('.wb-account-name').textContent=boot.role==='guest'?'访客':boot.username;renderAvatar();$('.wb-account-role').textContent=boot.role==='admin'?'管理员':boot.role==='guest'?'访客 · 临时空间':'普通成员';}
    clearInterval(poll);poll=setInterval(()=>{if(dlg.open&&!document.hidden&&!$('#wb-account-personal').hidden&&passwordPanel.hidden)usage()},30000);
    await usage();
  });

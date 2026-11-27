@@ -40,6 +40,11 @@
     wrap.append(copyBtn);box.append(wrap);
   }
 };
+ let accountToastTimer;
+ function showAccountToast(text){
+   const notice=$('.wb-account-toast');clearTimeout(accountToastTimer);notice.textContent=text;notice.hidden=false;
+   accountToastTimer=setTimeout(()=>{notice.hidden=true;notice.textContent='';},2500);
+ }
  const quotaHelp=$('.wb-account-quota-help'),quotaTrigger=$('.wb-account-quota-help-button'),quotaTooltip=$('.wb-account-quota-tooltip');
  let quotaHover=false,quotaFocus=false,quotaPinned=false,quotaDismissed=false;
  function drawQuotaHelp(){

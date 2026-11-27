@@ -43,7 +43,7 @@ PENDING = 'wb_guest_pending'
 DEV = os.environ.get('SITE_ALLOW_HTTP') == '1'
 TEXT_ONLY = os.environ.get('WORKBENCH_TEXT_ONLY') == '1'
 TEXT_ONLY_STYLE = '<style>#newProjectBtn,.system-card,#systemState,#gpuState{display:none!important}@media(min-width:851px){.sidebar-settings{margin-top:auto!important}}</style>'
-GUEST_SINGLE_UI = '''<script>window.WORKBENCH_GUEST=true;history.replaceState(null,'','/'+(location.hash||''));</script><link rel="stylesheet" href="/assets/guest-lock.css?v=2"><style>
+GUEST_SINGLE_UI = '''<script>window.WORKBENCH_GUEST=true;history.replaceState(null,'','/'+(location.hash||''));</script><link rel="stylesheet" href="/assets/guest-lock.css?v=batch12-1"><style>
 .nav-item[data-tab="matrix"],.nav-item[data-tab="projectManage"],
 #focused,#matrix,#projectManage,#projectData,#editorImportAudio,#editorMembership,
 #comparisonModeBtn,#comparisonTopActions,#comparisonWorkspace,#comparisonDialog,#compareMaterialsBtn{display:none!important}
@@ -615,7 +615,7 @@ window.workbenchInitialLibrary=window.fetch(session.role==='guest'?'/api/library
 addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
 let lastFocusCheck=Date.now(),checking=false;
 addEventListener('focus',async()=>{if(checking||Date.now()-lastFocusCheck<20000)return;checking=true;lastFocusCheck=Date.now();try{const r=await f('/auth/me');if(r.status===401||(r.ok&&(await r.json()).id!==session.id))location.replace('/account')}catch{}finally{checking=false}});
-})();</script><script defer src="/assets/guest-mode.js?v=20261109-expiry-1"></script>'''
+})();</script><script defer src="/assets/guest-mode.js?v=batch12-1"></script>'''
 
 
 def workspace_html(content, request, text_only, guest_style):

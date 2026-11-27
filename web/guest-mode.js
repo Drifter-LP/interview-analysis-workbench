@@ -5,7 +5,7 @@
  const lock='<svg class="guest-lock-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg>';
  const tip=document.createElement('div'), heading=document.createElement('strong'), detail=document.createElement('span'), loginLink=document.createElement('a');
  loginLink.className='guest-tip-login';loginLink.href='/account?preserve=1';loginLink.textContent='去登录 →';
- tip.id='guestFeatureTip';tip.className='guest-feature-tip';tip.setAttribute('role','tooltip');tip.hidden=true;
+ tip.id='guestFeatureTip';tip.className='guest-feature-tip';tip.setAttribute('role','group');tip.setAttribute('aria-label','登录提示');tip.hidden=true;
  tip.append(heading,detail,loginLink);document.body.append(tip);
  let current=null, timer=0;
  function close(){clearTimeout(timer);current?.element.removeAttribute('aria-describedby');current=null;tip.hidden=true;}
@@ -28,7 +28,7 @@
   clearTimeout(timer);tip.hidden=false;item.element.setAttribute('aria-describedby',tip.id);position();
  }
  function leave(){clearTimeout(timer);timer=setTimeout(()=>{
-  if(current&&document.activeElement!==current.element&&!current.element.matches(':hover')&&!tip.matches(':hover'))close();
+  if(current&&document.activeElement!==current.element&&!tip.contains(document.activeElement)&&!current.element.matches(':hover')&&!tip.matches(':hover'))close();
  },170);}
  function bind(element,key,options={}){
   if(!element||element.classList.contains('guest-feature-locked'))return;
@@ -38,10 +38,11 @@
   element.addEventListener('pointerleave',leave);
   element.addEventListener('focus',()=>show(item));
   element.addEventListener('blur',()=>{if(current===item)leave();});
-  element.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();show(item);},true);
+  element.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();show(item);if(event.detail===0)loginLink.focus();},true);
  }
  tip.addEventListener('pointerenter',()=>{clearTimeout(timer);current?.hold?.();});
  tip.addEventListener('pointerleave',()=>{current?.release?.();leave();});
+ tip.addEventListener('focusout',leave);
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&current){close();event.stopImmediatePropagation();event.preventDefault();}},true);
  document.addEventListener('pointerdown',event=>{if(current&&!current.element.contains(event.target)&&!tip.contains(event.target))close();},true);
  window.addEventListener('resize',position);window.addEventListener('scroll',position,true);

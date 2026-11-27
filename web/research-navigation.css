@@ -107,7 +107,8 @@
 .research-source-status button{padding:4px 9px;border:1px solid #dce7e8;border-radius:6px;background:white;font:inherit;color:#38646a;cursor:pointer}
 .research-source-status button:disabled{opacity:.4;cursor:default}
 .research-source-dialog .research-source-grid{height:auto;flex:1;min-height:0;grid-template-columns:minmax(0,2fr) minmax(0,3fr)}
-.research-source-results{padding:0;white-space:normal}
+.research-source-results{padding:14px 18px;white-space:normal}
+.research-source-results:has(article){padding:0}
 .research-source-results>p{padding:12px 20px}
 .research-source-results article{padding:12px 16px;border-left:3px solid transparent}
 .research-source-results article.selected{background:#edf8f5;border-left-color:#009d94}

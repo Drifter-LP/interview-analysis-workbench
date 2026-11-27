@@ -23,7 +23,7 @@
 @media(max-width:850px){.editor-tool-row{flex-wrap:wrap;gap:10px}.editor-tool-right{margin-left:auto}}
 #editor #editorMembership{display:none!important}
 #editor > .panel-actions:has(.editor-actions:empty){display:none!important}
-body .shell main.workspace-main{--workspace-header-height:64px;padding:0!important;background:#f6f8f8;display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden}
+body .shell main.workspace-main{--workspace-header-height:64px;padding:0 0 34px!important;background:#f6f8f8;display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden}
 .workspace-header{position:relative;z-index:20;flex:none;background:#fff;border-bottom:1px solid #e1e7eb;color:#17313d}
 .workspace-header-row{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px}
 .workspace-breadcrumb{display:flex;align-items:center;gap:12px;flex:none;font-size:16px;line-height:24px;white-space:nowrap}
@@ -59,7 +59,7 @@ body .shell main.workspace-main{--workspace-header-height:64px;padding:0!importa
 .workspace-header .editor-dropdown button{justify-content:flex-start;width:100%;border:0}
 .workspace-tab-slot{height:44px;display:flex;align-items:stretch;gap:24px;padding:0 24px;border-top:1px solid #f0f3f5}
 .workspace-tab-slot .network-tabs{display:contents}
-.workspace-tab-slot button{height:44px;padding:0 4px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none!important;color:#768592;font-size:14px}
+.workspace-tab-slot button{height:44px;padding:0 4px;width:auto;min-width:max-content;border:0;border-bottom:2px solid transparent;border-radius:0;background:none!important;color:#768592;font-size:14px}
 .workspace-tab-slot button.active{color:#00998f;border-bottom-color:#00998f;font-weight:600}
 .workspace-tab-slot:has(.workspace-tab-action){overflow-x:auto;overflow-y:hidden;align-items:center;gap:20px}
 .workspace-tab-slot:has(.workspace-tab-action)>button{flex-shrink:0}

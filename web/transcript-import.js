@@ -13,7 +13,7 @@
   label.textContent=tasks.length>1?`已选择 ${tasks.length} 份访谈稿`:tasks[0]?.file.name||'选择 TXT 或 Word 访谈稿';
   nameField.hidden=batch;name.disabled=busy||batch;
   hint.textContent=batch?'每份访谈按各自文件名命名，不会合并':'可按 Shift 连选或 Ctrl 多选，每份文件单独导入';
-  results.hidden=!tasks.length;results.replaceChildren();
+  submit.disabled=busy||!tasks.some(t=>t.state!=='success');results.hidden=!tasks.length;results.replaceChildren();
   for(const task of tasks){
    const li=document.createElement('li'),text=document.createElement('span'),state=document.createElement('span');
    text.className='import-file-name';text.textContent=task.file.name;
@@ -25,7 +25,7 @@
  }
  function setBusy(value){
   busy=value;form.setAttribute('aria-busy',String(value));
-  input.disabled=value;submit.disabled=value;close.disabled=value;cancel.disabled=value;name.disabled=value||batch;
+  input.disabled=value;submit.disabled=value||!tasks.some(t=>t.state!=='success');close.disabled=value;cancel.disabled=value;name.disabled=value||batch;
  }
  function reset(){tasks=[];batch=false;form.reset();status.hidden=true;status.textContent='';submit.textContent='导入';render()}
  input.onchange=()=>{
@@ -38,7 +38,7 @@
  form.onsubmit=async event=>{
   event.preventDefault();if(busy)return;
   const pending=tasks.filter(task=>task.state!=='success');
-  if(!pending.length){status.hidden=false;status.textContent='请先选择 TXT 或 DOCX 访谈稿';return}
+  if(!pending.length){status.hidden=false;status.style.color='#b83c4a';status.textContent='请先选择 TXT 或 Word（.docx）访谈稿';return}
   for(const task of pending)if(task.name===null||!batch)task.name=batch?stem(task.file):name.value.trim()||stem(task.file);
   setBusy(true);status.hidden=false;
   try{

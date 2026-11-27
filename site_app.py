@@ -453,6 +453,27 @@ def account_profile(request: Request):
 def me(request: Request):
     return account_profile(request)
 
+@app.post('/auth/profile')
+async def update_profile(request: Request):
+    user = request.state.user
+    if not user or user['role'] == 'guest':
+        raise SiteError('访客暂不支持修改资料', 403)
+    raw = await bounded_body(request, 262144)
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError()
+    except (ValueError, UnicodeError):
+        raise SiteError('请求格式无效')
+    new_username = data['username'] if 'username' in data else None
+    new_avatar = data['avatar'] if 'avatar' in data else None
+    store.update_profile(user['id'], new_username=new_username, new_avatar=new_avatar)
+    updated = store.session(request.cookies.get(COOKIE, ''))
+    if updated:
+        request.state.user = updated
+    return account_profile(request)
+
+
 
 @app.get('/auth/users')
 def users(request: Request):

@@ -2,7 +2,7 @@
  const dlg=document.createElement('dialog');dlg.className='account-drawer';dlg.setAttribute('aria-labelledby','wb-account-title');
  dlg.innerHTML=`<div class="wb-account-wrap">
  <div class="wb-account-heading"><h2 id="wb-account-title">账号与额度</h2><button class="wb-account-close" aria-label="关闭账号与额度"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.6"><path d="m5 5 14 14M19 5 5 19"/></svg></button></div>
- <div class="wb-account-person"><span class="wb-account-avatar"></span><div><strong class="wb-account-name"></strong><span class="wb-account-role"></span></div><div class="wb-account-person-actions"><button class="wb-account-account-toggle" type="button" aria-label="切换账号或退出登录" aria-expanded="false" aria-controls="wb-account-account-menu" aria-haspopup="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/></svg></button><div class="wb-account-account-menu" id="wb-account-account-menu" role="group" aria-label="账号操作" hidden><button type="button" class="wb-account-switch-account">切换账号</button><button type="button" class="wb-account-menu-logout">退出登录</button></div></div></div>
+ <div class="wb-account-person"><div class="wb-account-avatar-wrap"><button type="button" class="wb-account-avatar" title="点击更换头像" aria-label="更换头像" aria-haspopup="dialog" aria-expanded="false"><span class="wb-account-avatar-content"></span><span class="wb-account-avatar-overlay" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button><div class="wb-account-avatar-popover" role="dialog" aria-label="更换头像" hidden><div class="wb-account-avatar-popover-title">选择头像配色或上传图片</div><div class="wb-account-avatar-presets" role="radiogroup" aria-label="预设配色"></div><div class="wb-account-avatar-actions"><button type="button" class="wb-account-avatar-upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>上传本地图片…</span></button><button type="button" class="wb-account-avatar-reset" hidden>恢复默认头像</button></div></div><input type="file" accept="image/png,image/jpeg,image/webp" class="wb-account-avatar-input" hidden></div><div class="wb-account-identity"><div class="wb-account-name-row"><strong class="wb-account-name"></strong><button type="button" class="wb-account-edit-name" title="修改用户名" aria-label="修改用户名"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div><form class="wb-account-name-form" hidden><input class="wb-account-name-input" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{2,31}" autocomplete="username" aria-label="新用户名" required><button type="submit" class="wb-account-name-save">保存</button><button type="button" class="wb-account-name-cancel">取消</button></form><span class="wb-account-role"></span></div><div class="wb-account-person-actions"><button class="wb-account-account-toggle" type="button" aria-label="切换账号或退出登录" aria-expanded="false" aria-controls="wb-account-account-menu" aria-haspopup="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/></svg></button><div class="wb-account-account-menu" id="wb-account-account-menu" role="group" aria-label="账号操作" hidden><button type="button" class="wb-account-switch-account">切换账号</button><button type="button" class="wb-account-menu-logout">退出登录</button></div></div></div>
  <div class="wb-account-tabs" role="tablist" aria-label="账号页面"><button role="tab" id="wb-account-mine-tab" aria-controls="wb-account-personal" aria-selected="true">我的账号</button><button role="tab" id="wb-account-members-tab" aria-controls="wb-account-members" aria-selected="false" hidden>成员管理</button></div>
  <div class="wb-account-tab-panels"><section id="wb-account-personal" role="tabpanel" aria-labelledby="wb-account-mine-tab"><div class="wb-account-personal-content">
  <div class="wb-account-quota-head"><h3 class="wb-account-quota-title">今日用量</h3><span class="wb-account-quota-help">
@@ -150,16 +150,46 @@
      $('.wb-account-missing').append(' ',button('重试',usage));
    }
  }
+ const AVATAR_PRESETS=[
+   {key:'preset:teal',label:'青绿（默认）',bg:'#e2f2ed',fg:'#008b81'},
+   {key:'preset:ocean',label:'海蓝',bg:'#e3eff8',fg:'#1d6fa5'},
+   {key:'preset:indigo',label:'群青',bg:'#eaeaf8',fg:'#4f4ca8'},
+   {key:'preset:amber',label:'琥珀',bg:'#faefe0',fg:'#a86418'},
+   {key:'preset:rose',label:'珊瑚',bg:'#fae8e8',fg:'#a83c48'},
+   {key:'preset:slate',label:'岩灰',bg:'#e8ecee',fg:'#3e545c'}
+ ];
+ function renderAvatar(){
+   const av=$('.wb-account-avatar'),content=$('.wb-account-avatar-content');
+   const guest=me?.role==='guest',raw=(!guest&&me?.avatar)||'';
+   const preset=AVATAR_PRESETS.find(p=>p.key===raw)||AVATAR_PRESETS[0];
+   av.style.background=raw.startsWith('data:image/')?'transparent':preset.bg;
+   av.style.color=preset.fg;
+   if(raw.startsWith('data:image/')){
+     const img=document.createElement('img');img.src=raw;img.alt=me.username;content.replaceChildren(img);
+   }else{
+     content.textContent=guest?'访':(me?.username||'U').slice(0,1).toUpperCase();
+   }
+   const resetBtn=$('.wb-account-avatar-reset');
+   if(resetBtn)resetBtn.hidden=!raw||raw==='preset:teal';
+   for(const btn of dlg.querySelectorAll('.wb-account-preset-swatch')){
+     const active=(!raw&&btn.dataset.preset==='preset:teal')||btn.dataset.preset===raw;
+     btn.classList.toggle('is-active',active);
+     btn.setAttribute('aria-checked',String(active));
+     btn.textContent=(me?.username||'U').slice(0,1).toUpperCase();
+   }
+ }
  function profile(){
-   $('.wb-account-name').textContent=me.username;$('.wb-account-avatar').textContent=me.username.slice(0,1).toUpperCase();
+   $('.wb-account-name').textContent=me.username;renderAvatar();
    const owner=me.role==='admin',guest=me.role==='guest';$('.wb-account-role').textContent=owner?'管理员':guest?'访客 · 临时空间':'普通成员';
+   $('.wb-account-avatar').disabled=guest;$('.wb-account-avatar').title=guest?'':'点击更换头像';
+   $('.wb-account-edit-name').hidden=guest;if(guest){$('.wb-account-name-form').hidden=true;$('.wb-account-avatar-popover').hidden=true;}
    passwordEntry.hidden=guest;
    $('.wb-account-guest-space').hidden=!guest;
    $('.wb-account-quota-title').textContent=guest?'空间累计用量':'今日用量';
    $('.wb-account-quota-count').setAttribute('aria-label',guest?'访客空间累计 API 调用次数':'今日已用 API 调用次数');
    $('.wb-account-quota-period').textContent=guest?'从创建访客空间起累计，不按日重置。Token 仅作统计，不限制额度。':'按北京时间每天 08:00 划分统计日。Token 仅作统计，不限制额度。';
    if(guest){
-     $('.wb-account-name').textContent='访客';$('.wb-account-avatar').textContent='访';$('.wb-account-switch-account').textContent='登录并保留资料';
+     $('.wb-account-name').textContent='访客';renderAvatar();$('.wb-account-switch-account').textContent='登录并保留资料';
      const expiry=new Date(me.guest.expires*1000), time=$('.wb-account-guest-expiry');
      time.dateTime=expiry.toISOString();time.textContent=new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(expiry);
    }
@@ -171,43 +201,131 @@
    else {track.setAttribute('role','progressbar');track.setAttribute('aria-label',guest?'空间累计 API 调用次数':'今日已用 API 调用次数');track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax',me.daily_calls);track.setAttribute('aria-valuenow',Math.min(me.usage.calls,me.daily_calls));track.title='已用 '+me.usage.calls+' / '+me.daily_calls+' 次；'+(guest?'不按日重置':'北京时间每天 08:00 重置')}
  }
  function tab(members){
-   hideQuotaHelp();
+   hideQuotaHelp();hideAvatarPopover();
    if(!passwordPanel.hidden)showPassword(false);
    $('#wb-account-personal').hidden=members;$('#wb-account-members').hidden=!members;
+   $('.wb-account-footer').hidden=members;
    $('#wb-account-mine-tab').setAttribute('aria-selected',String(!members));$('#wb-account-members-tab').setAttribute('aria-selected',String(members));message('');
  }
  async function members(){
-   const users=await api('/auth/users'),box=$('#wb-account-members');box.classList.remove('wb-account-invite');box.replaceChildren();
-   const head=document.createElement('div');head.className='wb-account-member-head';const h=document.createElement('h3');h.textContent='账号列表';const invite=button('＋ 邀请成员',inviteForm);invite.className='wb-account-primary';head.append(h,invite);box.append(head);
-   const table=document.createElement('table');table.className='wb-account-table';table.innerHTML='<thead><tr><th>账号</th><th>状态</th><th>每日调用</th><th>操作</th></tr></thead><tbody></tbody>';
-   for(const u of users){const row=table.tBodies[0].insertRow();for(const v of [u.username,u.active?'启用':'停用',u.role==='admin'?'不限':u.daily_calls+' 次'])row.insertCell().textContent=v;row.insertCell().append(button('管理 ›',()=>manage(u)))}box.append(table);
+   const users=await api('/auth/users'),box=$('#wb-account-members');box.classList.remove('wb-account-invite','wb-account-manage');box.replaceChildren();
+   const head=document.createElement('div');head.className='wb-account-member-head';
+   const hWrap=document.createElement('div');hWrap.className='wb-account-member-title';
+   const h=document.createElement('h3');h.textContent='账号列表';
+   const cnt=document.createElement('span');cnt.className='wb-account-member-count';cnt.textContent=String(users.length);
+   hWrap.append(h,cnt);
+   const invite=button('＋ 邀请成员',inviteForm);invite.className='wb-account-primary';head.append(hWrap,invite);box.append(head);
+   const table=document.createElement('table');table.className='wb-account-table';table.innerHTML='<thead><tr><th>账号</th><th>状态</th><th>今日 / 上限</th><th>操作</th></tr></thead><tbody></tbody>';
+   for(const u of users){
+     const row=table.tBodies[0].insertRow();
+     const nameCell=row.insertCell();nameCell.className='wb-account-cell-user';
+     const nameSpan=document.createElement('span');nameSpan.textContent=u.username;nameCell.append(nameSpan);
+     if(u.role==='admin'){const roleTag=document.createElement('span');roleTag.className='wb-account-role-tag';roleTag.textContent='管理员';nameCell.append(roleTag);}
+     const stCell=row.insertCell();const dot=document.createElement('span');dot.className='wb-account-status-dot'+(u.active?' is-active':'');
+     stCell.append(dot,document.createTextNode(u.active?'启用':'停用'));
+     const used=Number(u.today_calls||0);
+     row.insertCell().textContent=u.role==='admin'?`${used} / 不限`:`${used} / ${u.daily_calls} 次`;
+     const opCell=row.insertCell();
+     if(u.role==='admin'){const dash=document.createElement('span');dash.className='wb-account-op-muted';dash.textContent='—';opCell.append(dash);}
+     else opCell.append(button('管理 ›',()=>manage(u)));
+   }
+   box.append(table);
  }
- function subpage(title){
-   const box=$('#wb-account-members');box.replaceChildren();box.classList.remove('wb-account-invite');const back=button('返回成员列表',members);back.className='wb-account-back';back.insertAdjacentHTML('afterbegin','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>');box.append(back);const h=document.createElement('h3');h.textContent=title;box.append(h);message('');return box;
+ function subpage(title,badgeNode=null){
+   const box=$('#wb-account-members');box.replaceChildren();box.classList.remove('wb-account-invite','wb-account-manage');
+   const nav=document.createElement('div');nav.className='wb-account-subpage-header';
+   const back=button('返回成员列表',members);back.className='wb-account-back';
+   back.insertAdjacentHTML('afterbegin','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>');
+   const titleRow=document.createElement('div');titleRow.className='wb-account-subpage-title-row';
+   const h=document.createElement('h3');h.textContent=title;titleRow.append(h);
+   if(badgeNode)titleRow.append(badgeNode);
+   nav.append(back,titleRow);box.append(nav);message('');return box;
  }
- function form(box,label,value,type,attrs,submit,fn){
-   const f=document.createElement('form'),l=document.createElement('label'),i=document.createElement('input'),b=document.createElement('button');
-   i.type=type;i.value=value;Object.assign(i,attrs);i.required=true;l.textContent=label;l.append(i);b.textContent=submit;b.className='wb-account-primary';f.append(l,b);box.append(f);
-   f.onsubmit=safe(async e=>{e.preventDefault();b.disabled=true;try{await fn(i.value)}finally{b.disabled=false}});
-   return {f,l,i,b};
+ function inlineFormGroup(box,{label,value,type,attrs,submit,helpText,onSubmit}){
+   const f=document.createElement('form');f.className='wb-account-form-group';
+   const lbl=document.createElement('label');lbl.className='wb-account-field-label';lbl.textContent=label;
+   const row=document.createElement('div');row.className='wb-account-inline-row';
+   const inp=document.createElement('input');inp.type=type;inp.value=value;Object.assign(inp,attrs);inp.required=true;inp.setAttribute('aria-label',label);
+   const btn=document.createElement('button');btn.type='submit';btn.className='wb-account-primary wb-account-inline-submit';btn.textContent=submit;
+   row.append(inp,btn);f.append(lbl,row);
+   if(helpText){
+     const help=document.createElement('p');help.className='wb-account-field-help';help.textContent=helpText;
+     f.append(help);
+   }
+   box.append(f);
+   f.onsubmit=safe(async e=>{e.preventDefault();btn.disabled=true;try{await onSubmit(inp.value,inp);}finally{btn.disabled=false;}});
+   return {f,lbl,inp,btn};
  }
  function inviteForm(){
    const box=subpage('邀请成员');box.classList.add('wb-account-invite');
-   const intro=document.createElement('p');intro.className='wb-account-invite-intro';intro.textContent='为新成员创建账号，生成专属邀请链接。';box.append(intro);
-   const {f,i,b}=form(box,'账号名称','','text',{minLength:3,maxLength:32,placeholder:'输入新成员的账号名称',autocomplete:'off',pattern:'[A-Za-z0-9][A-Za-z0-9_.\\-]{2,31}'},'生成邀请链接',async username=>{const r=await api('/auth/admin/invite',{username});message('邀请链接 48 小时有效，请私下发送：\n'+r.url,r.url)});
-   i.setAttribute('aria-describedby','wb-account-invite-help');i.spellcheck=false;i.autocapitalize='none';
-   const help=document.createElement('p');help.id='wb-account-invite-help';help.className='wb-account-invite-help';help.textContent='3–32 位英文或数字，支持 . _ -；须以字母或数字开头。';f.insertBefore(help,b);
-   b.insertAdjacentHTML('afterbegin','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 15 6-6m-7 9-1 1a4.2 4.2 0 0 1-6-6l4-4a4.2 4.2 0 0 1 6 0m2-3 1-1a4.2 4.2 0 0 1 6 6l-4 4a4.2 4.2 0 0 1-6 0"/></svg>');
-   const note=document.createElement('div');note.className='wb-account-invite-note';
-   note.innerHTML='<strong>链接生成后，请私下发送给对方。</strong><p>48 小时内有效，仅可使用一次；成员通过链接自行设置密码。</p><p>新账号从空白资料库开始，每日可调用 API 80 次。</p>';box.append(note);
+   const {inp}=inlineFormGroup(box,{
+     label:'账号名称',
+     value:'',
+     type:'text',
+     attrs:{minLength:3,maxLength:32,placeholder:'输入新成员的账号名称',autocomplete:'off',pattern:'[A-Za-z0-9][A-Za-z0-9_.\\-]{2,31}'},
+     submit:'生成邀请链接',
+     helpText:'支持 3–32 位字母、数字与 . _ -，须以字母或数字开头。',
+     onSubmit:async username=>{
+       const r=await api('/auth/admin/invite',{username});
+       message('邀请链接 48 小时有效，请私下发送：\n'+r.url,r.url);
+     }
+   });
+   inp.spellcheck=false;inp.autocapitalize='none';
+   const card=document.createElement('div');card.className='wb-account-surface-card wb-account-invite-rules';
+   card.innerHTML='<p>邀请链接有效期为 48 小时，仅可使用一次，由成员自行设置密码。</p><p>新账号从空白资料库开始，默认每日可调用 API 80 次。</p>';
+   box.append(card);
  }
  function manage(u){
-   const box=subpage('管理账号：'+u.username);
-   if(u.role!=='admin')form(box,'每日 API 调用上限',u.daily_calls,'number',{min:1,max:100},'保存额度',async v=>{await api('/auth/admin/update',{id:u.id,active:!!u.active,daily_calls:Number(v)});u.daily_calls=Number(v);message('已更新额度')});
-   const actions=document.createElement('div');actions.className='wb-account-actions';
-   if(u.active)actions.append(button('生成密码重设链接',async()=>{if(!confirm('确认已核验 '+u.username+' 的身份？重设链接仅可使用一次，请私下发送。'))return;const r=await api('/auth/admin/reset',{id:u.id,username:u.username});message('密码重设链接 1 小时内有效，仅可用一次。请私下发送：\n'+r.url,r.url)}));
-   if(u.role!=='admin')actions.append(button(u.active?'停用账号':'启用账号',async()=>{if(!confirm('确认更改 '+u.username+' 的账号状态？资料不会删除。'))return;await api('/auth/admin/update',{id:u.id,active:!u.active,daily_calls:u.daily_calls});await members()}));
-   box.append(actions);
+   const badge=document.createElement('span');badge.className='wb-account-status-pill';
+   const dot=document.createElement('span');dot.className='wb-account-status-dot'+(u.active?' is-active':'');
+   const used=Number(u.today_calls||0);
+   const badgeText=document.createElement('span');
+   const formatStatus=()=>`${u.active?'已启用':'已停用'} · 今日 ${used} / ${u.role==='admin'?'不限':u.daily_calls+' 次'}`;
+   badgeText.textContent=formatStatus();
+   badge.append(dot,badgeText);
+   const box=subpage('管理账号：'+u.username,badge);box.classList.add('wb-account-manage');
+   if(u.role!=='admin'){
+     inlineFormGroup(box,{
+       label:'每日 API 调用上限',
+       value:u.daily_calls,
+       type:'number',
+       attrs:{min:1,max:100},
+       submit:'保存额度',
+       helpText:'可设置范围为每日 1–100 次，北京时间每天 08:00 自动重置。',
+       onSubmit:async v=>{
+         await api('/auth/admin/update',{id:u.id,active:!!u.active,daily_calls:Number(v)});
+         u.daily_calls=Number(v);badgeText.textContent=formatStatus();message('已更新额度');
+       }
+     });
+   }
+   const card=document.createElement('div');card.className='wb-account-surface-card wb-account-setting-list';
+   if(u.active){
+     const row1=document.createElement('div');row1.className='wb-account-setting-row';
+     const info1=document.createElement('div');info1.className='wb-account-setting-info';
+     info1.innerHTML='<strong>密码重设</strong><small>生成 1 小时内单次有效的密码重设链接</small>';
+     const resetBtn=button('生成密码重设链接',async()=>{
+       if(!confirm('确认已核验 '+u.username+' 的身份？重设链接仅可使用一次，请私下发送。'))return;
+       const r=await api('/auth/admin/reset',{id:u.id,username:u.username});
+       message('密码重设链接 1 小时内有效，仅可用一次。请私下发送：\n'+r.url,r.url);
+     });
+     resetBtn.className='wb-account-setting-btn';
+     row1.append(info1,resetBtn);card.append(row1);
+   }
+   if(u.role!=='admin'){
+     const row2=document.createElement('div');row2.className='wb-account-setting-row';
+     const info2=document.createElement('div');info2.className='wb-account-setting-info';
+     info2.innerHTML=u.active
+       ?'<strong>账号状态</strong><small>停用后该成员立即退出登录，已有资料保留</small>'
+       :'<strong>账号状态</strong><small>启用后该成员可恢复正常登录与调用</small>';
+     const toggleBtn=button(u.active?'停用账号':'启用账号',async()=>{
+       if(!confirm('确认更改 '+u.username+' 的账号状态？资料不会删除。'))return;
+       await api('/auth/admin/update',{id:u.id,active:!u.active,daily_calls:u.daily_calls});
+       await members();
+     });
+     toggleBtn.className='wb-account-setting-btn'+(u.active?' wb-account-danger':'');
+     row2.append(info2,toggleBtn);card.append(row2);
+   }
+   if(card.childElementCount)box.append(card);
  }
  $('.wb-account-close').onclick=()=>dlg.close();dlg.addEventListener('click',e=>{if(e.target===dlg){const b=dlg.getBoundingClientRect();if(e.clientX<b.left||e.clientY<b.top||e.clientY>b.bottom)dlg.close()}});
  dlg.addEventListener('close',()=>{hideAccountMenu();showPassword(false);seq++;tabRequest++;window.cancelWorkspaceTab?.($('.wb-account-tab-panels'));clearInterval(poll);opener?.focus()});
@@ -279,4 +397,93 @@
  });
  window.attachDrawerMotion?.(dlg);
  if(location.hash==='#account'){history.replaceState(null,'',location.pathname+location.search);window.openAccountDrawer()}
+
+ // Avatar Hover Scrim, Preset/Upload/Reset Popover & Inline Username Editing
+ const avatarWrap=$('.wb-account-avatar-wrap'),avatarBtn=$('.wb-account-avatar'),avatarPopover=$('.wb-account-avatar-popover'),presetsBox=$('.wb-account-avatar-presets'),uploadBtn=$('.wb-account-avatar-upload'),resetAvatarBtn=$('.wb-account-avatar-reset'),avatarFileInput=$('.wb-account-avatar-input');
+ const editNameBtn=$('.wb-account-edit-name'),nameRow=$('.wb-account-name-row'),nameForm=$('.wb-account-name-form'),nameInput=$('.wb-account-name-input'),nameCancel=$('.wb-account-name-cancel');
+
+ for(const p of AVATAR_PRESETS){
+   const sw=document.createElement('button');sw.type='button';sw.className='wb-account-preset-swatch';
+   sw.dataset.preset=p.key;sw.title=p.label;sw.setAttribute('role','radio');sw.setAttribute('aria-label',p.label);
+   sw.style.background=p.bg;sw.style.color=p.fg;
+   sw.onclick=safe(async()=>{
+     if(!me||me.role==='guest')return;
+     const updated=await api('/auth/profile',{avatar:p.key==='preset:teal'?'':p.key});
+     me=updated;panelCache.clear();profile();hideAvatarPopover();message('头像配色已更新');
+   });
+   presetsBox.append(sw);
+ }
+
+ function hideAvatarPopover(){
+   if(!avatarPopover)return;
+   avatarPopover.hidden=true;
+   avatarBtn.setAttribute('aria-expanded','false');
+ }
+ function toggleAvatarPopover(){
+   if(!me||me.role==='guest')return;
+   const next=avatarPopover.hidden;
+   hideAccountMenu();hideQuotaHelp();
+   avatarPopover.hidden=!next;
+   avatarBtn.setAttribute('aria-expanded',String(next));
+ }
+ avatarBtn.onclick=e=>{e.stopPropagation();toggleAvatarPopover();};
+ uploadBtn.onclick=()=>{hideAvatarPopover();if(me&&me.role!=='guest')avatarFileInput.click();};
+ resetAvatarBtn.onclick=safe(async()=>{
+   if(!me||me.role==='guest')return;
+   const updated=await api('/auth/profile',{avatar:''});
+   me=updated;panelCache.clear();profile();hideAvatarPopover();message('已恢复默认头像');
+ });
+ dlg.addEventListener('pointerdown',e=>{if(!avatarPopover.hidden&&!avatarWrap.contains(e.target))hideAvatarPopover();});
+ dlg.addEventListener('keydown',e=>{if(e.key==='Escape'&&!avatarPopover.hidden){e.preventDefault();e.stopPropagation();hideAvatarPopover();avatarBtn.focus();}});
+
+ function resizeAvatarToDataUrl(file){
+   return new Promise((resolve,reject)=>{
+     const reader=new FileReader();
+     reader.onerror=()=>reject(Error('读取图片失败'));
+     reader.onload=()=>{
+       const img=new Image();
+       img.onerror=()=>reject(Error('图片格式不支持'));
+       img.onload=()=>{
+         const size=128,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+         const ctx=canvas.getContext('2d'),minSide=Math.min(img.width,img.height),sx=(img.width-minSide)/2,sy=(img.height-minSide)/2;
+         ctx.drawImage(img,sx,sy,minSide,minSide,0,0,size,size);
+         let dataUrl=canvas.toDataURL('image/webp',0.86);
+         if(!dataUrl.startsWith('data:image/webp'))dataUrl=canvas.toDataURL('image/jpeg',0.86);
+         resolve(dataUrl);
+       };
+       img.src=reader.result;
+     };
+     reader.readAsDataURL(file);
+   });
+ }
+ avatarFileInput.onchange=safe(async()=>{
+   const file=avatarFileInput.files?.[0];avatarFileInput.value='';
+   if(!file||!me||me.role==='guest')return;
+   avatarBtn.disabled=true;
+   try{
+     const dataUrl=await resizeAvatarToDataUrl(file);
+     const updated=await api('/auth/profile',{avatar:dataUrl});
+     me=updated;panelCache.clear();profile();message('头像已更新');
+   }finally{avatarBtn.disabled=false;}
+ });
+
+ function showNameEdit(show){
+   nameRow.hidden=show;nameForm.hidden=!show;
+   if(show){hideAvatarPopover();nameInput.value=me?.username||'';nameInput.focus();nameInput.select();}
+ }
+ editNameBtn.onclick=()=>{if(me&&me.role!=='guest')showNameEdit(true);};
+ nameCancel.onclick=()=>showNameEdit(false);
+ nameInput.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();showNameEdit(false);editNameBtn.focus();}};
+ nameForm.onsubmit=safe(async e=>{
+   e.preventDefault();if(!me||me.role==='guest')return;
+   const next=nameInput.value.trim().toLowerCase();
+   if(!next||next===me.username){showNameEdit(false);return;}
+   const saveBtn=nameForm.querySelector('.wb-account-name-save');saveBtn.disabled=true;
+   try{
+     const updated=await api('/auth/profile',{username:next});
+     me=updated;if(window.workbenchSession)window.workbenchSession.username=updated.username;
+     panelCache.clear();profile();showNameEdit(false);message('用户名已修改为 '+updated.username);
+   }finally{saveBtn.disabled=false;}
+ });
+
 })();

@@ -92,6 +92,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS historical_call_evidence(
               request_key TEXT NOT NULL,source TEXT NOT NULL,sha256 TEXT NOT NULL,
               PRIMARY KEY(request_key,source));
+            CREATE TABLE IF NOT EXISTS user_profiles(
+              user_id TEXT PRIMARY KEY, avatar TEXT NOT NULL DEFAULT '', updated REAL NOT NULL);
             ''')
         # One-shot migration. 0 denotes no cap in the legacy NOT NULL columns.
         with self.db(True) as db:
@@ -273,7 +275,7 @@ class Store:
         if not secret:
             return None
         with self.db() as db:
-            row = db.execute('SELECT users.id,users.username,users.role,users.daily_calls,users.daily_tokens,sessions.csrf FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.hash=? AND sessions.expires>? AND users.active=1', (token_hash(secret), time.time())).fetchone()
+            row = db.execute("SELECT users.id,users.username,users.role,users.daily_calls,users.daily_tokens,COALESCE(p.avatar,'') AS avatar,sessions.csrf FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN user_profiles p ON p.user_id=users.id WHERE sessions.hash=? AND sessions.expires>? AND users.active=1", (token_hash(secret), time.time())).fetchone()
         if row and row['role'] == 'guest':
             from site_guests import info
             try:
@@ -293,8 +295,15 @@ class Store:
         return {'day_utc': day, 'calls': row['calls'] if row else 0, 'tokens': row['tokens'] if row else 0}
 
     def users(self):
+        day = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         with self.db() as db:
-            return [dict(r) for r in db.execute("SELECT id,username,role,active,daily_calls,daily_tokens,created FROM users WHERE role!='guest' ORDER BY created")]
+            return [dict(r) for r in db.execute(
+                "SELECT u.id,u.username,u.role,u.active,u.daily_calls,u.daily_tokens,u.created,"
+                "COALESCE(p.avatar,'') AS avatar,COALESCE(g.calls,0) AS today_calls "
+                "FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id "
+                "LEFT JOIN usage g ON g.user_id=u.id AND g.day=? "
+                "WHERE u.role!='guest' ORDER BY u.created", (day,)
+            )]
 
     def model_usage(self, actor, scope='self', days=7):
         if scope not in ('self', 'all') or days not in (7, 30):
@@ -348,6 +357,42 @@ class Store:
             if not active:
                 db.execute('DELETE FROM sessions WHERE user_id=?', (target,))
             db.execute('INSERT INTO audit VALUES(?,?,?,?)', (time.time(), actor, 'update_account', target))
+
+    def update_profile(self, user_id, new_username=None, new_avatar=None):
+        with self.db(True) as db:
+            row = db.execute('SELECT id,username,role,active FROM users WHERE id=?', (user_id,)).fetchone()
+            if not row or not row['active']:
+                raise SiteError('账号不存在或已停用', 403)
+            if row['role'] == 'guest':
+                raise SiteError('访客暂不支持修改资料', 403)
+            changed = False
+            if new_username is not None:
+                clean_name = username(new_username)
+                if clean_name != row['username']:
+                    if db.execute('SELECT 1 FROM users WHERE username=? AND id!=?', (clean_name, user_id)).fetchone():
+                        raise SiteError('该用户名已被占用', 409)
+                    db.execute('UPDATE users SET username=? WHERE id=?', (clean_name, user_id))
+                    if row['role'] == 'admin':
+                        setting = db.execute("SELECT value FROM site_settings WHERE key='admin_binding'").fetchone()
+                        if setting:
+                            binding = json.loads(setting['value'])
+                            if binding.get('username') == row['username']:
+                                binding['username'] = clean_name
+                                db.execute("UPDATE site_settings SET value=? WHERE key='admin_binding'", (json.dumps(binding, sort_keys=True),))
+                    changed = True
+            if new_avatar is not None:
+                if not isinstance(new_avatar, str):
+                    raise SiteError('头像格式无效')
+                clean_avatar = new_avatar.strip()
+                valid_presets = {'preset:teal', 'preset:ocean', 'preset:indigo', 'preset:amber', 'preset:rose', 'preset:slate'}
+                if clean_avatar and clean_avatar not in valid_presets:
+                    if len(clean_avatar) > 180000 or not re.fullmatch(r'data:image/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+', clean_avatar):
+                        raise SiteError('头像仅支持预设配色或 130KB 以内的 PNG/JPG/WebP 图片')
+                db.execute('INSERT INTO user_profiles(user_id,avatar,updated) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET avatar=excluded.avatar,updated=excluded.updated', (user_id, clean_avatar, time.time()))
+                changed = True
+            if changed:
+                db.execute('INSERT INTO audit VALUES(?,?,?,?)', (time.time(), user_id, 'update_profile', user_id))
+
 
     def reserve(self, user_id, model, tokens):
         day = datetime.now(timezone.utc).strftime('%Y-%m-%d')

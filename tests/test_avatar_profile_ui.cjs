@@ -11,8 +11,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
  await p.locator('[data-preset="preset:ocean"]').click();assert.ok((await response).ok());
  await p.waitForFunction(()=>document.querySelector('[data-preset="preset:ocean"]').getAttribute('aria-checked')==='true');
  assert.equal((await (await p.request.get(base+'/auth/me')).json()).avatar,'preset:ocean');
- await p.locator('.wb-account-close').click();await p.evaluate(()=>window.openAccountDrawer());
- await p.waitForTimeout(700);assert.equal(await p.locator('.wb-account-avatar-content').count(),1);
+ await p.locator('.wb-account-close').click();await p.waitForTimeout(200);await p.evaluate(()=>window.openAccountDrawer());
+ await p.locator('.account-drawer[open]').waitFor();await p.waitForTimeout(700);assert.equal(await p.locator('.wb-account-avatar-content').isVisible(),true);
  await p.screenshot({path:path.resolve(__dirname,'../outputs/account-avatar-qa.png')});
  const me=await (await p.request.get(base+'/auth/me')).json();
  assert.equal((await p.request.post(base+'/auth/profile',{headers:{Origin:base},data:{avatar:'preset:rose'}})).status(),403);

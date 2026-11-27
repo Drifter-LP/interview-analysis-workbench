@@ -1,0 +1,57 @@
+const { chromium } = require('playwright');
+const assert = require('node:assert/strict');
+const origin = process.env.CHANGELOG_QA_ORIGIN || 'http://127.0.0.1:9921';
+
+async function login(context, username, password) {
+  const response = await context.request.post(origin+'/auth/login', {headers:{Origin:origin},data:{username,password}});
+  assert.ok(response.ok());
+  return (await (await context.request.get(origin+'/auth/me')).json()).csrf;
+}
+
+(async()=>{
+  const browser=await chromium.launch({channel:'chrome'});
+  try {
+    const admin=await browser.newContext({reducedMotion:'reduce'});
+    const member=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:800}});
+    const url=origin+'/auth/admin/changelog';
+    const data={date:'2099-01-31',content:'隔离测试：未来通知'};
+    assert.equal((await admin.request.get(origin+'/auth/changelog')).status(),401);
+    const adminCsrf=await login(admin,'qa_owner','temporary-qa-login-123');
+    const memberCsrf=await login(member,'qa_friend','temporary-qa-friend-123');
+    assert.equal((await member.request.post(url,{headers:{Origin:origin,'X-CSRF-Token':memberCsrf},data})).status(),403);
+    assert.equal((await admin.request.post(url,{headers:{Origin:origin},data})).status(),403);
+    assert.equal((await admin.request.post(url,{headers:{Origin:origin,'X-CSRF-Token':adminCsrf},data:{...data,date:'2026-02-30'}})).status(),400);
+    const p=await admin.newPage(), errors=[];
+    p.on('pageerror',error=>errors.push(error.message));
+    await p.goto(origin+'/',{waitUntil:'domcontentloaded'});
+    const bell=p.getByRole('button',{name:'更新通知',exact:true});
+    const notice=p.getByRole('dialog',{name:'更新通知',exact:true});
+    await notice.getByRole('button',{name:'知道了'}).click();
+    await bell.click();await notice.getByRole('button',{name:/拟定新通知/}).click();
+    const compose=p.getByRole('dialog',{name:'拟定更新通知'});
+    await compose.locator('input[type=date]').fill(data.date);
+    await compose.locator('textarea').fill(data.content);
+    const submit=compose.getByRole('button',{name:'保存并发布'});
+    await p.route(url,route=>route.fulfill({status:404,json:{detail:'模拟发布失败'}}),{times:1});
+    await submit.click();await compose.getByRole('alert').filter({hasText:'模拟发布失败'}).waitFor();
+    assert.equal(await compose.locator('textarea').inputValue(),data.content);
+    const saving=p.waitForResponse(r=>r.url()===url&&r.request().method()==='POST');
+    await submit.click();assert.ok((await saving).ok());
+    await notice.getByRole('button',{name:/历史通知/}).click();
+    await notice.getByText(data.content,{exact:true}).waitFor();
+    await notice.getByText(/待发布/).waitFor();
+    await p.keyboard.press('Escape');assert.equal(await bell.evaluate(e=>e===document.activeElement),true);
+    const m=await member.newPage();m.on('pageerror',error=>errors.push(error.message));
+    await m.goto(origin+'/',{waitUntil:'domcontentloaded'});
+    const memberNotice=m.getByRole('dialog',{name:'更新通知',exact:true});
+    await memberNotice.getByRole('button',{name:'知道了'}).click();
+    await m.reload({waitUntil:'domcontentloaded'});
+    const memberBell=m.getByRole('button',{name:'更新通知',exact:true});
+    await memberBell.click();
+    assert.equal(await memberNotice.getByRole('button',{name:/拟定新通知/}).count(),0);
+    assert.ok(!(await (await member.request.get(origin+'/auth/changelog')).text()).includes(data.content));
+    const bounds=await memberNotice.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390);
+    assert.deepEqual(errors,[]);
+    console.log('PASS: changelog role, CSRF, invalid date, failed save & retry, schedule visibility, mobile and keyboard');
+  }finally{await browser.close();}
+})().catch(error=>{console.error(error.stack);process.exitCode=1;});

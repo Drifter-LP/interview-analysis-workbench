@@ -171,11 +171,8 @@
 }
 
 /* Sidebar Bell Icon (Inline with Settings row, zero added height) & Centered Frosted-Glass Changelog Modal */
-.sidebar{position:relative}
-@media(min-width:851px){
-  .sidebar>.sidebar-settings{width:calc(100% - 38px)}
-  .shell.collapsed .sidebar>.sidebar-settings{width:100%}
-}
+.sidebar:has(>.sb-notify-bell)>.sidebar-settings{width:calc(100% - 38px)}
+.shell.collapsed .sidebar:has(>.sb-notify-bell)>.sidebar-settings{width:100%}
 .sb-notify-bell{position:absolute;right:18px;bottom:18px;width:32px;height:32px;padding:0;border:1px solid rgba(172,198,203,.16);border-radius:8px;background:rgba(16,53,60,.75);color:#b4cacc;display:grid;place-items:center;cursor:pointer;transition:background-color 150ms ease,color 150ms ease,border-color 150ms ease}
 .sb-notify-bell svg{width:16px;height:16px}
 .sb-notify-bell:hover,.sb-notify-bell[aria-expanded="true"]{background:#14464e;border-color:#2ea8a0;color:#fff}
@@ -183,13 +180,14 @@
 .sb-notify-dot[hidden]{display:none!important}
 @keyframes wb-bell-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}55%{transform:rotate(12deg)}80%{transform:rotate(-6deg)}}
 .sb-notify-bell.is-ringing svg{animation:wb-bell-shake 340ms ease}
-.shell.collapsed .sb-notify-bell{display:none!important}
-@media(max-width:850px){.sb-notify-bell{display:none!important}}
+.shell.collapsed .sb-notify-bell{position:relative;right:auto;bottom:auto;align-self:center}
+@media(max-width:850px){.sidebar:has(>.sb-notify-bell){position:relative}.sb-notify-bell{right:14px;bottom:14px}.shell.collapsed .sb-notify-bell{position:absolute;right:14px;bottom:14px}.shell.collapsed .sidebar:has(>.sb-notify-bell)>.sidebar-settings{width:calc(100% - 38px)}}
 
 .wb-cl-backdrop{position:fixed;inset:0;z-index:1120;display:grid;place-items:center;padding:16px;background:rgba(14,42,47,.26);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity 220ms ease;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif}
 .wb-cl-backdrop[hidden]{display:none!important}
 .wb-cl-card{width:min(428px,calc(100vw - 32px));padding:24px 28px 20px;border:1px solid #d5e6e4;border-radius:16px;background:#fff;color:#163238;box-shadow:0 18px 48px rgba(10,36,40,.16),0 4px 12px rgba(10,36,40,.06);transition:transform 240ms cubic-bezier(.22,1,.36,1),opacity 220ms ease;box-sizing:border-box}
 .wb-cl-card [hidden]{display:none!important}
+.wb-cl-card{max-height:calc(100dvh - 32px);overflow:auto}
 .wb-cl-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .wb-cl-title{margin:0;font-size:18px;font-weight:700;color:#10282e;line-height:1.35}
 .wb-cl-head-right{display:flex;align-items:center;gap:10px}

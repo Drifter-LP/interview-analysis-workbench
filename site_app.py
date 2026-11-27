@@ -478,8 +478,8 @@ async def update_profile(request: Request):
 
 
 @app.get('/auth/changelog')
-def get_changelog():
-    return {'items': store.list_changelogs()}
+def get_changelog(request: Request):
+    return {'items': store.list_changelogs(include_scheduled=request.state.user['role'] == 'admin')}
 
 @app.get('/auth/users')
 def users(request: Request):

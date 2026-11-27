@@ -195,6 +195,7 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){updateSidebarWidgets();refreshSidebarQuota();}});
 
   // Sidebar Bell & Centered Frosted-Glass Daily Update Notification + Admin Composer
+  if(!window.workbenchSession)return;
   const notifyBell=document.createElement('button');
   notifyBell.type='button';notifyBell.className='sb-notify-bell';notifyBell.id='sbNotifyBell';
   notifyBell.title='更新通知';notifyBell.setAttribute('aria-label','更新通知');notifyBell.setAttribute('aria-haspopup','dialog');notifyBell.setAttribute('aria-expanded','false');
@@ -222,7 +223,7 @@
       </div>
       <div id="wbClComposeView" hidden>
         <div class="wb-cl-head">
-          <h3 class="wb-cl-title">拟定更新通知</h3>
+          <h3 class="wb-cl-title" id="wbClComposeHeading">拟定更新通知</h3>
           <button type="button" class="wb-cl-link-btn" id="wbClBackRead">返回查看 ›</button>
         </div>
         <form class="wb-cl-form" id="wbClForm">
@@ -269,34 +270,30 @@
   const clSubmitBtn=clBackdrop.querySelector('#wbClSubmitBtn');
   const notifyDot=notifyBell.querySelector('#sbNotifyDot');
 
-  let changelogItems=[{
-    id:'seed-20261126',
-    date:'2026-11-26',
-    content:'1. 访谈编码新增「问题聚焦」模式，支持按问题与维度编码。\n2. 左侧边栏与成员管理界面精简，支持更换头像配色与用户名。',
-    seeded:true
-  }];
-  let currentClItem=changelogItems[0];
+  let changelogItems=[], changelogLoadError=false, receivedChangelog=false;
+  let currentClItem=null, previousFocus=null;
   let clClosing=false;
+  const shell=sidebar.closest('.shell');
 
   function localDateStr(offsetDays=0){
-    const d=new Date();
-    d.setDate(d.getDate()+offsetDays);
-    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`;
+    return new Date(Date.now()+(8+24*offsetDays)*3600000).toISOString().slice(0,10);
   }
   function isAdminUser(){
     return window.workbenchSession?.role==='admin';
   }
   function getActiveChangelog(items=changelogItems){
     const today=localDateStr(0);
-    return items.find(x=>String(x.date||'')<=today)||items[0]||null;
+    return items.find(x=>String(x.date||'')<=today)||(isAdminUser()?items[0]:null)||null;
   }
+  const seenKey='wb_seen_changelog_id:'+window.workbenchSession.id;
+  let seenInPage='';
   function getSeenId(){
-    try{return localStorage.getItem('wb_seen_changelog_id')||'';}catch{return '';}
+    try{return localStorage.getItem(seenKey)||seenInPage;}catch{return seenInPage;}
   }
   function setSeenId(id){
     if(!id)return;
-    try{localStorage.setItem('wb_seen_changelog_id',String(id));}catch{}
+    seenInPage=String(id);
+    try{localStorage.setItem(seenKey,seenInPage);}catch{}
   }
   function syncUnreadDot(){
     const today=localDateStr(0);
@@ -305,25 +302,29 @@
     notifyDot.hidden=!unread;
   }
   function renderChangelogReadView(item=getActiveChangelog()){
-    currentClItem=item||changelogItems[0];
+    currentClItem=item;
+    clCard.setAttribute('aria-labelledby','wbClHeading');
     clReadView.hidden=false;
     clComposeView.hidden=true;
     clOpenCompose.hidden=!isAdminUser();
-    clDateEl.textContent=currentClItem?.date||'';
-    clContentEl.textContent=currentClItem?.content||'暂无更新通知';
+    const labelDate=entry=>entry.date+(entry.date>localDateStr()?' · 待发布':'');
+    clDateEl.textContent=currentClItem?labelDate(currentClItem):'';
+    clContentEl.textContent=currentClItem?.content||(changelogLoadError?'通知读取失败。关闭后可点击铃铛重试。':receivedChangelog?'暂无更新通知':'正在读取通知…');
     const others=changelogItems.filter(x=>x.id!==currentClItem?.id);
     clToggleHistory.hidden=others.length===0;
     clHistoryBox.hidden=true;
     clToggleHistory.textContent=`历史通知 (${others.length})`;
     clHistoryBox.replaceChildren(...others.slice(0,8).map(entry=>{
       const row=document.createElement('div');row.className='wb-cl-history-item';
-      const d=document.createElement('span');d.className='wb-cl-history-date';d.textContent=entry.date;
+      const d=document.createElement('span');d.className='wb-cl-history-date';d.textContent=labelDate(entry);
       const p=document.createElement('p');p.className='wb-cl-history-text';p.textContent=entry.content;
       row.append(d,p);return row;
     }));
   }
   function openChangelogModal(mode='read'){
-    if(clClosing)return;
+    if(clClosing||!clBackdrop.hidden)return;
+    previousFocus=document.activeElement;
+    if(shell)shell.inert=true;
     clCard.style.transition='none';
     clCard.style.transform='translate(0,0) scale(1)';
     clCard.style.opacity='1';
@@ -339,12 +340,17 @@
     }
   }
   function dismissChangelogToBell(){
-    if(clBackdrop.hidden||clClosing)return;
-    if(currentClItem?.id)setSeenId(currentClItem.id);
+    if(clBackdrop.hidden||clClosing||clSubmitBtn.disabled)return;
+    if(currentClItem?.id&&currentClItem.date<=localDateStr())setSeenId(currentClItem.id);
     syncUnreadDot();
     notifyBell.setAttribute('aria-expanded','false');
     const cr=clCard.getBoundingClientRect(),br=notifyBell.getBoundingClientRect();
     const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const finish=()=>{
+      clBackdrop.hidden=true;
+      if(shell)shell.inert=false;
+      if(previousFocus?.isConnected)previousFocus.focus();
+    };
     if(!reducedMotion&&br.width>0&&cr.width>0){
       clClosing=true;
       const dx=(br.left+br.width/2)-(cr.left+cr.width/2);
@@ -356,30 +362,30 @@
       void notifyBell.offsetWidth;
       notifyBell.classList.add('is-ringing');
       setTimeout(()=>{
-        clBackdrop.hidden=true;
+        finish();
         clCard.style.transform='';
         clCard.style.opacity='';
         clBackdrop.style.opacity='';
         clClosing=false;
       },240);
     }else{
-      clBackdrop.hidden=true;
+      finish();
     }
   }
   function showComposeView(){
+    clCard.setAttribute('aria-labelledby','wbClComposeHeading');
     clReadView.hidden=true;
     clComposeView.hidden=false;
     clErrorEl.hidden=true;
     clErrorEl.textContent='';
     if(!clDateInput.value)clDateInput.value=localDateStr(1);
-    if(!clTextInput.value&&currentClItem)clTextInput.value=currentClItem.content||'';
     clTextInput.focus();
   }
 
   notifyBell.onclick=e=>{
     e.stopPropagation();
     if(!clBackdrop.hidden)dismissChangelogToBell();
-    else openChangelogModal('read');
+    else{openChangelogModal('read');void initChangelog(false);}
   };
   clOkBtn.onclick=()=>dismissChangelogToBell();
   clBackdrop.onclick=e=>{if(e.target===clBackdrop)dismissChangelogToBell();};
@@ -388,6 +394,13 @@
       e.preventDefault();
       dismissChangelogToBell();
     }
+    if(e.key==='Tab'&&!clBackdrop.hidden){
+      const controls=Array.from(clCard.querySelectorAll('button:not(:disabled),input,textarea')).filter(el=>el.getClientRects().length);
+      const index=controls.indexOf(document.activeElement);
+      if(controls.length&&(index<0||(e.shiftKey?index===0:index===controls.length-1))){
+        e.preventDefault();controls[e.shiftKey?controls.length-1:0].focus();
+      }
+    }
   });
   clToggleHistory.onclick=()=>{
     const next=clHistoryBox.hidden;
@@ -395,15 +408,16 @@
     clToggleHistory.textContent=next?'收起历史':`历史通知 (${changelogItems.length-1})`;
   };
   clOpenCompose.onclick=()=>showComposeView();
-  clBackRead.onclick=()=>renderChangelogReadView();
-  clCancelCompose.onclick=()=>renderChangelogReadView();
+  const backToRead=()=>{if(!clSubmitBtn.disabled){renderChangelogReadView();clOpenCompose.focus();}};
+  clBackRead.onclick=backToRead;
+  clCancelCompose.onclick=backToRead;
   for(const b of clBackdrop.querySelectorAll('.wb-cl-date-shortcuts button')){
     b.onclick=()=>{clDateInput.value=localDateStr(Number(b.dataset.offset)||0);};
   }
   clForm.onsubmit=async e=>{
     e.preventDefault();
     const date=clDateInput.value.trim(),content=clTextInput.value.trim();
-    if(!date||!content)return;
+    if(!date||!content||clSubmitBtn.disabled)return;
     clErrorEl.hidden=true;clSubmitBtn.disabled=true;clSubmitBtn.textContent='正在发布…';
     try{
       const r=await fetch('/auth/admin/changelog',{
@@ -411,17 +425,14 @@
         headers:{'Content-Type':'application/json',...(window.workbenchSession?.csrf?{'X-CSRF-Token':window.workbenchSession.csrf}:{})},
         body:JSON.stringify({date,content})
       });
-      if(r.status===404){
-        const localEntry={id:'cl-'+Date.now(),date,content,created_at:Date.now()/1000,seeded:false};
-        changelogItems=[localEntry,...changelogItems.filter(x=>x.date!==date)];
-      }else{
-        const data=await r.json();
-        if(!r.ok)throw Error(data.detail||'发布失败');
-        if(Array.isArray(data.items)&&data.items.length)changelogItems=data.items;
-      }
-      currentClItem=changelogItems[0];
+      const data=await r.json().catch(()=>null);
+      if(!r.ok||!Array.isArray(data?.items))throw Error(data?.detail||'发布失败，请稍后重试');
+      ++clLoadVersion;
+      receivedChangelog=true;changelogLoadError=false;
+      changelogItems=data.items;
+      clTextInput.value='';clDateInput.value='';
       syncUnreadDot();
-      renderChangelogReadView(currentClItem);
+      renderChangelogReadView();clOkBtn.focus();
       if(typeof toast==='function')toast(date>localDateStr(0)?`更新通知已保存，将于 ${date} 自动向成员展示`:'更新通知已发布生效');
     }catch(err){
       clErrorEl.textContent=err.message||String(err);
@@ -431,27 +442,28 @@
     }
   };
 
-  async function initChangelog(){
+  let clLoadVersion=0;
+  async function initChangelog(autoPopup=true){
+    const version=++clLoadVersion;
     try{
       const r=await fetch('/auth/changelog');
-      if(r.ok){
-        const data=await r.json();
-        if(Array.isArray(data?.items)&&data.items.length)changelogItems=data.items;
-      }
-    }catch{}
+      if(!r.ok)throw Error();
+      const data=await r.json();
+      if(version!==clLoadVersion)return;
+      if(!Array.isArray(data?.items))throw Error();
+      changelogItems=data.items;receivedChangelog=true;changelogLoadError=false;
+    }catch{if(version!==clLoadVersion)return;changelogLoadError=true;}
     syncUnreadDot();
+    if(!clBackdrop.hidden&&!clClosing&&!clReadView.hidden)renderChangelogReadView();
     const today=localDateStr(0);
     const dueItem=changelogItems.find(x=>String(x.date||'')<=today);
-    if(dueItem&&getSeenId()!==dueItem.id){
-      const allowAutoPopup=!dueItem.seeded||!navigator.webdriver||window.__forceChangelogPopup;
-      if(allowAutoPopup){
+    if(autoPopup&&dueItem&&getSeenId()!==dueItem.id){
         setTimeout(()=>{
           if(clBackdrop.hidden&&!document.querySelector('dialog[open]')){
             renderChangelogReadView(dueItem);
             openChangelogModal('read');
           }
         },380);
-      }
     }
   }
   setTimeout(initChangelog,320);

@@ -326,14 +326,14 @@
     clToggleHistory.hidden=others.length===0;
     clHistoryBox.hidden=true;
     clToggleHistory.textContent=`历史通知 (${others.length})`;
-    clHistoryBox.replaceChildren(...others.slice(0,8).map(entry=>{
+    clHistoryBox.replaceChildren(...others.map(entry=>{
       const row=document.createElement('div');row.className='wb-cl-history-item';
       const d=document.createElement('span');d.className='wb-cl-history-date';d.textContent=entry.date;
       const p=document.createElement('p');p.className='wb-cl-history-text';p.textContent=entry.content;
       row.append(d,p);return row;
     }));
   }
-  function openChangelogModal(mode='read'){
+  function openChangelogModal(mode='read',item=getActiveChangelog()){
     if(clClosing||!clBackdrop.hidden)return;
     previousFocus=document.activeElement;
     if(shell)shell.inert=true;
@@ -347,7 +347,7 @@
     if(mode==='compose'&&isAdminUser()){
       showComposeView();
     }else{
-      renderChangelogReadView();
+      renderChangelogReadView(item);
       clOkBtn.focus();
     }
   }
@@ -478,12 +478,11 @@
     const today=localDateStr(0);
     const dueItem=changelogItems.find(x=>String(x.date||'')<=today);
     if(autoPopup&&dueItem&&getSeenId()!==dueItem.id){
-        setTimeout(()=>{
-          if(clBackdrop.hidden&&!document.querySelector('dialog[open]')){
-            renderChangelogReadView(dueItem);
-            openChangelogModal('read');
-          }
-        },380);
+      setTimeout(()=>{
+        if(version===clLoadVersion&&clBackdrop.hidden&&getSeenId()!==dueItem.id&&!document.querySelector('dialog[open]')){
+          openChangelogModal('read',dueItem);
+        }
+      },380);
     }
   }
   setTimeout(initChangelog,320);

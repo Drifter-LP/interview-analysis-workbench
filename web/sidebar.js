@@ -211,6 +211,7 @@
           <h3 class="wb-cl-title" id="wbClHeading">更新通知</h3>
           <div class="wb-cl-head-right">
             <span class="wb-cl-date" id="wbClDate"></span>
+            <button type="button" class="wb-cl-link-btn" id="wbClEditDraft" hidden>修改</button>
             <button type="button" class="wb-cl-link-btn" id="wbClOpenCompose" hidden>拟定新通知 ›</button>
           </div>
         </div>
@@ -259,7 +260,9 @@
   const clContentEl=clBackdrop.querySelector('#wbClContent');
   const clHistoryBox=clBackdrop.querySelector('#wbClHistoryBox');
   const clToggleHistory=clBackdrop.querySelector('#wbClToggleHistory');
+  const clEditDraft=clBackdrop.querySelector('#wbClEditDraft');
   const clOpenCompose=clBackdrop.querySelector('#wbClOpenCompose');
+  const clComposeHeading=clBackdrop.querySelector('#wbClComposeHeading');
   const clBackRead=clBackdrop.querySelector('#wbClBackRead');
   const clOkBtn=clBackdrop.querySelector('#wbClOkBtn');
   const clForm=clBackdrop.querySelector('#wbClForm');
@@ -271,7 +274,7 @@
   const notifyDot=notifyBell.querySelector('#sbNotifyDot');
 
   let changelogItems=[], changelogLoadError=false, receivedChangelog=false;
-  let currentClItem=null, previousFocus=null;
+  let currentClItem=null, editingClId='', previousFocus=null;
   let clClosing=false;
   const shell=sidebar.closest('.shell');
 
@@ -283,7 +286,12 @@
   }
   function getActiveChangelog(items=changelogItems){
     const today=localDateStr(0);
-    return items.find(x=>String(x.date||'')<=today)||(isAdminUser()?items[0]:null)||null;
+    if(isAdminUser()&&items.length)return items[0];
+    return items.find(x=>String(x.date||'')<=today)||null;
+  }
+  function getHistoryChangelogs(activeItem=currentClItem){
+    const today=localDateStr(0);
+    return changelogItems.filter(x=>x.id!==activeItem?.id&&String(x.date||'')<=today);
   }
   const seenKey='wb_seen_changelog_id:'+window.workbenchSession.id;
   let seenInPage='';
@@ -303,20 +311,24 @@
   }
   function renderChangelogReadView(item=getActiveChangelog()){
     currentClItem=item;
+    editingClId='';
     clCard.setAttribute('aria-labelledby','wbClHeading');
     clReadView.hidden=false;
     clComposeView.hidden=true;
+    const today=localDateStr(0);
+    const isPending=!!(currentClItem&&String(currentClItem.date||'')>today);
+    clEditDraft.hidden=!(isAdminUser()&&isPending);
     clOpenCompose.hidden=!isAdminUser();
-    const labelDate=entry=>entry.date+(entry.date>localDateStr()?' · 待发布':'');
+    const labelDate=entry=>entry.date+(entry.date>today?' · 待发布':'');
     clDateEl.textContent=currentClItem?labelDate(currentClItem):'';
     clContentEl.textContent=currentClItem?.content||(changelogLoadError?'通知读取失败。关闭后可点击铃铛重试。':receivedChangelog?'暂无更新通知':'正在读取通知…');
-    const others=changelogItems.filter(x=>x.id!==currentClItem?.id);
+    const others=getHistoryChangelogs(currentClItem);
     clToggleHistory.hidden=others.length===0;
     clHistoryBox.hidden=true;
     clToggleHistory.textContent=`历史通知 (${others.length})`;
     clHistoryBox.replaceChildren(...others.slice(0,8).map(entry=>{
       const row=document.createElement('div');row.className='wb-cl-history-item';
-      const d=document.createElement('span');d.className='wb-cl-history-date';d.textContent=labelDate(entry);
+      const d=document.createElement('span');d.className='wb-cl-history-date';d.textContent=entry.date;
       const p=document.createElement('p');p.className='wb-cl-history-text';p.textContent=entry.content;
       row.append(d,p);return row;
     }));
@@ -372,13 +384,20 @@
       finish();
     }
   }
-  function showComposeView(){
+  function showComposeView(editItem=null){
+    editingClId=editItem?.id||'';
+    if(clComposeHeading)clComposeHeading.textContent=editingClId?'修改更新通知':'拟定更新通知';
     clCard.setAttribute('aria-labelledby','wbClComposeHeading');
     clReadView.hidden=true;
     clComposeView.hidden=false;
     clErrorEl.hidden=true;
     clErrorEl.textContent='';
-    if(!clDateInput.value)clDateInput.value=localDateStr(1);
+    if(editItem){
+      clDateInput.value=editItem.date||localDateStr(1);
+      clTextInput.value=editItem.content||'';
+    }else if(!clDateInput.value){
+      clDateInput.value=localDateStr(1);
+    }
     clTextInput.focus();
   }
 
@@ -405,9 +424,10 @@
   clToggleHistory.onclick=()=>{
     const next=clHistoryBox.hidden;
     clHistoryBox.hidden=!next;
-    clToggleHistory.textContent=next?'收起历史':`历史通知 (${changelogItems.length-1})`;
+    clToggleHistory.textContent=next?'收起历史':`历史通知 (${getHistoryChangelogs(currentClItem).length})`;
   };
-  clOpenCompose.onclick=()=>showComposeView();
+  clEditDraft.onclick=()=>{if(currentClItem)showComposeView(currentClItem);};
+  clOpenCompose.onclick=()=>{clDateInput.value=localDateStr(1);clTextInput.value='';showComposeView(null);};
   const backToRead=()=>{if(!clSubmitBtn.disabled){renderChangelogReadView();clOpenCompose.focus();}};
   clBackRead.onclick=backToRead;
   clCancelCompose.onclick=backToRead;
@@ -423,7 +443,7 @@
       const r=await fetch('/auth/admin/changelog',{
         method:'POST',
         headers:{'Content-Type':'application/json',...(window.workbenchSession?.csrf?{'X-CSRF-Token':window.workbenchSession.csrf}:{})},
-        body:JSON.stringify({date,content})
+        body:JSON.stringify(editingClId?{id:editingClId,date,content}:{date,content})
       });
       const data=await r.json().catch(()=>null);
       if(!r.ok||!Array.isArray(data?.items))throw Error(data?.detail||'发布失败，请稍后重试');

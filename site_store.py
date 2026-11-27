@@ -449,8 +449,15 @@ class Store:
                 'created_at': time.time(),
                 'seeded': False
             }
+            today = datetime.now(timezone(timedelta(hours=8))).date().isoformat()
             target_id = data.get('id')
             if isinstance(target_id, str) and target_id:
+                existing = next((x for x in items if x.get('id') == target_id), None)
+                if not existing:
+                    raise SiteError('未找到要修改的待发布通知', 404)
+                if str(existing.get('date') or '') <= today:
+                    raise SiteError('已发布的通知不可修改', 400)
+                entry['id'] = target_id
                 items = [x for x in items if x.get('id') != target_id]
             else:
                 items = [x for x in items if not (x.get('date') == date_str and x.get('seeded'))]

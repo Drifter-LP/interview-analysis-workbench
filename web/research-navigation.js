@@ -141,7 +141,7 @@
    textIfChanged(wordSettings,window.wordCooccurrence?.step===4?'分析设置':'查看已有结果');hiddenIfChanged(wordSettings,window.wordCooccurrence?.step!==4&&!(window.wordCooccurrence?.step===3&&window.wordCooccurrence?.hasResult));
    if(window.wordCooccurrence?.loading||window.wordCooccurrence?.step===4)hiddenIfChanged(wordSettings,true);
    const words=window.wordCooccurrence;
-   config.status=[];config.actions=[words.saveResult];config.toolsLeft=[words.controls[2],words.controls[3]];config.toolsRight=[wordSettings];scopeText.hidden=true;
+   config.selector=[words.scopeControl()];config.status=[];config.actions=[words.saveResult];config.toolsLeft=[words.controls[2],words.controls[3]];config.toolsRight=[wordSettings];scopeText.hidden=true;
   }else{
    const options=researchProjects.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');if(projectPicker.dataset.options!==options){projectPicker.innerHTML='<option value="">请选择项目</option>'+options;projectPicker.dataset.options=options;}
    const projectValue=selectedResearchProject?.id||'';if(projectPicker.value!==projectValue)projectPicker.value=projectValue;

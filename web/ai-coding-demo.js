@@ -194,7 +194,7 @@ function resetContext(message){organizeButton.disabled=true;acceptAll.disabled=t
   if(state&&sourceId===tid&&(guest||!context.researchProjectId||context.researchProjectId===pid)){render();return;}
   if(!checkDirty())return;
   const serial=++activation,previousPid=pid;resetContext(sourceId?'正在读取当前访谈的编码…':'请先选择一篇访谈');pid='';tid=sourceId;scopeChoices=[];
-  if(!sourceId&&window.renderQuickInterviewGuide)window.renderQuickInterviewGuide(source,'coding');
+  if(!sourceId){list.append(el('p','ac-note','请先在顶栏选择或导入访谈稿，此处将显示探索或聚焦编码列表。'));right.append(el('p','ac-note','选定访谈并生成或新建编码后，可在此核对原文引用与编码定义。'));if(window.renderQuickInterviewGuide)window.renderQuickInterviewGuide(source,'coding');}
   window.workspaceHeader?.refresh();if(!sourceId)return;
   try{
    if(guest){await load(true);return;}

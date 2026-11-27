@@ -76,7 +76,9 @@ function renderThemeResult() {
   const analysis = currentThemeAnalysis;
   $('#saveThemeBtn').disabled = !analysis || !!analysis._saved || !selectedResearchProject;
   if (!analysis) {
-    panel.innerHTML = '';
+    const projTitle = selectedResearchProject ? `当前项目「${escapeHtml(selectedResearchProject.name)}」 · 尚未生成主题分析` : '跨访谈主题研究 · 尚未选择访谈稿';
+    panel.innerHTML = `<div class="memo-empty theme-empty-guide"><div style="max-width:440px;text-align:center;line-height:1.8"><strong style="display:block;font-size:16px;color:var(--ink);margin-bottom:6px">${projTitle}</strong><p style="margin:0 0 14px;font-size:13.5px;color:var(--muted)">在上方输入核心研究问题并勾选 2 篇以上访谈稿，AI 将跨文本提炼主题维度、核心发现与原文依据。</p><button type="button" class="soft" id="themeEmptyPickBtn" style="padding:8px 16px;font-weight:600">选择访谈稿开始分析 →</button></div></div>`;
+    panel.querySelector('#themeEmptyPickBtn')?.addEventListener('click', () => openThemeDialog());
     return;
   }
   $('#themeQuickInput').value = analysis.theme || '';
@@ -175,7 +177,8 @@ function updateThemeSelection() {
 }
 
 function openThemeDialog() {
-  if(themePicker.open)return;themePickerOriginal={project:selectedResearchProject,analysis:currentThemeAnalysis};themePickerQuestion=$('#themeQuickInput').value.trim()||currentThemeAnalysis?.theme||'';themePickerDrafts.clear();themePicker.querySelector('h2').textContent='选择访谈稿';showThemePickerProjects();themePicker.showModal();
+  if(themePicker.open)return;themePickerOriginal={project:selectedResearchProject,analysis:currentThemeAnalysis};themePickerQuestion=$('#themeQuickInput').value.trim()||currentThemeAnalysis?.theme||'';themePickerDrafts.clear();themePicker.querySelector('h2').textContent='选择访谈稿';
+  if(selectedResearchProject&&memoMaterials().length){openThemeMaterialDialog();}else{showThemePickerProjects();themePicker.showModal();}
 }
 
 function openThemeMaterialDialog() {

@@ -90,6 +90,10 @@
     return !!document.querySelector('dialog[open]');
   }
 
+  function hasAnyCompletedInterview() {
+    return typeof projects !== 'undefined' && Array.isArray(projects) && projects.some(p => p.status === 'completed' && !p.hidden_in_library);
+  }
+
   function getScenes() {
     return {
       'focused-theme': {
@@ -158,8 +162,8 @@
         steps: [
           {
             target: () => firstVisible(['.editor-cascade-control button', '#editorInterviewSelect']),
-            title: '先在顶栏选择一篇要校订的访谈稿',
-            desc: '点击顶栏下拉菜单选择已有访谈稿，或从左侧「最近访谈」一键切换进入。'
+            get title() { return hasAnyCompletedInterview() ? '先在顶栏选择一篇要校订的访谈稿' : '先导入访谈稿或载入示例访谈'; },
+            get desc() { return hasAnyCompletedInterview() ? '点击顶栏下拉菜单选择已有访谈稿，或从左侧「最近访谈」一键切换进入。' : '当前工作台暂无访谈稿，可先在下方空状态卡片或左侧「访谈资料」导入文本/载入示例，再由顶栏切换。'; }
           },
           {
             target: () => firstVisible(['#optimizeBtn', '#saveBtn']),
@@ -178,8 +182,8 @@
         steps: [
           {
             target: () => firstVisible(['.memo-selector-control button', '#memoInterviewSelect']),
-            title: '先选择一篇要分析的访谈稿',
-            desc: '在顶栏下拉菜单选择访谈稿，左侧将载入完整访谈原文。'
+            get title() { return hasAnyCompletedInterview() ? '先选择一篇要分析的访谈稿' : '先导入访谈稿或载入示例访谈'; },
+            get desc() { return hasAnyCompletedInterview() ? '在顶栏下拉菜单选择访谈稿，左侧将载入完整访谈原文。' : '当前工作台暂无访谈稿，可先点击左侧「访谈资料」导入文本或载入示例访谈，再回到此处切换。'; }
           },
           {
             target: () => firstVisible(['#generateMemoBtn']),
@@ -197,14 +201,14 @@
         },
         steps: [
           {
-            target: () => firstVisible(['.memo-selector-control button', '#memoInterviewSelect', '.ai-coding-bar select']),
-            title: '先选择要编码的访谈稿',
-            desc: '在顶栏切换目标访谈稿与所属研究项目，载入原文与编码工作区。'
+            target: () => firstVisible(['.memo-selector-control button', '.workspace-selector-slot select', '#memoInterviewSelect', '.ai-coding-bar select']),
+            get title() { return hasAnyCompletedInterview() ? '先选择要编码的访谈稿' : '先导入访谈稿或载入示例访谈'; },
+            get desc() { return hasAnyCompletedInterview() ? '在顶栏切换目标访谈稿与所属研究项目，载入原文与编码工作区。' : '当前工作台暂无访谈稿，可先前往「访谈资料」导入文本或载入示例，再在此处选择访谈。'; }
           },
           {
-            target: () => firstVisible(['#aiCodeBtn', '.ai-coding-bar button']),
+            target: () => firstVisible(['.workspace-action-slot .ac-primary', '.workspace-action-slot button', '#aiCodeBtn', '.ai-coding-bar button']),
             title: '生成 AI 编码建议或划词手动编码',
-            desc: '点击右上角运行 AI 开放式编码，或直接在原文中选中文本新建编码。'
+            desc: '点击右上角运行 AI 编码（支持探索编码与问题聚焦两种模式），或直接在原文中选中文本新建编码。'
           }
         ]
       }
@@ -274,23 +278,40 @@
       c2 = { x: p3.x + dx, y: p3.y };
     } else {
       const targetCenterX = tr.left + tr.width / 2;
-      const desiredLeft = targetCenterX - cardW * 0.42;
+      const tabAction = document.querySelector('.workspace-tab-slot .workspace-tab-action:not([hidden])');
+      const obsRect = tabAction && isVisible(tabAction) ? tabAction.getBoundingClientRect() : null;
+      const hasBelowObstacle = obsRect && obsRect.top >= tr.bottom - 6 && obsRect.left < tr.right + 16 && obsRect.right > tr.left - 16;
+
       const minLeft = Math.max(16, mr.left + 24);
       const maxLeft = Math.max(minLeft, vw - cardW - 24);
-      cardLeft = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
-      cardTop = Math.max(hr.bottom + 36, tr.bottom + 68);
-      if (cardTop + cardH > vh - 24) {
-        cardTop = Math.max(hr.bottom + 18, vh - cardH - 24);
-      }
-      card.style.left = `${Math.round(cardLeft)}px`;
-      card.style.top = `${Math.round(cardTop)}px`;
+      if (hasBelowObstacle) {
+        // Place card to the left of the second-row button so the Bezier curve routes cleanly around its left side
+        cardLeft = Math.max(minLeft, Math.min(maxLeft, obsRect.left - cardW + 12));
+        cardTop = Math.max(hr.bottom + 24, tr.bottom + 64);
+        card.style.left = `${Math.round(cardLeft)}px`;
+        card.style.top = `${Math.round(cardTop)}px`;
+        const anchorX = Math.min(cardLeft + cardW - 28, obsRect.left - 18);
+        p0 = { x: Math.max(cardLeft + 32, anchorX), y: cardTop - 3 };
+        p3 = { x: Math.max(tr.left + 6, Math.min(tr.left + 14, obsRect.left - 6)), y: tr.bottom + 4 };
+        c1 = { x: p0.x, y: tr.bottom + 22 };
+        c2 = { x: Math.min(p0.x + 14, obsRect.left - 14), y: p3.y + 8 };
+      } else {
+        const desiredLeft = targetCenterX - cardW * 0.42;
+        cardLeft = Math.max(minLeft, Math.min(maxLeft, desiredLeft));
+        cardTop = Math.max(hr.bottom + 36, tr.bottom + 68);
+        if (cardTop + cardH > vh - 24) {
+          cardTop = Math.max(hr.bottom + 18, vh - cardH - 24);
+        }
+        card.style.left = `${Math.round(cardLeft)}px`;
+        card.style.top = `${Math.round(cardTop)}px`;
 
-      const anchorX = Math.max(cardLeft + 36, Math.min(cardLeft + cardW - 36, targetCenterX + (cardLeft + cardW / 2 - targetCenterX) * 0.35));
-      p0 = { x: anchorX, y: cardTop - 3 };
-      p3 = { x: targetCenterX, y: tr.bottom + 8 };
-      const dy = Math.max(40, Math.abs(p0.y - p3.y) * 0.54);
-      c1 = { x: p0.x, y: p0.y - dy };
-      c2 = { x: p3.x, y: p3.y + dy };
+        const anchorX = Math.max(cardLeft + 36, Math.min(cardLeft + cardW - 36, targetCenterX + (cardLeft + cardW / 2 - targetCenterX) * 0.35));
+        p0 = { x: anchorX, y: cardTop - 3 };
+        p3 = { x: targetCenterX, y: tr.bottom + 8 };
+        const dy = Math.max(40, Math.abs(p0.y - p3.y) * 0.54);
+        c1 = { x: p0.x, y: p0.y - dy };
+        c2 = { x: p3.x, y: p3.y + dy };
+      }
     }
 
     drawSoftBezierArrow(p0, c1, c2, p3);
@@ -305,6 +326,7 @@
     const target = currentStep.target();
     if (!target) {
       root.hidden = true;
+      reopenPill.hidden = false;
       clearHighlight();
       return;
     }

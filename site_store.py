@@ -7,6 +7,7 @@ import re
 import secrets
 import sqlite3
 import time
+import unicodedata
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -93,10 +94,13 @@ class Store:
               request_key TEXT NOT NULL,source TEXT NOT NULL,sha256 TEXT NOT NULL,
               PRIMARY KEY(request_key,source));
             CREATE TABLE IF NOT EXISTS user_profiles(
-              user_id TEXT PRIMARY KEY, avatar TEXT NOT NULL DEFAULT '', updated REAL NOT NULL);
+              user_id TEXT PRIMARY KEY, avatar TEXT NOT NULL DEFAULT '', updated REAL NOT NULL,
+              display_name TEXT NOT NULL DEFAULT '');
             ''')
         # One-shot migration. 0 denotes no cap in the legacy NOT NULL columns.
         with self.db(True) as db:
+            if 'display_name' not in {row['name'] for row in db.execute('PRAGMA table_info(user_profiles)')}:
+                db.execute("ALTER TABLE user_profiles ADD COLUMN display_name TEXT NOT NULL DEFAULT ''")
             if db.execute("INSERT OR IGNORE INTO site_settings VALUES('calls_only_v1','1')").rowcount:
                 for table in ('users','invitations'):
                     db.execute(f"UPDATE {table} SET daily_calls=CASE WHEN role='admin' THEN 0 ELSE 80 END,daily_tokens=0")
@@ -271,7 +275,7 @@ class Store:
         if not secret:
             return None
         with self.db() as db:
-            row = db.execute("SELECT users.id,users.username,users.role,users.daily_calls,users.daily_tokens,COALESCE(p.avatar,'') AS avatar,sessions.csrf FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN user_profiles p ON p.user_id=users.id WHERE sessions.hash=? AND sessions.expires>? AND users.active=1", (token_hash(secret), time.time())).fetchone()
+            row = db.execute("SELECT users.id,users.username,users.role,users.daily_calls,users.daily_tokens,COALESCE(p.avatar,'') AS avatar,COALESCE(p.display_name,'') AS display_name,sessions.csrf FROM sessions JOIN users ON users.id=sessions.user_id LEFT JOIN user_profiles p ON p.user_id=users.id WHERE sessions.hash=? AND sessions.expires>? AND users.active=1", (token_hash(secret), time.time())).fetchone()
         if row and row['role'] == 'guest':
             from site_guests import info
             try:
@@ -354,7 +358,7 @@ class Store:
                 db.execute('DELETE FROM sessions WHERE user_id=?', (target,))
             db.execute('INSERT INTO audit VALUES(?,?,?,?)', (time.time(), actor, 'update_account', target))
 
-    def update_profile(self, user_id, new_username=None, new_avatar=None):
+    def update_profile(self, user_id, new_username=None, new_avatar=None, new_display_name=None):
         with self.db(True) as db:
             row = db.execute('SELECT id,username,role,active FROM users WHERE id=?', (user_id,)).fetchone()
             if not row or not row['active']:
@@ -376,6 +380,12 @@ class Store:
                                 binding['username'] = clean_name
                                 db.execute("UPDATE site_settings SET value=? WHERE key='legacy_owner'", (json.dumps(binding, sort_keys=True),))
                     changed = True
+            if new_display_name is not None:
+                name = unicodedata.normalize('NFC', new_display_name).strip() if isinstance(new_display_name, str) else ''
+                if not 1 <= len(name) <= 32 or any(unicodedata.category(c) in {'Cc', 'Cf', 'Cs', 'Zl', 'Zp'} for c in name):
+                    raise SiteError('显示名称需为 1–32 个字符，不能包含换行或控制字符')
+                db.execute('INSERT INTO user_profiles(user_id,display_name,updated) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,updated=excluded.updated', (user_id, name, time.time()))
+                changed = True
             if new_avatar is not None:
                 if not isinstance(new_avatar, str):
                     raise SiteError('头像格式无效')

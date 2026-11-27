@@ -468,7 +468,8 @@ async def update_profile(request: Request):
         raise SiteError('请求格式无效')
     new_username = data['username'] if 'username' in data else None
     new_avatar = data['avatar'] if 'avatar' in data else None
-    store.update_profile(user['id'], new_username=new_username, new_avatar=new_avatar)
+    store.update_profile(user['id'], new_username=new_username, new_avatar=new_avatar,
+                         new_display_name=data.get('display_name'))
     updated = store.session(request.cookies.get(COOKIE, ''))
     if updated:
         request.state.user = updated
@@ -619,7 +620,7 @@ addEventListener('focus',async()=>{if(checking||Date.now()-lastFocusCheck<20000)
 
 def workspace_html(content, request, text_only, guest_style):
     session = request.state.user
-    boot = {key: session[key] for key in ('id', 'username', 'role', 'csrf')}
+    boot = {key: session[key] for key in ('id', 'username', 'display_name', 'role', 'csrf')}
     if session['role'] == 'guest':
         boot['guest'] = {'expires': guests.info(store, session['id'])['expires']}
     script = '<script>window.workbenchSession=' + json.dumps(boot, ensure_ascii=True).replace('<', r'\u003c') + ';</script>'

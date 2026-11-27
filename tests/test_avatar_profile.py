@@ -19,6 +19,21 @@ class ProfileTests(unittest.TestCase):
  def test_invalid_avatar_rolls_back_name(self):
   with self.assertRaises(SiteError):self.store.update_profile(self.user['id'],new_username='changed',new_avatar='javascript:bad')
   self.assertEqual(self.store.session(self.secret)['username'],'qa_owner')
+ def test_display_name_migrates_and_keeps_identity(self):
+  before=self.store.data_root(self.user['id'])
+  self.store.update_profile(self.user['id'],new_avatar='preset:ocean')
+  with self.store.db(True) as db:db.execute('ALTER TABLE user_profiles DROP COLUMN display_name')
+  store=Store(self.store.home)
+  self.assertEqual(store.session(self.secret)['display_name'],'')
+  store.update_profile(self.user['id'],new_display_name=' 奶龙大龙 ')
+  logged_in=store.session(store.login('qa_owner','temporary-qa-password-123','127.0.0.1'))
+  self.assertEqual(logged_in['display_name'],'奶龙大龙')
+  self.assertEqual(logged_in['username'],'qa_owner')
+  self.assertEqual(logged_in['avatar'],'preset:ocean')
+  self.assertEqual(store.data_root(logged_in['id']),before)
+  for bad in ('', '名'*33, '甲\n乙', '甲\u202e乙', 1):
+   with self.assertRaises(SiteError):store.update_profile(self.user['id'],new_display_name=bad)
+  self.assertEqual(store.session(self.secret)['display_name'],'奶龙大龙')
  def test_disabled_denied(self):
   with self.store.db(True) as db:db.execute('UPDATE users SET active=0 WHERE id=?',(self.user['id'],))
   with self.assertRaises(SiteError):self.store.update_profile(self.user['id'],new_avatar='preset:rose')

@@ -2,7 +2,7 @@
  const dlg=document.createElement('dialog');dlg.className='account-drawer';dlg.setAttribute('aria-labelledby','wb-account-title');
  dlg.innerHTML=`<div class="wb-account-wrap">
  <div class="wb-account-heading"><h2 id="wb-account-title">账号与额度</h2><button class="wb-account-close" aria-label="关闭账号与额度"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.6"><path d="m5 5 14 14M19 5 5 19"/></svg></button></div>
- <div class="wb-account-person"><div class="wb-account-avatar-wrap"><button type="button" class="wb-account-avatar" title="点击更换头像" aria-label="更换头像" aria-haspopup="dialog" aria-expanded="false"><span class="wb-account-avatar-content"></span><span class="wb-account-avatar-overlay" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button><div class="wb-account-avatar-popover" role="dialog" aria-label="更换头像" hidden><div class="wb-account-avatar-popover-title">选择头像配色或上传图片</div><div class="wb-account-avatar-presets" role="radiogroup" aria-label="预设配色"></div><div class="wb-account-avatar-actions"><button type="button" class="wb-account-avatar-upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>上传本地图片…</span></button><button type="button" class="wb-account-avatar-reset" hidden>恢复默认头像</button></div></div><input type="file" accept="image/png,image/jpeg,image/webp" class="wb-account-avatar-input" hidden></div><div class="wb-account-identity"><div class="wb-account-name-row"><strong class="wb-account-name"></strong><button type="button" class="wb-account-edit-name" title="修改用户名" aria-label="修改用户名"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div><form class="wb-account-name-form" hidden><input class="wb-account-name-input" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{2,31}" autocomplete="username" aria-label="新用户名" required><button type="submit" class="wb-account-name-save">保存</button><button type="button" class="wb-account-name-cancel">取消</button></form><span class="wb-account-role"></span></div><div class="wb-account-person-actions"><button class="wb-account-account-toggle" type="button" aria-label="切换账号或退出登录" aria-expanded="false" aria-controls="wb-account-account-menu" aria-haspopup="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/></svg></button><div class="wb-account-account-menu" id="wb-account-account-menu" role="group" aria-label="账号操作" hidden><button type="button" class="wb-account-switch-account">切换账号</button><button type="button" class="wb-account-menu-logout">退出登录</button></div></div></div>
+ <div class="wb-account-person"><div class="wb-account-avatar-wrap"><button type="button" class="wb-account-avatar" title="点击更换头像" aria-label="更换头像" aria-haspopup="dialog" aria-expanded="false"><span class="wb-account-avatar-content"></span><span class="wb-account-avatar-overlay" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg></span></button><div class="wb-account-avatar-popover" role="dialog" aria-label="更换头像" hidden><div class="wb-account-avatar-popover-title">选择头像配色或上传图片</div><div class="wb-account-avatar-presets" role="radiogroup" aria-label="预设配色"></div><div class="wb-account-avatar-actions"><button type="button" class="wb-account-avatar-upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>上传本地图片…</span></button><button type="button" class="wb-account-avatar-reset" hidden>恢复默认头像</button></div></div><input type="file" accept="image/png,image/jpeg,image/webp" class="wb-account-avatar-input" hidden></div><div class="wb-account-identity"><div class="wb-account-name-row"><strong class="wb-account-name"></strong><button type="button" class="wb-account-edit-name" title="修改显示名称（不影响登录账号）" aria-label="修改显示名称（不影响登录账号）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div><form class="wb-account-name-form" hidden><input class="wb-account-name-input" type="text" maxlength="64" autocomplete="off" aria-label="显示名称" aria-description="支持中文，最多 32 个字符，不影响登录账号" required><button type="submit" class="wb-account-name-save">保存</button><button type="button" class="wb-account-name-cancel">取消</button></form><span class="wb-account-role"></span></div><div class="wb-account-person-actions"><button class="wb-account-account-toggle" type="button" aria-label="切换账号或退出登录" aria-expanded="false" aria-controls="wb-account-account-menu" aria-haspopup="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/></svg></button><div class="wb-account-account-menu" id="wb-account-account-menu" role="group" aria-label="账号操作" hidden><button type="button" class="wb-account-switch-account">切换账号</button><button type="button" class="wb-account-menu-logout">退出登录</button></div></div></div>
  <div class="wb-account-tabs" role="tablist" aria-label="账号页面"><button role="tab" id="wb-account-mine-tab" aria-controls="wb-account-personal" aria-selected="true">我的账号</button><button role="tab" id="wb-account-members-tab" aria-controls="wb-account-members" aria-selected="false" hidden>成员管理</button></div>
  <div class="wb-account-tab-panels"><section id="wb-account-personal" role="tabpanel" aria-labelledby="wb-account-mine-tab"><div class="wb-account-personal-content">
  <div class="wb-account-quota-head"><h3 class="wb-account-quota-title">今日用量</h3><span class="wb-account-quota-help">
@@ -158,6 +158,7 @@
    {key:'preset:rose',label:'珊瑚',bg:'#fae8e8',fg:'#a83c48'},
    {key:'preset:slate',label:'岩灰',bg:'#e8ecee',fg:'#3e545c'}
  ];
+ const visibleName=user=>user?.display_name||user?.username||'';
  function renderAvatar(){
    const av=$('.wb-account-avatar'),content=$('.wb-account-avatar-content');
    const guest=me?.role==='guest',raw=(!guest&&me?.avatar)||'';
@@ -165,9 +166,9 @@
    av.style.background=raw.startsWith('data:image/')?'transparent':preset.bg;
    av.style.color=preset.fg;
    if(raw.startsWith('data:image/')){
-     const img=document.createElement('img');img.src=raw;img.alt=me.username;content.replaceChildren(img);
+     const img=document.createElement('img');img.src=raw;img.alt=visibleName(me);content.replaceChildren(img);
    }else{
-     content.textContent=guest?'访':(me?.username||'U').slice(0,1).toUpperCase();
+     content.textContent=guest?'访':Array.from(visibleName(me)||'U')[0].toUpperCase();
    }
    const resetBtn=$('.wb-account-avatar-reset');
    if(resetBtn)resetBtn.hidden=!raw||raw==='preset:teal';
@@ -179,7 +180,7 @@
    }
  }
  function profile(){
-   $('.wb-account-name').textContent=me.username;renderAvatar();
+   $('.wb-account-name').textContent=visibleName(me);renderAvatar();
    const owner=me.role==='admin',guest=me.role==='guest';$('.wb-account-role').textContent=owner?'管理员':guest?'访客 · 临时空间':'普通成员';
    $('.wb-account-avatar').disabled=guest;$('.wb-account-avatar').title=guest?'':'点击更换头像';
    $('.wb-account-edit-name').hidden=guest;if(guest){$('.wb-account-name-form').hidden=true;$('.wb-account-avatar-popover').hidden=true;}
@@ -391,7 +392,7 @@
    $('.wb-account-number').textContent='—';$('.wb-account-name').textContent='正在读取…';$('.wb-account-role').textContent='';$('.wb-account-guest-space').hidden=true;passwordEntry.hidden=true;
    dlg.showModal();$('.wb-account-close').focus();
    const boot=window.workbenchSession;
-   if(boot){me=boot;$('.wb-account-name').textContent=boot.role==='guest'?'访客':boot.username;renderAvatar();$('.wb-account-role').textContent=boot.role==='admin'?'管理员':boot.role==='guest'?'访客 · 临时空间':'普通成员';}
+   if(boot){me=boot;$('.wb-account-name').textContent=boot.role==='guest'?'访客':visibleName(boot);renderAvatar();$('.wb-account-role').textContent=boot.role==='admin'?'管理员':boot.role==='guest'?'访客 · 临时空间':'普通成员';}
    clearInterval(poll);poll=setInterval(()=>{if(dlg.open&&!document.hidden&&!$('#wb-account-personal').hidden&&passwordPanel.hidden)usage()},30000);
    await usage();
  });
@@ -469,20 +470,23 @@
 
  function showNameEdit(show){
    nameRow.hidden=show;nameForm.hidden=!show;
-   if(show){hideAvatarPopover();nameInput.value=me?.username||'';nameInput.focus();nameInput.select();}
+   if(show){hideAvatarPopover();nameInput.value=visibleName(me);nameInput.focus();nameInput.select();}
  }
  editNameBtn.onclick=()=>{if(me&&me.role!=='guest')showNameEdit(true);};
  nameCancel.onclick=()=>showNameEdit(false);
  nameInput.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();showNameEdit(false);editNameBtn.focus();}};
  nameForm.onsubmit=safe(async e=>{
    e.preventDefault();if(!me||me.role==='guest')return;
-   const next=nameInput.value.trim().toLowerCase();
-   if(!next||next===me.username){showNameEdit(false);return;}
-   const saveBtn=nameForm.querySelector('.wb-account-name-save');saveBtn.disabled=true;
+   const saveBtn=nameForm.querySelector('.wb-account-name-save');
+   if(saveBtn.disabled)return;
+   const next=nameInput.value.normalize('NFC').trim();
+   if(!next||Array.from(next).length>32){message('显示名称需为 1–32 个字符');nameInput.focus();return;}
+   if(next===visibleName(me)){showNameEdit(false);editNameBtn.focus();return;}
+   saveBtn.disabled=true;
    try{
-     const updated=await api('/auth/profile',{username:next});
-     me=updated;if(window.workbenchSession)window.workbenchSession.username=updated.username;
-     panelCache.clear();profile();showNameEdit(false);message('用户名已修改为 '+updated.username);
+     const updated=await api('/auth/profile',{display_name:next});
+     me=updated;if(window.workbenchSession)window.workbenchSession.display_name=updated.display_name;
+     panelCache.clear();profile();showNameEdit(false);editNameBtn.focus();message('显示名称已保存，登录账号不变');
    }finally{saveBtn.disabled=false;}
  });
 

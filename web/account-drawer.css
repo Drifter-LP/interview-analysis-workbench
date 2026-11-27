@@ -142,9 +142,10 @@
 .wb-account-table{border:0}
 .wb-account-table th,.wb-account-table td{border-left:0;border-right:0;padding:11px 6px}
 .wb-account-table th{background:#f7faf9;font-weight:400;font-size:12.5px}
-.wb-account-cell-user{display:flex;align-items:center;gap:7px}
+.wb-account-cell-user{display:table-cell;vertical-align:middle}
+.wb-account-cell-user .wb-account-role-tag{margin-left:7px;display:inline-block}
 .wb-account-role-tag{font-size:11.5px;color:var(--wb-account-teal);font-weight:400}
-.wb-account-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#aebfc2;margin-right:6px;vertical-align:1px;flex:none}
+.wb-account-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#c44747;margin-right:6px;vertical-align:1px;flex:none}
 .wb-account-status-dot.is-active{background:#22b47a}
 .wb-account-op-muted{color:#aebfc2;padding:4px}
 

@@ -17,6 +17,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
  const me=await (await p.request.get(base+'/auth/me')).json();
  assert.equal((await p.request.post(base+'/auth/profile',{headers:{Origin:base},data:{avatar:'preset:rose'}})).status(),403);
  assert.equal((await p.request.post(base+'/auth/profile',{headers:{Origin:base,'X-CSRF-Token':me.csrf},data:{avatar:'javascript:bad'}})).status(),400);
+ const users=await (await p.request.get(base+'/auth/users')).json(),friend=users.find(u=>u.username==='qa_friend');
+ assert.ok((await p.request.post(base+'/auth/admin/update',{headers:{Origin:base,'X-CSRF-Token':me.csrf},data:{id:friend.id,active:false,daily_calls:80}})).ok());
+ await p.locator('#wb-account-members-tab').click();await p.locator('.wb-account-table tbody tr').first().waitFor();
+ const rows=await p.locator('.wb-account-table tbody tr').evaluateAll(rs=>rs.map(r=>({name:r.cells[0].textContent,bottoms:[...r.cells].map(c=>c.getBoundingClientRect().bottom),color:getComputedStyle(r.cells[1].querySelector('span')).backgroundColor})));
+ for(const row of rows)assert.ok(Math.max(...row.bottoms)-Math.min(...row.bottoms)<0.6,JSON.stringify(row));
+ assert.equal(rows.at(-1).name,'qa_friend');assert.equal(rows.at(-1).color,'rgb(196, 71, 71)');
+ await p.screenshot({path:path.resolve(__dirname,'../outputs/account-list-aligned.png')});
  const guest=await b.newPage();await guest.request.post(base+'/auth/guest',{headers:{Origin:base},data:{}});
  const g=await (await guest.request.get(base+'/auth/me')).json();assert.equal((await guest.request.post(base+'/auth/profile',{headers:{Origin:base,'X-CSRF-Token':g.csrf},data:{avatar:'preset:rose'}})).status(),403);
  assert.deepEqual(errors,[]);console.log('PASS avatar preset save/reopen, real profile endpoint, CSRF, invalid input, guest denial, no page errors');

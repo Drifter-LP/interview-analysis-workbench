@@ -134,8 +134,6 @@ class Store:
                 admin = db.execute('SELECT * FROM users WHERE id=? AND role="admin" AND active=1', (actor,)).fetchone()
                 if not admin:
                     raise SiteError('需要管理员权限', 403)
-                if not reset_id and total >= 8:
-                    raise SiteError('试用版最多8个账号（含管理员）')
             if reset_id:
                 user = db.execute('SELECT * FROM users WHERE id=?', (reset_id,)).fetchone()
                 if not user or user['username'] != name or user['role'] == 'guest' or not user['active']:
@@ -200,8 +198,6 @@ class Store:
                 db.execute('UPDATE invitations SET used=? WHERE reset_id=? AND used IS NULL', (time.time(), user_id))
                 db.execute('DELETE FROM failures WHERE key IN (?,?)', ('password-change:'+token_hash(user_id), 'name:'+token_hash(invite['username'])))
             else:
-                if db.execute("SELECT count(*) FROM users WHERE role!='guest'").fetchone()[0] >= 8:
-                    raise SiteError('试用名额已满')
                 if db.execute('SELECT 1 FROM users WHERE username=?', (invite['username'],)).fetchone():
                     raise SiteError('账号已存在')
                 user_id = secrets.token_hex(16)
@@ -302,7 +298,7 @@ class Store:
                 "COALESCE(p.avatar,'') AS avatar,COALESCE(g.calls,0) AS today_calls "
                 "FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id "
                 "LEFT JOIN usage g ON g.user_id=u.id AND g.day=? "
-                "WHERE u.role!='guest' ORDER BY u.created", (day,)
+                "WHERE u.role!='guest' ORDER BY u.active DESC,u.created,u.id", (day,)
             )]
 
     def model_usage(self, actor, scope='self', days=7):

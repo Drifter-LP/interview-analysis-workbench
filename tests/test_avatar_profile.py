@@ -22,4 +22,21 @@ class ProfileTests(unittest.TestCase):
  def test_disabled_denied(self):
   with self.store.db(True) as db:db.execute('UPDATE users SET active=0 WHERE id=?',(self.user['id'],))
   with self.assertRaises(SiteError):self.store.update_profile(self.user['id'],new_avatar='preset:rose')
+ def test_invite_and_register_beyond_eight(self):
+  with self.store.db(True) as db:
+   for n in range(9):
+    db.execute('INSERT INTO users VALUES(?,?,?,?,?,?,?,?)',(f'fake{n}',f'fake{n}','!synthetic','user',1,80,0,time.time()+n))
+  token=self.store.invite('ninth_plus',actor=self.user['id'])['token']
+  session=self.store.redeem(token,'temporary-member-password-123')
+  self.assertEqual(self.store.session(session)['username'],'ninth_plus')
+  self.assertEqual(len(self.store.users()),11)
+ def test_inactive_last_and_reactivation_restores_group(self):
+  with self.store.db(True) as db:
+   for n,active in enumerate((0,1,0,1)):
+    db.execute('INSERT INTO users VALUES(?,?,?,?,?,?,?,?)',(f'fake{n}',f'fake{n}','!synthetic','user',active,80,0,time.time()+n))
+  self.assertEqual([u['active'] for u in self.store.users()],[1,1,1,0,0])
+  self.store.update_user(self.user['id'],'fake0',True,80)
+  self.assertEqual([u['active'] for u in self.store.users()],[1,1,1,1,0])
+ def test_invite_still_requires_admin(self):
+  with self.assertRaises(SiteError):self.store.invite('not_allowed',actor='missing')
 if __name__=='__main__':unittest.main()

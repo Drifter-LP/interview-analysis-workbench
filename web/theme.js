@@ -306,7 +306,7 @@ $('#themeHistorySelect').onchange = async event => {
 };
 
 const renameScript = document.createElement('script');
-renameScript.src = '/assets/rename.js?v=single-five-1';
+renameScript.src = '/assets/rename.js?v=single-five-2';
 document.body.append(renameScript);
 
 const structureScript = document.createElement('script');

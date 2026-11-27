@@ -9,13 +9,13 @@ const base=process.env.MEMO_UI_ORIGIN||'http://127.0.0.1:9925';
   const me=await (await p.request.get(base+'/auth/me')).json();
   const headers={Origin:base,'X-CSRF-Token':me.csrf};
   await p.addInitScript(id=>localStorage.setItem('wb_seen_changelog_id:'+id,'seed-20261126'),me.id);
-  const names=['社区出行访谈甲','社区出行访谈乙'];
+  const names=['甲','乙'].map(tag=>'社区出行访谈'+tag+Date.now());
   for(const name of names){
    const r=await p.request.post(base+'/api/transcript-projects',{headers,multipart:{transcript:{name:name+'.txt',mimeType:'text/plain',buffer:Buffer.from('受访者：'+name+'测试原文。')}}});
    assert.ok(r.ok(),String(r.status()));
   }
   await p.goto(base+'/',{waitUntil:'domcontentloaded'});
-  await p.waitForFunction(()=>projects.filter(x=>x.name.startsWith('社区出行访谈')).length===2);
+  await p.waitForFunction(names=>names.every(name=>projects.some(x=>x.name.startsWith(name))),names);
   await p.evaluate(()=>switchView('analysis','familiarity'));
   const toggle=p.locator('.workspace-header .single-interview-picker > button');
   const group=p.getByRole('button',{name:/未归入项目的访谈/});
@@ -31,7 +31,10 @@ const base=process.env.MEMO_UI_ORIGIN||'http://127.0.0.1:9925';
   }
   await p.evaluate(()=>switchView('analysis','coding'));
   assert.equal(await toggle.textContent(),'社区出行访… ▾');
-  assert.ok((await toggle.boundingBox()).width<=113);
+  await p.waitForFunction(()=>{
+   const button=document.querySelector('.workspace-header .single-interview-picker > button');
+   return button&&button.getBoundingClientRect().width>0&&button.getBoundingClientRect().width<=113;
+  },null,{timeout:4000}).catch(async e=>{console.error(await toggle.evaluate(b=>({button:b.getBoundingClientRect().width,holder:b.parentElement.getBoundingClientRect().width,classes:b.parentElement.className,style:b.getAttribute('style'),viewport:innerWidth})));throw e;});
   console.log('PASS: full menu names, matching five-character prefixes, real transcript switching, coding tab');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});

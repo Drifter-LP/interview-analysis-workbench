@@ -142,7 +142,7 @@
   const toggle = document.createElement('button'), menu = document.createElement('div');
   toggle.type = 'button'; toggle.className = 'soft'; toggle.setAttribute('aria-haspopup', 'true');
   menu.className = 'comparison-history-list'; menu.hidden = true;
-  const holder = document.createElement('div'); holder.className='single-interview-picker'; holder.style.position = 'relative';
+  const holder = document.createElement('div'); holder.className='memo-selector-control single-interview-picker'; holder.style.position = 'relative';
   picker.after(holder); holder.append(toggle, menu); picker.hidden = true;
   const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('zh',{granularity:'grapheme'}):null;
   function syncPicker() {

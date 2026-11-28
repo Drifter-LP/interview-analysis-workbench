@@ -69,7 +69,7 @@
   const page=el('section','wn-workspace wc-chord-workspace'),bar=el('div','wn-toolbar'),searchWrap=el('div','wn-search'),search=el('input'),results=el('div','wn-results');
   search.type='search';search.placeholder='搜索词语';search.setAttribute('aria-label','搜索共现词语');results.hidden=true;searchWrap.append(search,results);
   const views=el('div','wn-views'),allButton=button('全部词对'),focusButton=button('聚焦词语');views.append(allButton,focusButton);
-  const thresholdLabel=el('label','wn-threshold','至少'),threshold=el('input');threshold.type='number';threshold.min='1';threshold.step='1';threshold.value='5';threshold.setAttribute('aria-label','最少共现块数');thresholdLabel.append(threshold,el('span','','块共现'));
+  const maxEdgeCount=edges.reduce((m,e)=>Math.max(m,Number(e.count)||0),0),defaultThreshold=maxEdgeCount>0?Math.min(5,maxEdgeCount):1;const thresholdLabel=el('label','wn-threshold','至少'),threshold=el('input');threshold.type='number';threshold.min='1';threshold.step='1';threshold.value=String(defaultThreshold);threshold.setAttribute('aria-label','最少共现块数');thresholdLabel.append(threshold,el('span','','块共现'));
   const counts=el('span','wn-counts'),fit=button('分析设置'),exportButton=button('导出图片');bar.append(searchWrap,views,thresholdLabel,counts,fit,exportButton);heading.classList.add('wn-heading');heading.append(bar);root.append(page);
   const layout=el('div','wn-layout'),stage=el('div','wn-stage'),svg=shape('svg',{class:'wn-canvas wc-chord-canvas',role:'group','aria-label':'词语共现和弦图：无方向关联',preserveAspectRatio:'xMidYMid meet'}),aside=el('aside','wn-details'),head=el('header'),title=el('strong','','词语共现和弦图'),content=el('div','wn-detail-content');
   head.append(title);aside.append(head,content);stage.append(svg);layout.append(stage,aside);page.append(layout);

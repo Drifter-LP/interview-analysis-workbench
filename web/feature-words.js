@@ -6,6 +6,7 @@ window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSou
  const settings=el('div','fw-settings'),scope=el('label','','统计范围');
  const mode=el('select');mode.setAttribute('aria-label','统计文本范围');mode.title='仅受访者回答：只统计明确标注的受访者回答；整块原文包含提问。';mode.append(new Option('仅受访者回答','answers'),new Option('整块原文（包含提问）','all'));mode.value=draft.token_mode||'answers';scope.append(mode);
  const initial=new Set(draft.stopwords||[]);let stops=new Set(initial),saving=false,focusWord='';
+ const changed=()=>stops.size!==initial.size||[...stops].some(w=>!initial.has(w));
  const stopButton=button(`停用词 · ${initial.size} 个`,'fw-stop-trigger');stopButton.setAttribute('aria-expanded','false');
  const rerun=button('重新分词');settings.append(scope,stopButton,rerun);if(heading){heading.classList.add('fw-heading');heading.append(settings);}else page.append(settings);
  const grid=el('div','fw-grid'),main=el('section','fw-candidates'),side=el('aside','fw-selected');grid.append(main,side);page.append(grid);
@@ -42,7 +43,9 @@ window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSou
   draft.selected_words=[...chosen];side.replaceChildren(el('h3','',`已选特征词 · ${chosen.size}`),el('p','fw-note','将用于生成共现网络'));
   const tags=el('div','fw-selected-tags');for(const word of chosen){const tag=button(word+' ×');tag.setAttribute('aria-label','取消选择 '+word);tag.onclick=()=>{chosen.delete(word);draw();};tags.append(tag);}side.append(tags);
   if(!chosen.size)side.append(el('p','fw-note','点击左侧词语进行选择。'));
-  summary.textContent=`已选 ${chosen.size} 个特征词`;preview(focusWord||[...chosen][0]);
+  summary.textContent=chosen.size<2?`已选 ${chosen.size} 个特征词（请至少勾选 2 个特征词以生成共现图）`:`已选 ${chosen.size} 个特征词`;
+  pending();
+  preview(focusWord||[...chosen][0]);
  }
  function draw(){
   list.replaceChildren();const q=search.value.trim().toLowerCase(),rows=(draft.candidates||[]).filter(x=>x.word.toLowerCase().includes(q)).slice();
@@ -58,9 +61,12 @@ window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSou
  const helper=el('p','fw-note','支持粘贴多个词，空格或换行分隔；自动去重'),chips=el('div','fw-stop-list'),changes=el('div','fw-changes'),diff=el('span'),reset=button('撤销修改','fw-link');changes.append(diff,reset);
  const footer=el('footer'),cancel=button('取消'),save=button('保存并重新分词','primary');footer.append(cancel,save);
  pop.append(head,find,addRow,helper,chips,changes,el('p','fw-note','保存前不会改变当前分词结果。'),footer);
- const changed=()=>stops.size!==initial.size||[...stops].some(w=>!initial.has(w));
- const pending=()=>setPending(changed()||mode.value!==(draft.token_mode||'answers'));
- mode.onchange=()=>{pending();notify('统计范围尚未应用，请点击“重新分词”');};
+ function pending(){setPending(changed()||mode.value!==(draft.token_mode||'answers')||chosen.size<2);}
+ pending();
+ mode.onchange=()=>{
+  if(changed()){notify('请先保存或取消停用词修改');mode.value=draft.token_mode||'answers';pending();return;}
+  submit(initial);
+ };
  function drawStops(){
   popTitle.textContent=`停用词管理 · ${stops.size} 个`;chips.replaceChildren();const q=find.value.trim().toLowerCase();
   for(const w of stops){if(!w.toLowerCase().includes(q))continue;const tag=el('span','fw-stop-tag');if(!initial.has(w))tag.classList.add('added');const remove=button('×');remove.setAttribute('aria-label','删除停用词 '+w);remove.disabled=saving;remove.onclick=()=>{stops.delete(w);drawStops();};tag.append(el('span','',w),remove);chips.append(tag);}

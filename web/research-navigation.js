@@ -138,10 +138,11 @@
   for(const [key,b]of themeButtons){b.classList.toggle('active',key===active);attrIfChanged(b,'aria-pressed',String(key===active));}
   if(task==='words'){
    const wordProject=researchProjects.find(p=>p.id===window.wordCooccurrence?.projectId);if(wordProject)selectedResearchProject=wordProject;
-   textIfChanged(wordSettings,window.wordCooccurrence?.step===4?'分析设置':'查看已有结果');hiddenIfChanged(wordSettings,window.wordCooccurrence?.step!==4&&!(window.wordCooccurrence?.step===3&&window.wordCooccurrence?.hasResult));
-   if(window.wordCooccurrence?.loading||window.wordCooccurrence?.step===4)hiddenIfChanged(wordSettings,true);
-   const words=window.wordCooccurrence;
-   config.selector=[words.scopeControl()];config.status=[];config.actions=[words.saveResult];config.toolsLeft=[words.controls[2],words.controls[3]];config.toolsRight=[wordSettings];scopeText.hidden=true;
+   const words=window.wordCooccurrence,step=words?.step;
+   textIfChanged(wordSettings,step===4?'← 调整特征词':'查看已有结果 →');
+   hiddenIfChanged(wordSettings,Boolean(words?.loading||words?.isHistory||(step!==4&&!(step===3&&words?.hasResult))));
+   if(words?.newExploration)hiddenIfChanged(words.newExploration,Boolean(words?.loading||!words?.hasDraft||step===1));
+   config.selector=[words.scopeControl()];config.status=[];config.actions=[words.saveResult];config.toolsLeft=[words.controls[2],words.controls[3]];config.toolsRight=[...(words?.newExploration?[words.newExploration]:[]),wordSettings];scopeText.hidden=true;
   }else{
    const options=researchProjects.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');if(projectPicker.dataset.options!==options){projectPicker.innerHTML='<option value="">请选择项目</option>'+options;projectPicker.dataset.options=options;}
    const projectValue=selectedResearchProject?.id||'';if(projectPicker.value!==projectValue)projectPicker.value=projectValue;

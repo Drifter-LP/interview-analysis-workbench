@@ -57,3 +57,17 @@
 #wordCooccurrence .wc-collapsed-rail button svg{width:18px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;}
 #wordCooccurrence .wc-collapsed-rail button svg+svg{width:12px;height:16px;}
 #wordCooccurrence .wc-pane-collapsed .wc-collapsed-rail span{width:24px;height:24px;font-size:12px;}
+#wordCooccurrence .wc-stepper{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 12px;margin:0 0 10px;background:#fff;border:1px solid #dce8ea;border-radius:10px;box-sizing:border-box;}
+#wordCooccurrence .wc-stepper-item{border:1px solid #d5e5e4;background:#f5fbfa;color:#27535b;border-radius:7px;padding:5px 12px;font-size:13px;line-height:1.4;font-weight:500;transition:background .15s,border-color .15s,color .15s;}
+#wordCooccurrence .wc-stepper-item.done{background:#e7f6f4;border-color:#9fd3cc;color:#007d77;}
+#wordCooccurrence .wc-stepper-item.active{background:#00938c;border-color:#00938c;color:#fff;font-weight:600;}
+#wordCooccurrence .wc-stepper-item:disabled{opacity:.48;cursor:not-allowed;background:#f4f7f7;border-color:#e1e8ea;color:#83969c;}
+#wordCooccurrence .wc-stepper-arrow{color:#8aa0a6;font-size:13px;user-select:none;}
+#wordCooccurrence .wc-stepper-new{margin-left:auto;border:1px solid #00938c;background:#e8f7f5;color:#007a74;border-radius:7px;padding:5px 12px;font-size:13px;font-weight:600;}
+#wordCooccurrence .wc-stepper-new:hover{background:#d4f0ec;}
+.wc-new-exploration{border:1px solid #00938c;background:#e8f7f5;color:#007a74;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.wc-new-exploration:hover{background:#d4f0ec;}
+#wordCooccurrence .wc-step-badge{display:inline-flex;align-items:center;background:#e4f7f5;border:1px solid #cbece8;color:#008b88;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;}
+#wordCooccurrence .wc-selection-actions{display:flex;align-items:center;gap:10px;}
+#wordCooccurrence .wc-resume-draft{padding:10px 16px;border-radius:10px;border:1px solid #bddcd9;background:#f2faf9;color:#186661;font-weight:600;white-space:nowrap;}
+#wordCooccurrence .wc-gear-icon{flex-shrink:0;color:#365965;}

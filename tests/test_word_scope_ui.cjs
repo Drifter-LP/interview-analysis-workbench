@@ -5,13 +5,14 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
  try{
   p.setDefaultTimeout(45000);p.on('pageerror',e=>errors.push(e.message));
   assert.ok((await p.request.post(origin+'/auth/login',{headers:{Origin:origin},data:{username:'qa_owner',password:'temporary-qa-login-123'}})).ok());
+  await p.route('**/auth/changelog',r=>r.fulfill({json:{items:[]}}));
   const projects=[{id:'scope-a',name:'社区服务研究',interviews:[],interview_ids:[]},{id:'scope-b',name:'社区活动参与研究',interviews:[],interview_ids:[]}];
   const fixtures=id=>['甲','乙'].map((letter,i)=>{const text='受访者：这是隔离测试原文 '+id+letter;return {id:id+'-'+i,name:'社区服务访谈稿'+letter,text,issues:[],blocks:[{id:id+'-block-'+i,start:0,end:Array.from(text).length,include:true,kind:'content'}]};});
   let fail=false;
   await p.route(/\/api\/research-projects\/scope-[ab]\/word-cooccurrence/,async r=>{
    const [,id,action='']=new URL(r.request().url()).pathname.match(/research-projects\/(scope-[ab])\/word-cooccurrence(.*)/);reads.push([id,action]);
    if(fail&&id==='scope-b'){fail=false;return r.fulfill({status:503,json:{detail:'模拟读取失败'}});}
-   return r.fulfill({json:action==='/history'?[{id:'saved-one',name:'服务可及性',saved_at:1764050000}]:{status:'completed',step:2,revision:1,history_id:action? 'saved-one':null,interviews:fixtures(id)}});
+   return r.fulfill({json:action==='/history'?[{id:'saved-one',name:'服务可及性',saved_at:1764050000}]:{status:'completed',step:2,confirmed:true,revision:1,history_id:action? 'saved-one':null,interviews:fixtures(id),candidates:[{word:'社区',blocks:2},{word:'服务',blocks:1}]}});
   });
   await p.goto(origin+'/',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>!!window.researchNavigation);
   await p.evaluate(list=>{researchProjects=list;selectedResearchProject=list[0];switchView('analysis','focused');},projects);
@@ -31,6 +32,22 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await trigger.click();await p.screenshot({path:path.resolve(__dirname,'../outputs/cross-scope-menu-verified.png')});
   await menu.getByRole('button',{name:/服务可及性/}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('服务可及性'));assert.ok(await save.isDisabled());
   await trigger.click();await menu.getByRole('button',{name:'当前草稿',exact:true}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('当前草稿'));
+  assert.equal(await p.locator('.wc-stepper .wc-stepper-item').count(),4);
+  const requestsBeforeDraftReturn=reads.length;
+  await p.locator('.wc-stepper-new').click();
+  await p.locator('.wc-selection-page').waitFor();
+  await p.getByRole('button',{name:'返回当前草稿',exact:true}).click();
+  await local.waitFor();
+  assert.equal(reads.length,requestsBeforeDraftReturn);
+  await p.locator('.wc-stepper [data-step="3"]').click();
+  const generate=p.getByRole('button',{name:/确认特征词并生成/});
+  assert.ok(await generate.isDisabled());
+  await p.locator('.fw-word input[data-word="社区"]').check();assert.ok(await generate.isDisabled());
+  await p.locator('.wc-stepper [data-step="2"]').click();await local.waitFor();
+  assert.ok(await p.getByRole('button',{name:/确认切块并继续/}).isEnabled());
+  await p.locator('.wc-stepper [data-step="3"]').click();
+  await p.locator('.fw-word input[data-word="服务"]').check();assert.ok(await generate.isEnabled());
+  await p.locator('.wc-stepper [data-step="2"]').click();await local.waitFor();
   await p.locator('.wc-card summary').filter({hasText:'纳入统计'}).click();
   await p.getByRole('button',{name:'排除统计',exact:true}).click();
   await trigger.click();p.once('dialog',dialog=>dialog.dismiss());await menu.getByRole('button',{name:'社区活动参与研究',exact:true}).click();

@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
    const errors=[];p.on('pageerror',e=>errors.push(e.message));
    const auth=await p.request.post(origin+(role==='guest'?'/auth/guest':'/auth/login'),{
     headers:{Origin:origin},data:role==='guest'?{}:{username:role==='admin'?'qa_owner':'qa_friend',password:role==='admin'?'temporary-qa-login-123':'temporary-qa-friend-123'}});
-   assert.ok(auth.ok());await p.goto(origin+(role==='guest'?'/?guest=1':'/'));await p.locator('#sbQuotaCard').waitFor();
+   assert.ok(auth.ok());await p.route('**/auth/changelog',r=>r.fulfill({json:{items:[]}}));await p.goto(origin+(role==='guest'?'/?guest=1':'/'),{waitUntil:'domcontentloaded'});await p.locator('#sbQuotaCard').waitFor();
    await p.waitForFunction(()=>/次/.test(document.querySelector('#sbQuotaNums').textContent));
    const before=await p.locator('#sbQuotaCard').boundingBox();
    await p.locator('#sbQuotaCard').focus();await p.locator('#sbQuotaTooltip').waitFor();
@@ -33,7 +33,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     await p.evaluate(async()=>{await loadProjects();window.updateSidebarWidgets()});
     assert.equal(await p.locator('.sb-nav-badge').count(),0);
     assert.equal(await p.locator('.sb-recent-tag').count(),0);
-    for(const label of await p.locator('.sb-recent-name').allTextContents())assert.ok(Array.from(label.replace(/…$/,'')).length<=5);
+    for(const label of await p.locator('.sb-recent-name').allTextContents())assert.ok(Array.from(label.replace(/…$/,'')).length<=10);
+    const longTitle=p.locator(`.sb-recent-item[data-project-id="${ids[1]}"] .sb-recent-name`);
+    assert.equal(await longTitle.textContent(),Array.from('第二份虚构访谈：这是一份很长很长的标题以检查溢出').slice(0,10).join('')+'…');
     const align=await p.evaluate(()=>{const a=document.querySelector('[data-view="workspace"] em').getBoundingClientRect(),b=document.querySelector('.sb-recent-name').getBoundingClientRect();return Math.abs(a.left-b.left)});assert.ok(align<1,'child label alignment '+align);
     assert.equal(await p.locator('.nav-children .nav-item .nav-icon').first().isVisible(),false);
     assert.ok(await p.locator('.nav-parent .nav-icon').first().isVisible());
@@ -60,7 +62,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
     await p.getByRole('button',{name:'关闭账号与额度',exact:true}).click();
     await p.waitForFunction(()=>!document.querySelector('.account-drawer').open);
     await p.setViewportSize({width:1440,height:720});
-    const geometry=await p.locator('.sidebar').evaluate(side=>({width:side.clientWidth,scroll:side.scrollWidth,settings:side.querySelector('.sidebar-settings').getBoundingClientRect().bottom,height:innerHeight}));
+    const geometry=await p.locator('.sidebar').evaluate(side=>({width:side.clientWidth,scroll:side.scrollWidth,settings:side.querySelector('.sidebar-settings').getBoundingClientRect().bottom,height:innerHeight,overflow:[...side.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>side.getBoundingClientRect().right+2).map(n=>[n.tagName,n.getAttribute('class')]).slice(0,10)}));
     assert.ok(geometry.scroll<=geometry.width+2,JSON.stringify(geometry));
     assert.ok(geometry.settings<=geometry.height,JSON.stringify(geometry));
     await p.setViewportSize({width:1440,height:960});

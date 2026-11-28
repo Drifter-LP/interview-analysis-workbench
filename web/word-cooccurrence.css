@@ -98,4 +98,18 @@
   border-color: #008f86 !important;
   color: #fff !important;
   font-weight: 600 !important;
+
+/* Chunk Review UI Redesign: Symmetric top bar & 3-col gap */
+#wordCooccurrence:has(.wc-layout) > .wc-heading {
+  padding: 14px 16px !important;
+  margin: 0 !important;
+  align-items: center !important;
+  min-height: 0 !important;
+}
+#wordCooccurrence .wc-layout {
+  gap: 14px !important;
+  padding: 14px 16px 16px;
+}
+#wordCooccurrence .wc-divider {
+  width: 0 !important;
 }

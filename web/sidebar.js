@@ -148,7 +148,7 @@
       const status=revised?'已修订，打开单篇访谈分析':'未修订，打开文字校订';
       btn.title=fullName+'（'+status+'）';btn.setAttribute('aria-label',fullName+'，'+status);
       btn.innerHTML='<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>';
-      const name=document.createElement('em');name.className='sb-recent-name';name.textContent=chars.length>5?chars.slice(0,5).join('')+'…':fullName;
+      const name=document.createElement('em');name.className='sb-recent-name';name.textContent=chars.length>10?chars.slice(0,10).join('')+'…':fullName;
       const dot=document.createElement('span');dot.className='sb-recent-dot'+(revised?'':' is-review');dot.setAttribute('aria-hidden','true');btn.append(name,dot);
       btn.onclick=async()=>{
         const id=String(item.id);

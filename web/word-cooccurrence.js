@@ -1,8 +1,8 @@
 /* Independent review gate. Text is immutable; only offsets are edited. */
 (() => {
- const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-ui-layout-1';document.head.append(css);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=chunk-review-1';document.head.append(css);
  const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=word-ui-layout-1';document.head.append(selectionCss);
- const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=word-ui-layout-1';document.head.append(reviewCss);
+ const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=chunk-review-1';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
  const picker=document.createElement('select'),status=document.createElement('span'),save=document.createElement('button'),next=document.createElement('button');
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';
@@ -42,7 +42,8 @@
  const scopeControl=document.createElement('div'),scopeTrigger=document.createElement('button'),scopeMenu=document.createElement('div');
  scopeControl.className='wc-scope-control';scopeTrigger.type='button';scopeTrigger.className='wc-scope-trigger';scopeTrigger.setAttribute('aria-label','项目与分析记录');scopeTrigger.setAttribute('aria-expanded','false');scopeTrigger.setAttribute('aria-controls','wcScopeMenu');scopeTrigger.textContent='项目 · 当前草稿';
  scopeMenu.id='wcScopeMenu';scopeMenu.className='wc-scope-menu';scopeMenu.hidden=true;scopeControl.append(scopeTrigger,scopeMenu);
- const shortInterview=name=>{const chars=Array.from(String(name||'未命名访谈'));return chars.length>5?chars.slice(0,5).join('')+'…':chars.join('');};
+ const cleanInterviewName=name=>String(name||'未命名访谈').replace(/\.(txt|docx|doc|md|json)$/i,'').replace(/_?(文字稿|访谈稿|逐字稿)?_?\d{8}[-_]\d{4,6}$/,'').replace(/_(文字稿|访谈稿|逐字稿)$/,'').replace(/_/g,' - ').trim()||String(name||'未命名访谈');
+ const shortInterview=(name,limit=10)=>{const clean=cleanInterviewName(name),chars=Array.from(clean);return chars.length>limit?chars.slice(0,limit).join('')+'…':clean;};
  let scopeSignature='';
  function closeScope(returnFocus=false){
   scopeMenu.hidden=true;scopeTrigger.setAttribute('aria-expanded','false');
@@ -252,6 +253,7 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   disposeWords();disposeWords=()=>{};
   closeInlineSplit();
   const currentStep=selecting||!draft||draft.status==='failed'?1:draft.step;
+  saveResult.hidden=currentStep!==4;
   nextBlocked=false;next.disabled=busy;
   root.replaceChildren();save.hidden=next.hidden=!draft||selecting||draft.status==='running'||draft.status==='failed';save.hidden=save.hidden||currentStep!==2;next.hidden=next.hidden||currentStep===4||currentStep===1;next.textContent=currentStep===3?'确认特征词并生成 →':'确认切块并继续 →';
   saveResult.disabled=selecting||!draft?.graph||!!draft?.history_id||!!draft?.stale||draft?.status==='running'||draft?.status==='failed';status.textContent=selecting?'选择访谈稿':draft?.history_id?'历史结果 · 只读':dirty?'未保存':draft?.stale?'原文已更新':draft?.status==='running'?draft.progress||'AI正在切块…':draft?'草稿已保存':'';
@@ -280,12 +282,28 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
    }});return;
   }if(draft.step===4){heading.querySelector('span')?.remove();disposeWords=window.renderWordNetwork({root,heading,draft,showSource:showSourceDrawer});return;}
   const step2Actions=document.createElement('div');step2Actions.className='wc-heading-actions';step2Actions.append(save,next);heading.append(step2Actions);
-  const t=selected();if(reviewInterview!==t.id){reviewInterview=t.id;reviewBlock=null;reviewOpen=t.issues.some(x=>!x.resolved);}
+  const t=selected();if(reviewInterview!==t.id){reviewInterview=t.id;reviewBlock=null;issueIndex=0;reviewOpen=t.issues.some(x=>!x.resolved);}
+  const pendingIssues=t.issues.filter(x=>!x.resolved).sort((a,b)=>a.start-b.start);
+  const blockFor=x=>t.blocks.find(b=>b.start<=x.start&&x.start<b.end);
+  function jumpToIssue(target,focusDirection){
+   const block=target&&blockFor(target);if(!block)return;
+   reviewBlock=block.id;reviewOpen=true;issueIndex=pendingIssues.filter(x=>blockFor(x)===block).indexOf(target);
+   refreshReviewPane();
+   const card=document.getElementById('wc-'+block.id);card?.scrollIntoView({block:'nearest',behavior:'instant'});
+   if(focusDirection!=null){const buttons=root.querySelectorAll('.wc-review-nav button');(buttons[focusDirection]?.disabled?buttons[1-focusDirection]:buttons[focusDirection])?.focus({preventScroll:true});}
+  }
+  if(reviewOpen&&!reviewBlock&&pendingIssues.length)reviewBlock=blockFor(pendingIssues[0])?.id||null;
   const scope=reviewBlock?t.blocks.find(b=>b.id===reviewBlock):null;
   if(reviewBlock&&!scope){reviewBlock=null;reviewOpen=false;}
-  const issues=t.issues.filter(x=>!x.resolved&&(!scope||(scope.start<=x.start&&x.start<scope.end)));issueIndex=Math.min(issueIndex,Math.max(0,issues.length-1));const issue=issues[issueIndex]||(scope?t.issues.findLast(x=>x.resolved&&scope.start<=x.start&&x.start<scope.end):null);
-  const layout=document.createElement('div');layout.className='wc-layout';layout.innerHTML=`<aside class="wc-list"><h3>访谈稿 · ${draft.interviews.length}</h3><select aria-label="筛选访谈"><option value="all">全部访谈</option><option value="pending">仅待复核</option></select><div class="wc-interviews"></div></aside><div class="wc-middle"><header><h3>${esc(t.name)}</h3><button data-filter>${onlyIssues?'查看全部块':'仅待复核'}</button></header><div class="wc-cards"></div></div><aside class="wc-issues"><h3>待核对问题 <span>${issues.length}</span></h3><div class="wc-issue-content"></div><details open><summary>复核规则</summary><p>只调整边界，原文保持不变。排除仅影响统计，不删除材料。超过500字是提醒，不是强制切分。</p></details><details><summary>超短回答如何处理</summary><p>有含义的确认或否定保留；按相邻语境合并。纯填充语可排除统计。</p></details></aside>`;root.append(layout);
-  function list(pending=false){const list=layout.querySelector('.wc-interviews');list.replaceChildren();for(const x of draft.interviews){const n=x.issues.filter(y=>!y.resolved).length;if(pending&&!n)continue;const b=document.createElement('button');b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">共${x.blocks.length}块${n?` · 待核对${n}`:''}</small>`;b.onclick=()=>{tid=x.id;issueIndex=0;render();};list.append(b);}}list();layout.querySelector('.wc-list select').onchange=e=>list(e.target.value==='pending');layout.querySelector('[data-filter]').onclick=()=>{onlyIssues=!onlyIssues;render();};
+  const issues=pendingIssues.filter(x=>!scope||(scope.start<=x.start&&x.start<scope.end));issueIndex=Math.max(0,Math.min(issueIndex,issues.length-1));const issue=issues[issueIndex]||(scope?t.issues.findLast(x=>x.resolved&&scope.start<=x.start&&x.start<scope.end):null);
+  const layout=document.createElement('div');layout.className='wc-layout';layout.innerHTML=`<aside class="wc-list"><h3>访谈稿 (${draft.interviews.length})</h3><div class="wc-interviews"></div></aside><div class="wc-middle"><header><h3>${esc(cleanInterviewName(t.name))}</h3><button data-filter>${onlyIssues?'查看全部块':'仅待复核'}</button></header><div class="wc-cards"></div></div><aside class="wc-issues"><h3>待核对问题 <span>${issues.length}</span></h3><div class="wc-issue-content"></div><details class="wc-rules-fold"><summary>复核规则说明</summary><p>只调整边界，原文保持不变。排除仅影响统计，不删除材料。超过500字是提醒，不是强制切分；有含义的确认或否定保留，纯填充语可排除统计。</p></details></aside>`;root.append(layout);
+  function list(pending=false){const list=layout.querySelector('.wc-interviews');list.replaceChildren();for(const x of draft.interviews){const n=x.issues.filter(y=>!y.resolved).length;if(pending&&!n)continue;const b=document.createElement('button');b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">共${x.blocks.length}块${n?` · 待核对${n}`:''}</small>`;b.onclick=()=>{tid=x.id;issueIndex=0;render();};list.append(b);}}list();layout.querySelector('[data-filter]').onclick=()=>{onlyIssues=!onlyIssues;render();};
+  const listFilter=document.createElement('div');listFilter.className='wc-interview-filter';
+  for(const [name,pending] of [['全部访谈',false],['有待复核',true]]){
+   const filter=document.createElement('button');filter.type='button';filter.textContent=name;filter.setAttribute('aria-pressed',String(!pending));
+   filter.onclick=()=>{for(const item of listFilter.children)item.setAttribute('aria-pressed',String(item===filter));list(pending);};listFilter.append(filter);
+  }
+  layout.querySelector('.wc-interviews').before(listFilter);
   const sideHead=document.createElement('div');sideHead.className='wc-side-heading';sideHead.innerHTML='<h2>复核建议</h2>';
   const hideReview=document.createElement('button');hideReview.className='wc-hide-review';hideReview.textContent='×';hideReview.setAttribute('aria-label','收起复核栏');hideReview.onclick=()=>{reviewOpen=false;refreshReviewPane();};sideHead.append(hideReview);
   layout.querySelector('.wc-issues').prepend(sideHead);
@@ -293,24 +311,13 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   setupPanes(layout);
   const oldFilter=layout.querySelector('[data-filter]'),filter=document.createElement('label');filter.className='wc-review-toggle';
   const titleGroup=document.createElement('div');titleGroup.className='wc-interview-title-group';
-  const interviewTitle=layout.querySelector('.wc-middle>header h3'),currentLabel=document.createElement('label'),currentPicker=document.createElement('select');
-  currentLabel.className='wc-current-interview';currentLabel.textContent='当前核对';
-  currentPicker.setAttribute('aria-label','当前核对访谈');currentPicker.title=t.name;
-  const grouped=new Map();
-  for(const item of draft.interviews){
-   const short=shortInterview(item.name);grouped.set(short,(grouped.get(short)||0)+1);
-  }
-  for(const [index,item] of draft.interviews.entries()){
-   const short=shortInterview(item.name),option=new Option(short+(grouped.get(short)>1?' · '+(index+1):''),item.id);
-   option.title=item.name;option.setAttribute('aria-label',item.name);currentPicker.append(option);
-  }
-  currentPicker.value=t.id;
-  currentPicker.onchange=()=>{tid=currentPicker.value;issueIndex=0;render();root.querySelector('.wc-current-interview select')?.focus({preventScroll:true});};
-  currentLabel.append(currentPicker);interviewTitle.replaceWith(titleGroup);titleGroup.append(currentLabel);
+  const interviewTitle=layout.querySelector('.wc-middle>header h3');
+  const cleanTitleEl=document.createElement('strong');cleanTitleEl.className='wc-middle-clean-title';cleanTitleEl.textContent=shortInterview(t.name,5);cleanTitleEl.title=t.name;
+  interviewTitle.replaceWith(titleGroup);titleGroup.append(cleanTitleEl);
   const pendingTotal=t.issues.filter(x=>!x.resolved).length;
   const hadReviewHints=t.issues.length>0;
-  const pendingCount=document.createElement('span');pendingCount.className='wc-pending-count';pendingCount.textContent=pendingTotal?`待核对${pendingTotal}项`:hadReviewHints?'已核对':'无待核对';pendingCount.classList.toggle('wc-reviewed',pendingTotal===0&&hadReviewHints);pendingCount.classList.toggle('wc-no-review',!hadReviewHints);
-  if(pendingTotal){pendingCount.style.cursor='pointer';pendingCount.title='点击展开并定位待核对问题';pendingCount.onclick=()=>{reviewOpen=true;const firstPending=t.blocks.find(b=>t.issues.some(x=>!x.resolved&&b.start<=x.start&&x.start<b.end));if(firstPending)reviewBlock=firstPending.id;issueIndex=0;refreshReviewPane();};}
+  const pendingCount=document.createElement(pendingTotal?'button':'span');pendingCount.className='wc-pending-count';pendingCount.textContent=pendingTotal?`待核对${pendingTotal}项`:hadReviewHints?'已核对':'无待核对';pendingCount.classList.toggle('wc-reviewed',pendingTotal===0&&hadReviewHints);pendingCount.classList.toggle('wc-no-review',!hadReviewHints);
+  if(pendingTotal){pendingCount.type='button';pendingCount.title='展开并定位首项待核对问题';pendingCount.onclick=()=>jumpToIssue(pendingIssues[0]);}
   const help=document.createElement('span');help.className='wc-count-help';
   const helpButton=document.createElement('button');helpButton.type='button';helpButton.textContent='?';helpButton.setAttribute('aria-label','待核对数量说明');helpButton.setAttribute('aria-expanded','false');
   const explanation=document.createElement('span');explanation.className='wc-count-tooltip';explanation.id='wc-count-explanation';explanation.setAttribute('role','tooltip');explanation.textContent=pendingTotal?'尚未处理的复核提示数量，一块可能有多条提示':'当前没有未处理的切块复核提示，不代表整篇原文已验证。';helpButton.setAttribute('aria-describedby',explanation.id);
@@ -335,7 +342,7 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
     const toggle=document.createElement('button');toggle.type='button';toggle.className='wc-excluded-toggle';toggle.textContent='展开原文 ▾';toggle.setAttribute('aria-expanded','false');
     toggle.textContent='展开 ▾';
     toggle.onclick=()=>{const collapsed=card.classList.toggle('wc-excluded-collapsed');toggle.textContent=collapsed?'展开 ▾':'收起 ▴';toggle.setAttribute('aria-expanded',String(!collapsed));};
-    const head=card.querySelector('.wc-card-head'),badge=document.createElement('small');badge.className='wc-excluded-badge';badge.textContent='已排除';head.after(badge);head.insertBefore(toggle,head.querySelector('select'));
+    const head=card.querySelector('.wc-card-head'),badge=document.createElement('small');badge.className='wc-excluded-badge';badge.textContent='已排除';meta.append(badge);head.insertBefore(toggle,head.querySelector('select'));
    }
    enableInlineSplit(original,t,block);original.title='点击原文位置，在此拆分';
    card.querySelector('[data-source]').onclick=()=>showSourceDrawer(t,block);
@@ -362,35 +369,46 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
    const band=document.createElement('div');band.className='wc-merge-band';button.before(band);band.append(button);
   });
   const panel=layout.querySelector('.wc-issue-content');if(!issue){panel.innerHTML='<p>没有待核对建议。仍可人工检查并调整边界。</p>';return;}
-  const sourceBlock=t.blocks.find(b=>b.start<=issue.start&&issue.start<b.end);
+  const sourceBlock=blockFor(issue);
   const blockIndex=t.blocks.indexOf(sourceBlock);
-  if(blockIndex>=0){const issueHeading=layout.querySelector('.wc-issues>h3');issueHeading.replaceChildren(document.createTextNode(`块 ${blockIndex+1} `));const countBadge=document.createElement('span');countBadge.className='wc-issue-count-pill';countBadge.textContent=issues.length?`待核对${issues.length}项`:'已核对';countBadge.classList.toggle('wc-reviewed',!issues.length);issueHeading.append(countBadge);}
+  const blockNumStr=blockIndex>=0?String(blockIndex+1).padStart(2,'0'):'01';
+  const blockCharLen=sourceBlock?text(t,sourceBlock).replace(/\s/g,'').length:0;
+  const pillLabel=issue.resolved?'已核对':blockCharLen>500?'超过 500 字':`待核对 ${issues.length} 项`;
+  const issueHeading=layout.querySelector('.wc-issues>h3');if(issueHeading)issueHeading.hidden=true;
   const sourceChars=Array.from(t.text),sentenceStarts=[0];
   for(const match of t.text.matchAll(/[。！？!?；;\n]+/g)){const offset=Array.from(t.text.slice(0,match.index+match[0].length)).length;if(offset<sourceChars.length)sentenceStarts.push(offset);}
   const blockLabel=sid=>{const start=sentenceStarts[Number(sid.slice(1))-1],index=t.blocks.findIndex(b=>b.start<=start&&start<b.end);return index>=0?`块 ${index+1}`:'当前片段';};
-  const reason=String(issue.reason||'').replace(/(S\d{5})\s*[-—–]\s*(S\d{5})/g,(_,a,b)=>{const first=blockLabel(a),last=blockLabel(b);return first===last?first:`${first}至${last}`;}).replace(/S\d{5}/g,blockLabel);
-  let direction='结合左侧原文检查话题是否连续；同一话题可合并，出现独立话题可在转折处拆分。';
+  const rawReason=String(issue.reason||'').replace(/(S\d{5})\s*[-—–]\s*(S\d{5})/g,(_,a,b)=>{const first=blockLabel(a),last=blockLabel(b);return first===last?first:`${first}至${last}`;}).replace(/S\d{5}/g,blockLabel);
+  const summaryReason=rawReason||'请对照原文检查当前块的话题边界。';
   let applyLabel='采用建议';
-  if(issue.action==='merge_previous'){direction=blockIndex>0?`如果确认是上一块同一话题的延续或收尾，可合并块 ${blockIndex} 与块 ${blockIndex+1}；如果是独立话题，保持分开。`:'当前没有前一块，请结合原文检查边界。';applyLabel='合并到前一块';}
-  else if(issue.action==='merge_next'){direction=blockIndex+1<t.blocks.length?`如果确认与下一块属于同一话题，可合并块 ${blockIndex+1} 与块 ${blockIndex+2}；如果话题不同，保持分开。`:'当前没有后一块，请结合原文检查边界。';applyLabel='与后一块合并';}
-  else if(issue.action==='split'){direction='如果建议位置前后是两个独立话题，可在该处拆分；如果是同一案例的连续追问或补充，保持完整。';applyLabel='按建议拆分';}
-  panel.innerHTML=`<p class="wc-reason-text">${esc(reason)}</p><p class="wc-review-direction">${esc(direction)}</p>${issue.action!=='keep'?`<button class="primary" data-apply>${esc(applyLabel)}</button>`:''}`;
+  if(issue.action==='merge_previous')applyLabel='合并到前一块';
+  else if(issue.action==='merge_next')applyLabel='与后一块合并';
+  else if(issue.action==='split')applyLabel='按建议拆分';
+  panel.innerHTML=`<div class="wc-suggest-card"><div class="wc-suggest-meta"><strong>第 ${blockNumStr} 块 · ${blockCharLen} 字</strong><span class="wc-len-pill">${esc(pillLabel)}</span></div><p class="wc-reason-text">核查理由：${esc(summaryReason)}</p></div><div class="wc-issue-actions">${issue.action!=='keep'?`<button class="primary" data-apply>${esc(applyLabel)}</button>`:''}</div>`;
+  const position=pendingIssues.indexOf(issue);
+  if(position>=0){
+   const nav=document.createElement('div');nav.className='wc-review-nav';nav.setAttribute('aria-label','复核建议导航');
+   const counter=document.createElement('span');counter.textContent=`第 ${position+1} / ${pendingIssues.length} 项`;nav.append(counter);
+   for(const [i,label,delta] of [[0,'上一项',-1],[1,'下一项',1]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.disabled=!pendingIssues[position+delta];b.onclick=()=>jumpToIssue(pendingIssues[position+delta],i);nav.append(b);}
+   panel.prepend(nav);
+  }
+  if(reviewOpen&&sourceBlock)document.getElementById('wc-'+sourceBlock.id)?.classList.add('wc-current-review');
   if(sourceBlock){
-   const previous=issue.action==='merge_previous'||/前文|前一|上一|前块/.test(reason),following=issue.action==='merge_next'||/后续|后文|后一|下一|后块/.test(reason);
+   const previous=issue.action==='merge_previous'||/前文|前一|上一|前块/.test(rawReason),following=issue.action==='merge_next'||/后续|后文|后一|下一|后块/.test(rawReason);
    const neighbors=(previous&&!following?[t.blocks[blockIndex-1]]:following&&!previous?[t.blocks[blockIndex+1]]:[t.blocks[blockIndex-1],t.blocks[blockIndex+1]]).filter(Boolean);
    if(neighbors.length){const view=document.createElement('button');view.className='wc-view-neighbor';view.textContent='查看相邻块';view.onclick=()=>{
     onlyIssues=false;refreshReviewPane();
     const pair=[sourceBlock,...neighbors].sort((a,b)=>a.start-b.start);
     for(const block of pair){const card=document.getElementById('wc-'+block.id);if(card?.classList.contains('wc-excluded-collapsed'))card.querySelector('.wc-excluded-toggle')?.click();card?.classList.add('wc-neighbor-highlight');}
     document.getElementById('wc-'+pair[0].id)?.scrollIntoView({behavior:'smooth',block:'start'});
-   };const apply=panel.querySelector('[data-apply]');if(apply)apply.before(view);else panel.append(view);}
+   };const actBox=panel.querySelector('.wc-issue-actions')||panel;const apply=actBox.querySelector('[data-apply]');if(apply)apply.before(view);else actBox.append(view);}
   }
-  const keep=document.createElement('button');keep.type='button';keep.dataset.dismiss='';keep.textContent=issue.resolved?'已核对':['merge_previous','merge_next'].includes(issue.action)?'保持分开':issue.action==='split'?'保持此块完整':'保持当前分块';keep.disabled=!!issue.resolved;keep.classList.toggle('wc-reviewed',!!issue.resolved);keep.onclick=()=>{issue.resolved=true;mark();};panel.append(keep);
+  const keep=document.createElement('button');keep.type='button';keep.dataset.dismiss='';keep.textContent=issue.resolved?'已核对':['merge_previous','merge_next'].includes(issue.action)?'保持分开':issue.action==='split'?'保持此块完整':'保持当前分块';keep.disabled=!!issue.resolved;keep.classList.toggle('wc-reviewed',!!issue.resolved);keep.onclick=()=>{issue.resolved=true;mark();};(panel.querySelector('.wc-issue-actions')||panel).append(keep);
   if(issue.resolved)panel.querySelector('[data-apply]')?.remove();
-  if(issue.resolved){
+  if(issue.resolved&&sourceBlock){
    const pendingBlocks=t.blocks.filter(b=>t.issues.some(x=>!x.resolved&&b.start<=x.start&&x.start<b.end));
    const nextBlock=pendingBlocks.find(b=>b.start>sourceBlock.start)||pendingBlocks[0];
-   if(nextBlock){const go=document.createElement('button');go.type='button';go.className='wc-next-review';go.textContent=`→ 下一个复核块 · 块 ${t.blocks.indexOf(nextBlock)+1}`;go.onclick=()=>{reviewBlock=nextBlock.id;reviewOpen=true;issueIndex=0;refreshReviewPane();const card=document.getElementById('wc-'+nextBlock.id);if(card?.classList.contains('wc-excluded-collapsed'))card.querySelector('.wc-excluded-toggle')?.click();card?.scrollIntoView({behavior:'smooth',block:'start'});};panel.append(go);}
+   if(nextBlock){const go=document.createElement('button');go.type='button';go.className='wc-next-review';go.textContent=`→ 下一个复核块 · 块 ${t.blocks.indexOf(nextBlock)+1}`;go.onclick=()=>{reviewBlock=nextBlock.id;reviewOpen=true;issueIndex=0;refreshReviewPane();const card=document.getElementById('wc-'+nextBlock.id);if(card?.classList.contains('wc-excluded-collapsed'))card.querySelector('.wc-excluded-toggle')?.click();card?.scrollIntoView({behavior:'smooth',block:'start'});};(panel.querySelector('.wc-issue-actions')||panel).append(go);}
    else{const done=document.createElement('p');done.className='wc-review-done';done.textContent='本篇复核已完成';panel.append(done);}
   }
   panel.querySelector('[data-apply]')?.addEventListener('click',()=>{const i=t.blocks.findIndex(b=>b.start<=issue.start&&issue.start<b.end),b=t.blocks[i];if(issue.action==='split')split(t,b,issue.cuts||[]);else if(issue.action==='merge_previous'){if(i===0){toast('没有相邻前块');return;}if(!merge(t,i-1))return;}else if(issue.action==='merge_next'){if(i+1===t.blocks.length){toast('没有相邻后块');return;}if(!merge(t,i))return;}else if(issue.action==='filler')b.include=false;issue.resolved=true;mark();});

@@ -46,8 +46,9 @@
 }
 
 /* Recent interviews reuse navigation spacing; no counters or tree rails. */
-.sb-recent-box{margin:0;border:0;padding:0}
+.sb-recent-box{margin:0;border:0;padding:0;min-width:0}
 .sb-recent-list[hidden]{display:none!important}
+.sidebar .sb-recent-list,.sidebar .sb-recent-list .sb-recent-item{min-width:0;max-width:100%}
 .sidebar .sb-recent-list .sb-recent-item{font-weight:400}
 .sb-recent-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb-recent-dot{width:5px;height:5px;border-radius:50%;background:#2ac181;flex:0 0 5px;margin-left:auto}

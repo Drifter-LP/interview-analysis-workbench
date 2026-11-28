@@ -161,3 +161,50 @@
 #wordCooccurrence .wc-issue-content .wc-view-neighbor,
 #wordCooccurrence .wc-issue-content > .wc-next-review,
 #wordCooccurrence .wc-issue-content > [data-dismiss] { text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 8px; height: 36px; font-size: var(--text-base, 14px); }
+
+/* Chunk Review UI Redesign (5 targeted fixes) */
+#wordCooccurrence .wc-list,
+#wordCooccurrence .wc-middle { border-radius: 14px; border-color: #dce7e5; }
+#wordCooccurrence .wc-list h3 { font-size: var(--text-lg, 16px); font-weight: 600; color: #142d36; padding: 14px 16px; border-bottom: 1px solid #ebf1f0; }
+#wordCooccurrence .wc-interviews button { flex-direction: column; align-items: flex-start; gap: 4px; padding: 13px 16px; min-height: 0; border-left: 3px solid transparent; }
+#wordCooccurrence .wc-interviews button.active { background: #f3faf8; border-left-color: #008f86; }
+#wordCooccurrence .wc-interviews button > span:first-child { font-size: var(--text-base, 14px); font-weight: 500; color: #142d36; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+#wordCooccurrence .wc-interviews button.active > span:first-child { font-weight: 600; color: #0b5d57; }
+#wordCooccurrence .wc-middle > header { margin: 0; height: 50px; padding: 0 18px; background: #fbfdfd; border-bottom: 1px solid #ebf1f0; display: flex; align-items: center; justify-content: space-between; }
+#wordCooccurrence .wc-interview-title-group { display: inline-flex; align-items: center; gap: 8px; height: 28px; }
+#wordCooccurrence .wc-middle-clean-title { font-size: var(--text-base, 14px); font-weight: 600; color: #142d36; line-height: 28px; }
+#wordCooccurrence .wc-pending-count { display: inline-flex; align-items: center; height: 24px; border-radius: 999px; padding: 0 9px; font-weight: 500; line-height: 1; }
+#wordCooccurrence .wc-count-help { height: 24px; }
+#wordCooccurrence .wc-review-toggle { display: inline-flex; align-items: center; height: 28px; line-height: 28px; }
+#wordCooccurrence .wc-cards { padding: 14px 18px 20px; }
+#wordCooccurrence .wc-card.wc-excluded-collapsed { border-radius: 12px; padding: 10px 14px; background: #f9fbfb; border-color: #e3ecea; }
+#wordCooccurrence .wc-cards .wc-card:not(.wc-excluded-collapsed) { border: 1px solid #cfe3e0; border-radius: 12px; padding: 14px 16px; }
+#wordCooccurrence .wc-original { font-size: var(--text-base, 14px) !important; line-height: 1.75 !important; color: #1c353b; margin-top: 12px; }
+#wordCooccurrence .wc-stat-menu summary { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 98px; height: 30px; padding: 0 10px; border-radius: 8px; font-size: var(--text-sm, 13px); font-weight: 500; }
+#wordCooccurrence .wc-stat-menu summary:after { float: none; margin-left: 4px; line-height: 1; }
+#wordCooccurrence .wc-issues { background: #f7faf9; border-radius: 14px; border: 0; padding: 16px 18px; display: flex; flex-direction: column; }
+#wordCooccurrence .wc-issues .wc-side-heading { padding: 0 0 12px; border-bottom: 0; }
+#wordCooccurrence .wc-issues > h3 { display: none !important; }
+#wordCooccurrence .wc-issue-content { background: transparent; border: 0; padding: 0; }
+#wordCooccurrence .wc-suggest-card { background: #fff; border: 1px solid #e0ecea; border-radius: 12px; padding: 14px 15px; margin-bottom: 12px; }
+#wordCooccurrence .wc-suggest-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+#wordCooccurrence .wc-suggest-meta strong { font-size: var(--text-base, 14px); font-weight: 600; color: #142d36; }
+#wordCooccurrence .wc-len-pill { font-size: var(--text-xs, 12px); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: #fff3df; color: #a35e12; white-space: nowrap; }
+#wordCooccurrence .wc-suggest-card .wc-reason-text { margin: 0; font-size: var(--text-sm, 13px); line-height: 1.65; color: #5b727a; }
+#wordCooccurrence .wc-issue-actions { display: grid; gap: 8px; }
+#wordCooccurrence .wc-issue-actions button { margin: 0; height: 36px; border-radius: 8px; font-size: var(--text-base, 14px); font-weight: 500; display: flex; align-items: center; justify-content: center; width: 100%; }
+#wordCooccurrence .wc-issue-actions .wc-view-neighbor,
+#wordCooccurrence .wc-issue-actions [data-apply] { border: 1px solid #bfe2dd; background: #e9f7f4; color: #007a72; font-weight: 600; }
+#wordCooccurrence .wc-issues details.wc-rules-fold { margin-top: auto; padding: 12px 0 0; border-top: 1px solid #e2ecea; }
+#wordCooccurrence .wc-issues details.wc-rules-fold summary { font-size: var(--text-sm, 13px); font-weight: 500; color: #142d36; }
+#wordCooccurrence .wc-cards .wc-card.wc-current-review{border-color:#86c5bb;box-shadow:inset 3px 0 #008f86;background:#f7fcfb;scroll-margin:10px}
+#wordCooccurrence .wc-review-nav,#wordCooccurrence .wc-interview-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+#wordCooccurrence .wc-interview-filter{padding:8px 10px 0}
+#wordCooccurrence .wc-review-nav span{margin-right:auto;font-size:var(--text-xs,12px);color:#58757c}
+#wordCooccurrence .wc-review-nav button,#wordCooccurrence .wc-interview-filter button{width:auto;display:inline-flex;margin:0;border:1px solid #d2e4e2;border-radius:7px;background:#fff;padding:4px 8px;font-size:var(--text-xs,12px);color:#175a57}
+#wordCooccurrence .wc-review-nav button:disabled{opacity:.45}
+#wordCooccurrence .wc-interview-filter button[aria-pressed=true]{background:#e7f4f1;border-color:#b4dbd4;font-weight:600}
+#wordCooccurrence button.wc-pending-count{border:0;background:#fff0da;color:#9a510c}
+#wordCooccurrence .wc-issue-actions [data-dismiss]{border:1px solid #cbdedf;background:#fff;color:#23535a}
+#wordCooccurrence .wc-issue-actions [data-dismiss]:hover:not(:disabled){background:#edf7f5;border-color:#a4d1ca}
+@media(max-width:640px){#wordCooccurrence .wc-middle>header{height:auto;min-height:50px;flex-wrap:wrap;padding:8px 12px}#wordCooccurrence .wc-interview-title-group{height:auto;flex-wrap:wrap}}

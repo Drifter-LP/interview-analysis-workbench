@@ -8,11 +8,20 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.route('**/auth/changelog',r=>r.fulfill({json:{items:[]}}));
   const projects=[{id:'scope-a',name:'社区服务研究',interviews:[],interview_ids:[]},{id:'scope-b',name:'社区活动参与研究',interviews:[],interview_ids:[]}];
   const fixtures=id=>['甲','乙'].map((letter,i)=>{const text='受访者：这是隔离测试原文 '+id+letter;return {id:id+'-'+i,name:'社区服务访谈稿'+letter,text,issues:[],blocks:[{id:id+'-block-'+i,start:0,end:Array.from(text).length,include:true,kind:'content'}]};});
-  let fail=false;
+  let fail=false,allWords=false;const wordRequests=[];
   await p.route(/\/api\/research-projects\/scope-[ab]\/word-cooccurrence/,async r=>{
    const [,id,action='']=new URL(r.request().url()).pathname.match(/research-projects\/(scope-[ab])\/word-cooccurrence(.*)/);reads.push([id,action]);
    if(fail&&id==='scope-b'){fail=false;return r.fulfill({status:503,json:{detail:'模拟读取失败'}});}
-   return r.fulfill({json:action==='/history'?[{id:'saved-one',name:'服务可及性',saved_at:1764050000}]:{status:'completed',step:2,confirmed:true,revision:1,history_id:action? 'saved-one':null,interviews:fixtures(id),candidates:id==='scope-b'?[]:[{word:'社区',blocks:2},{word:'服务',blocks:1}]}});
+   const candidates=[{word:'社区',blocks:2},{word:'服务',blocks:1}];
+   if(id==='scope-b'&&action==='/words'){
+    const body=r.request().postDataJSON();wordRequests.push(body);
+    if(body.mode==='answers'){
+     await p.locator('.fw-loading-state').waitFor();
+     return r.fulfill({status:422,json:{detail:'没有可统计词语'}});
+    }
+    allWords=true;return r.fulfill({json:candidates});
+   }
+   return r.fulfill({json:action==='/history'?[{id:'saved-one',name:'服务可及性',saved_at:1764050000}]:{status:'completed',step:allWords&&id==='scope-b'?3:2,confirmed:true,revision:allWords&&id==='scope-b'?2:1,history_id:action? 'saved-one':null,interviews:fixtures(id),candidates:id==='scope-a'||allWords?candidates:undefined,token_mode:allWords&&id==='scope-b'?'all':'answers'}});
   });
   await p.goto(origin+'/',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>!!window.researchNavigation);
   await p.evaluate(list=>{researchProjects=list;selectedResearchProject=list[0];switchView('analysis','focused');},projects);
@@ -56,8 +65,15 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   fail=true;await trigger.click();p.once('dialog',dialog=>dialog.accept());await menu.getByRole('button',{name:'社区活动参与研究',exact:true}).click();
   await p.locator('#toast').filter({hasText:'模拟读取失败'}).waitFor();assert.match(await trigger.textContent(),/社区服务研究/);
   await trigger.click();p.once('dialog',dialog=>dialog.accept());await menu.getByRole('button',{name:'社区活动参与研究',exact:true}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('社区活动参与研究'));
+  const autoAttempt=p.waitForResponse(r=>r.url().endsWith('/words')&&r.status()===422);
   await p.locator('.wc-stepper [data-step="3"]').click();
-  await p.getByRole('button',{name:/切换为.*整块原文.*并提取词语/}).waitFor();assert.ok(await generate.isDisabled());
+  const whole=p.getByRole('button',{name:/切换为.*整块原文.*并提取词语/});
+  await autoAttempt;
+  await whole.waitFor();assert.ok(await generate.isDisabled());
+  await p.locator('.wc-stepper [data-step="2"]').click();await local.waitFor();
+  await p.locator('.wc-stepper [data-step="3"]').click();await whole.click();
+  await p.locator('.fw-word input[data-word="社区"]').waitFor();
+  assert.deepEqual(wordRequests.map(x=>[x.mode,x.revision]),[['answers',1],['all',1]]);
   await p.setViewportSize({width:390,height:800});await trigger.click();const m=await menu.boundingBox();assert.ok(m.x>=0&&m.x+m.width<=391,JSON.stringify(m));
   assert.deepEqual(errors,[]);console.log('PASS: compact scope, five characters, local switch, history, unsaved guard, failure recovery and mobile bounds');
  }finally{await b.close();}

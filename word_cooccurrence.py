@@ -337,6 +337,7 @@ def register_word_cooccurrence(app, research_path, transcript_path, read_key, pr
         with lock:
             d=load(pid)
             if not d or not d.get('confirmed'):raise HTTPException(409,'请先确认切块')
+            if 'revision' in body and body['revision']!=d['revision']:raise HTTPException(409,'草稿已被其它窗口更新，请重新读取')
             check_sources(pid,d)
             import jieba
             tokenizer=jieba.Tokenizer()

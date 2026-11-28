@@ -1,6 +1,6 @@
 /* Independent review gate. Text is immutable; only offsets are edited. */
 (() => {
- const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-clean-1';document.head.append(css);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-clean-2';document.head.append(css);
  const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=20261010-5';document.head.append(selectionCss);
  const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=33';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
@@ -8,6 +8,7 @@
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';
  let draft=null,pid='',tid='',dirty=false,issueIndex=0,onlyIssues=false,active=false,poll=null,busy=false,loading=false,selecting=false;
  let nextBlocked=false,stepperSignature='';
+ const autoTokenized=new Map();
  const historyPicker=document.createElement('select'),saveResult=document.createElement('button'),newExploration=document.createElement('button'),stepperNav=document.createElement('nav');historyPicker.setAttribute('aria-label','词语探索历史结果');historyPicker.title='分析记录：未选择历史结果时显示当前草稿';historyPicker.append(new Option('分析记录',''));saveResult.textContent='保存结果';saveResult.className='wc-save-result';newExploration.type='button';newExploration.textContent='+ 新建探索';newExploration.className='wc-new-exploration';stepperNav.className='wc-stepper';stepperNav.setAttribute('aria-label','词语探索流程步骤');
  function startNewExploration(){
   if(busy||loading)return;
@@ -186,7 +187,7 @@
   divider('left',middle);divider('right',right);
   apply();const observer=new ResizeObserver(()=>{if(!layout.isConnected){observer.disconnect();return;}apply();});observer.observe(layout);observer.observe(middle.querySelector('header'));
  }
- const request=async(path,method='GET',body)=>{const r=await fetch(`/api/research-projects/${encodeURIComponent(pid)}/word-cooccurrence${path}`,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.detail||'请求失败');return d;};
+ const request=async(path,method='GET',body)=>{const r=await fetch(`/api/research-projects/${encodeURIComponent(pid)}/word-cooccurrence${path}`,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Object.assign(Error(d.detail||'请求失败'),{status:r.status});return d;};
  const guard=fn=>async(...args)=>{if(busy)return;busy=true;save.disabled=next.disabled=true;try{await fn(...args);}catch(e){toast(e.message);}finally{busy=false;save.disabled=false;next.disabled=nextBlocked;}};
  function text(t,b){return Array.from(t.text).slice(b.start,b.end).join('');}
  function selected(){return draft?.interviews.find(t=>t.id===tid)||draft?.interviews[0];}
@@ -265,9 +266,13 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
    const helpButton=document.createElement('button');helpButton.type='button';helpButton.textContent='?';helpButton.setAttribute('aria-label','特征词确认说明');
    const tip=document.createElement('span');tip.className='wc-count-tooltip';tip.id='fw-heading-tooltip';tip.setAttribute('role','tooltip');tip.textContent='选择有研究意义的词，作为共现分析的节点。每个文本块中的同一词只计一次；统计范围以当前设置为准。';helpButton.setAttribute('aria-describedby',tip.id);help.append(helpButton,tip);heading.querySelector('h2').append(help);
    helpButton.onclick=()=>help.classList.toggle('open');helpButton.onkeydown=e=>{if(e.key==='Escape')help.classList.remove('open');};
-   disposeWords=window.renderFeatureWords({root,heading,nextButton:next,draft,notify:toast,showSource:showSourceDrawer,recommend:body=>request('/recommend','POST',body),setPending:value=>{nextBlocked=value;next.disabled=value||busy;},apply:async({mode,stopwords,keep})=>{
+   const revision=draft.revision,projectId=pid;
+   const autoTokenize=!!draft.confirmed&&!draft.history_id&&!Array.isArray(draft.candidates)&&autoTokenized.get(projectId)!==revision;
+   disposeWords=window.renderFeatureWords({root,heading,nextButton:next,draft,autoTokenize,notify:toast,showSource:showSourceDrawer,recommend:body=>request('/recommend','POST',body),setPending:value=>{nextBlocked=value;next.disabled=value||busy;},apply:async({mode,stopwords,keep,automatic})=>{
+    if(!active||pid!==projectId||draft.revision!==revision||draft.history_id)throw Error('当前草稿已变化，请重新打开词语探索');
     if(busy)throw Error('正在处理，请稍后再试');busy=true;next.disabled=true;
-    try{await request('/words','POST',{mode,stopwords});draft=await request('');const available=new Set(draft.candidates.map(x=>x.word));const removed=keep.filter(w=>!available.has(w)),notApplied=stopwords.filter(w=>!draft.stopwords.includes(w));draft.selected_words=keep.filter(w=>available.has(w));render();toast('重新分词完成'+(removed.length?'；不再出现的已选词已移除：'+removed.join('、'):'，已保留仍出现的已选词')+(notApplied.length?'；受保护词未加入停用词：'+notApplied.join('、'):''));}
+    if(automatic)autoTokenized.set(projectId,revision);
+    try{await request('/words','POST',{mode,stopwords,revision});draft=await request('');const available=new Set((draft.candidates||[]).map(x=>x.word));const removed=keep.filter(w=>!available.has(w)),notApplied=stopwords.filter(w=>!(draft.stopwords||[]).includes(w));draft.selected_words=keep.filter(w=>available.has(w));render();if(!automatic)toast('重新分词完成'+(removed.length?'；不再出现的已选词已移除：'+removed.join('、'):'，已保留仍出现的已选词')+(notApplied.length?'；受保护词未加入停用词：'+notApplied.join('、'):''));}
     finally{busy=false;next.disabled=nextBlocked;}
    }});return;
   }if(draft.step===4){heading.querySelector('span')?.remove();disposeWords=window.renderWordNetwork({root,heading,draft,showSource:showSourceDrawer});return;}

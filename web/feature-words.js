@@ -1,5 +1,5 @@
 /* Feature selection UI. Stopword edits stay local until explicitly applied. */
-window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recommend,showSource,notify,setPending=()=>{}}) {
+window.renderFeatureWords = function({root,heading,nextButton,draft,autoTokenize=false,apply,recommend,showSource,notify,setPending=()=>{}}) {
  const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
  const button=(text,cls='')=>{const n=el('button',cls,text);n.type='button';return n;};
  const page=el('div','fw-page');root.append(page);
@@ -8,7 +8,7 @@ window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recomm
  const initial=new Set(draft.stopwords||[]);let stops=new Set(initial),saving=false,focusWord='';
  const changed=()=>stops.size!==initial.size||[...stops].some(w=>!initial.has(w));
  const stopButton=button(`停用词 · ${initial.size} 个`,'fw-stop-trigger');stopButton.setAttribute('aria-expanded','false');
- const rerun=button('重新分词');rerun.hidden=true;settings.append(scope,stopButton,rerun);if(nextButton)settings.append(nextButton);if(heading){heading.classList.add('fw-heading');heading.append(settings);}else page.append(settings);
+ const rerun=button('重新分词');rerun.hidden=Array.isArray(draft.candidates)&&draft.candidates.length>0;settings.append(scope,stopButton,rerun);if(nextButton)settings.append(nextButton);if(heading){heading.classList.add('fw-heading');heading.append(settings);}else page.append(settings);
  const grid=el('div','fw-grid'),main=el('section','fw-candidates'),side=el('aside','fw-selected');grid.append(main,side);page.append(grid);
  const toolbar=el('div','fw-toolbar'),title=el('h3','',`候选词 · ${(draft.candidates||[]).length}`),search=el('input'),sort=el('select'),clear=button('清空选择');
  search.type='search';search.placeholder='搜索候选词';search.setAttribute('aria-label','搜索候选词');sort.setAttribute('aria-label','候选词排序');sort.append(new Option('按词频排序','frequency'),new Option('按名称排序','name'));const ai=button('AI 推荐','fw-ai');ai.innerHTML='<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin-right:4px"><path d="M8 1.5 9.6 6.4 14.5 8 9.6 9.6 8 14.5 6.4 9.6 1.5 8 6.4 6.4Z"/></svg><span>AI 推荐</span>',toolbarActions=el('div','fw-toolbar-actions');toolbarActions.append(search,sort,ai,clear);toolbar.append(title,toolbarActions);main.append(toolbar);
@@ -55,7 +55,11 @@ window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recomm
   rows.sort(sort.value==='name'?(a,b)=>a.word.localeCompare(b.word,'zh-CN'):(a,b)=>b.blocks-a.blocks);
   for(const x of rows){const label=el('label','fw-word'),input=el('input');input.type='checkbox';input.dataset.word=x.word;input.checked=chosen.has(x.word);label.classList.toggle('selected',input.checked);label.append(input,el('span','',x.word),el('small','',String(x.blocks)));input.onchange=()=>{input.checked?chosen.add(x.word):chosen.delete(x.word);focusWord=x.word;label.classList.toggle('selected',input.checked);sync();};list.append(label);}
   empty.replaceChildren();
-  if(!rows.length){
+  if(saving){
+   const box=el('div','fw-loading-state');box.setAttribute('role','status');
+   const spin=el('span','fw-spinner');spin.setAttribute('aria-hidden','true');
+   box.append(spin,el('span','','正在分词…'));empty.append(box);
+  }else if(!rows.length){
    if(!allCandidates.length&&mode.value==='answers'){
     const msg=el('p','fw-note','按「仅受访者回答」统计时没有候选词。可切换为整块原文重新提取，统计将包括提问。');
     const switchBtn=button('切换为「整块原文（包含提问）」并提取词语','primary fw-switch-all');
@@ -65,7 +69,7 @@ window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recomm
     empty.append(el('p','fw-note','没有匹配的候选词'));
    }
   }
-  empty.hidden=!!rows.length;sync();
+  empty.hidden=!saving&&!!rows.length;sync();
  }
  search.oninput=draw;sort.onchange=draw;clear.onclick=()=>{chosen.clear();draw();};draw();
  const pop=el('section','fw-popover');pop.setAttribute('popover','manual');pop.setAttribute('role','dialog');pop.setAttribute('aria-label','停用词管理');page.append(pop);
@@ -75,7 +79,7 @@ window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recomm
  const helper=el('p','fw-note','支持粘贴多个词，空格或换行分隔；自动去重'),chips=el('div','fw-stop-list'),changes=el('div','fw-changes'),diff=el('span'),reset=button('撤销修改','fw-link');changes.append(diff,reset);
  const footer=el('footer'),cancel=button('取消'),save=button('保存并重新分词','primary');footer.append(cancel,save);
  pop.append(head,find,addRow,helper,chips,changes,el('p','fw-note','保存前不会改变当前分词结果。'),footer);
- function pending(){setPending(changed()||mode.value!==(draft.token_mode||'answers')||chosen.size<2);}
+ function pending(){setPending(saving||changed()||mode.value!==(draft.token_mode||'answers')||chosen.size<2);}
  pending();
  mode.onchange=()=>{
   if(changed()){notify('请先保存或取消停用词修改');mode.value=draft.token_mode||'answers';pending();return;}
@@ -98,12 +102,14 @@ window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recomm
  document.addEventListener('pointerdown',e=>{if(pop.matches(':popover-open')&&!pop.contains(e.target)&&!stopButton.contains(e.target))hide();},{signal:controller.signal});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pop.matches(':popover-open')){e.preventDefault();hide();}},{signal:controller.signal});
  window.addEventListener('resize',()=>{if(pop.matches(':popover-open'))position();},{signal:controller.signal});
- async function submit(newStops){
+ async function submit(newStops,automatic=false){
   if(saving)return;saving=true;save.disabled=cancel.disabled=close.disabled=add.disabled=entry.disabled=find.disabled=rerun.disabled=mode.disabled=stopButton.disabled=true;main.inert=side.inert=true;chips.querySelectorAll('button').forEach(b=>b.disabled=true);setPending(true);
-  try{await apply({mode:mode.value,stopwords:[...newStops],keep:[...chosen]});}
-  catch(error){notify(error.message);}
-  finally{saving=false;if(page.isConnected){save.disabled=cancel.disabled=close.disabled=add.disabled=entry.disabled=find.disabled=rerun.disabled=mode.disabled=stopButton.disabled=false;main.inert=side.inert=false;drawStops();}}
+  draw();
+  try{await apply({mode:mode.value,stopwords:[...newStops],keep:[...chosen],automatic});}
+  catch(error){if(!automatic||error.status!==422)notify(error.message);mode.value=draft.token_mode||'answers';rerun.hidden=false;}
+  finally{saving=false;if(page.isConnected){save.disabled=cancel.disabled=close.disabled=add.disabled=entry.disabled=find.disabled=rerun.disabled=mode.disabled=stopButton.disabled=false;main.inert=side.inert=false;drawStops();draw();}}
  }
  save.onclick=()=>submit(stops);rerun.onclick=()=>{if(changed()){notify('请先保存或取消停用词修改');return;}submit(initial);};
- return ()=>{controller.abort();pop.remove();settings.remove();};
+ const autoTimer=autoTokenize?setTimeout(()=>{if(page.isConnected&&!root.hidden)submit(initial,true);},0):null;
+ return ()=>{clearTimeout(autoTimer);controller.abort();pop.remove();settings.remove();};
 };

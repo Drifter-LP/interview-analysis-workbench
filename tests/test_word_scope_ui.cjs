@@ -8,11 +8,16 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.route('**/auth/changelog',r=>r.fulfill({json:{items:[]}}));
   const projects=[{id:'scope-a',name:'社区服务研究',interviews:[],interview_ids:[]},{id:'scope-b',name:'社区活动参与研究',interviews:[],interview_ids:[]}];
   const fixtures=id=>['甲','乙'].map((letter,i)=>{const text='受访者：这是隔离测试原文 '+id+letter;return {id:id+'-'+i,name:'社区服务访谈稿'+letter,text,issues:[],blocks:[{id:id+'-block-'+i,start:0,end:Array.from(text).length,include:true,kind:'content'}]};});
-  let fail=false,allWords=false;const wordRequests=[];
+  let fail=false,allWords=false,recommendAttempts=0;const wordRequests=[];
   await p.route(/\/api\/research-projects\/scope-[ab]\/word-cooccurrence/,async r=>{
    const [,id,action='']=new URL(r.request().url()).pathname.match(/research-projects\/(scope-[ab])\/word-cooccurrence(.*)/);reads.push([id,action]);
    if(fail&&id==='scope-b'){fail=false;return r.fulfill({status:503,json:{detail:'模拟读取失败'}});}
    const candidates=[{word:'社区',blocks:2},{word:'服务',blocks:1}];
+   if(id==='scope-a'&&action==='/recommend'){
+    recommendAttempts++;
+    return recommendAttempts===1?r.fulfill({json:{recommendations:[{word:'服务',reason:'用于比较服务经验'}],skipped_count:2}}):
+     r.fulfill({status:502,json:{detail:'AI 输出被截断，无法读取推荐。请重试或手动选词。'}});
+   }
    if(id==='scope-b'&&action==='/words'){
     const body=r.request().postDataJSON();wordRequests.push(body);
     if(body.mode==='answers'){
@@ -55,7 +60,15 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.locator('.wc-stepper [data-step="2"]').click();await local.waitFor();
   assert.ok(await p.getByRole('button',{name:/确认切块并继续/}).isEnabled());
   await p.locator('.wc-stepper [data-step="3"]').click();
-  await p.locator('.fw-word input[data-word="服务"]').check();assert.ok(await generate.isEnabled());
+  await p.getByRole('button',{name:'AI 推荐',exact:true}).click();
+  await p.getByRole('button',{name:'开始推荐',exact:true}).click();
+  await p.getByText(/已跳过 2 条/).waitFor();
+  assert.ok(await p.locator('.fw-word input[data-word="社区"]').isChecked());
+  assert.ok(!await p.locator('.fw-word input[data-word="服务"]').isChecked());
+  await p.getByRole('button',{name:'加入勾选推荐词'}).click();assert.ok(await generate.isEnabled());
+  await p.getByRole('button',{name:'重新推荐',exact:true}).click();
+  await p.getByRole('alert').filter({hasText:'输出被截断'}).waitFor();
+  assert.equal(await p.locator('.fw-word input:checked').count(),2);assert.equal(recommendAttempts,2);
   await p.locator('.wc-stepper [data-step="2"]').click();await local.waitFor();
   await p.locator('.wc-card summary').filter({hasText:'纳入统计'}).click();
   await p.getByRole('button',{name:'排除统计',exact:true}).click();

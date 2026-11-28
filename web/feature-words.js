@@ -22,10 +22,10 @@ window.renderFeatureWords = function({root,heading,nextButton,draft,autoTokenize
   recommending=true;run.disabled=true;run.textContent='AI推荐中…';recommendations.replaceChildren();rerun.disabled=true;stopButton.disabled=true;mode.disabled=true;
   try{
    const data=await recommend({revision:draft.revision,objective:objective.value.trim()});if(!page.isConnected)return;
-   const picks=[];recommendations.append(el('p','fw-note',`AI推荐 ${data.recommendations.length} 个词，仅供参考；勾选后加入，不覆盖已有选择。`));
+   const picks=[],skipped=data.skipped_count>0?`，已跳过 ${data.skipped_count} 条未采用的推荐`:'',note=el('p','fw-note',`保留 ${data.recommendations.length} 个合格推荐${skipped}。勾选后加入，不覆盖已有选择。`);note.setAttribute('role','status');recommendations.append(note);
    for(const row of data.recommendations){const label=el('label','fw-recommend-row'),check=el('input'),detail=el('span');check.type='checkbox';check.checked=true;check.dataset.recommendedWord=row.word;detail.append(el('strong','',row.word),el('small','',row.reason));label.append(check,detail);recommendations.append(label);picks.push(check);}
    const accept=button('加入勾选推荐词','primary');accept.onclick=()=>{let n=0;for(const check of picks)if(check.checked&&valid.has(check.dataset.recommendedWord)&&!chosen.has(check.dataset.recommendedWord)){chosen.add(check.dataset.recommendedWord);n++;}draw();notify(`已新增 ${n} 个推荐词，原有选择已保留`);};recommendations.append(accept);
-  }catch(e){notify(e.message);recommendations.append(el('p','fw-note','推荐失败，已选词未改变。可重试或继续手动选择。'));}
+  }catch(e){if(page.isConnected){const error=el('p','fw-note',(e.message||'推荐未完成。')+' 已选词未改变。');error.setAttribute('role','alert');recommendations.append(error);}}
   finally{recommending=false;if(page.isConnected){run.disabled=false;run.textContent='重新推荐';rerun.disabled=stopButton.disabled=mode.disabled=false;}}
  };
  const list=el('div','fw-word-list');main.append(list);const empty=el('div','fw-empty-state');main.append(empty);

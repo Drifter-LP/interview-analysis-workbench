@@ -79,3 +79,23 @@
 #wordCooccurrence .wc-selection-actions{display:flex;align-items:center;gap:10px;}
 #wordCooccurrence .wc-resume-draft{padding:10px 16px;border-radius:10px;border:1px solid #bddcd9;background:#f2faf9;color:#186661;font-weight:600;white-space:nowrap;}
 #wordCooccurrence .wc-gear-icon{flex-shrink:0;color:#365965;}
+
+/* Word Exploration UI Redesign: Lightweight borderless stepper */
+.workspace-header .workspace-tab-slot .wc-stepper-item {
+  border-color: transparent !important;
+  background: transparent !important;
+  font-size: var(--text-base, 14px) !important;
+  font-weight: 500;
+  color: #5b727a !important;
+}
+.workspace-header .workspace-tab-slot .wc-stepper-item.done {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #0d7a72 !important;
+}
+.workspace-header .workspace-tab-slot .wc-stepper-item.active {
+  background: #008f86 !important;
+  border-color: #008f86 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+}

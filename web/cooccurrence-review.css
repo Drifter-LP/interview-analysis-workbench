@@ -146,3 +146,18 @@
 #wordCooccurrence .wc-issue-content>.wc-next-review:hover{background:#fff0dd;}
 #wordCooccurrence .wc-issue-content>.wc-review-done{color:#008b80;font-size:13px;text-align:center;}
 #wordCooccurrence .wc-issue-content>[data-dismiss]{background:#fff;color:#55717a;border-color:#d5e3e5;}
+
+/* Word Exploration UI Redesign: Step 2 Chunk Review */
+#wordCooccurrence .wc-heading h2 { font-size: var(--text-xl, 18px) !important; font-weight: 600; }
+#wordCooccurrence .wc-heading-sub { font-size: var(--text-sm, 13px); }
+#wordCooccurrence .wc-interviews button { flex-direction: column; align-items: flex-start; gap: 3px; }
+#wordCooccurrence .wc-interviews button > span:first-child { font-size: var(--text-base, 14px); font-weight: 500; white-space: normal; }
+#wordCooccurrence .wc-cards .wc-card p,
+#wordCooccurrence .wc-cards .wc-card .wc-card-body { font-size: var(--text-md, 15px); line-height: 1.75; }
+#wordCooccurrence .wc-issues { background: #f7faf9; border-radius: 14px; border: 0; }
+#wordCooccurrence .wc-issues > h3 > .wc-issue-count-pill { display: none; }
+#wordCooccurrence .wc-issue-content { background: #fff; border: 1px solid #e0ecea; border-radius: 12px; padding: 14px 15px; }
+#wordCooccurrence .wc-issue-content .wc-reason-text { font-size: var(--text-sm, 13px); line-height: 1.65; color: #5b727a; }
+#wordCooccurrence .wc-issue-content .wc-view-neighbor,
+#wordCooccurrence .wc-issue-content > .wc-next-review,
+#wordCooccurrence .wc-issue-content > [data-dismiss] { text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 8px; height: 36px; font-size: var(--text-base, 14px); }

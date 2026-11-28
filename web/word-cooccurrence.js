@@ -1,8 +1,8 @@
 /* Independent review gate. Text is immutable; only offsets are edited. */
 (() => {
- const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=type-scale-1';document.head.append(css);
- const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=type-scale-1';document.head.append(selectionCss);
- const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=type-scale-1';document.head.append(reviewCss);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-ui-layout-1';document.head.append(css);
+ const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=word-ui-layout-1';document.head.append(selectionCss);
+ const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=word-ui-layout-1';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
  const picker=document.createElement('select'),status=document.createElement('span'),save=document.createElement('button'),next=document.createElement('button');
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';
@@ -258,7 +258,10 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   refreshStepper();
   if(!pid){root.textContent='请先选择研究项目。';return;}
   if(!draft||draft.status==='failed'||selecting){renderStart();return;}
-  if(draft.status==='running'){root.innerHTML='<div class="wc-empty">正在准备话题块：优先复用索引，缺少索引时新建。可切换到其它页面，任务继续运行。</div>';return;}
+  if(draft.status==='running'){
+   root.innerHTML=`<div class="wc-selection-page"><div class="wc-selection-title"><h2>正在准备话题块</h2><span class="wc-selection-intro">优先复用已有话题索引，缺少索引时新建。</span></div><div class="wc-selection-grid"><section class="wc-material-card wc-running-card"><div class="wc-running-center" role="status"><span class="wc-running-spinner" aria-hidden="true"></span><h3>正在准备话题块…</h3><p>优先复用已有索引，缺少索引时新建；完成后将自动进入切块复核。</p></div><footer><span class="wc-running-tip">可切换到其它页面，任务将在后台继续运行</span></footer></section><aside class="wc-followup"><h3>后续流程说明</h3><ol><li><span class="wc-step-number">2</span><div><strong>切块复核</strong><p>检查话题讨论边界，支持拆分与合并。</p></div></li><li><span class="wc-step-number">3</span><div><strong>特征词确认</strong><p>剔除停用词，勾选有研究意义的核心词。</p></div></li><li><span class="wc-step-number">4</span><div><strong>词语共现图</strong><p>查看关联排行、共现矩阵与原文证据。</p></div></li></ol><p class="wc-selection-note">提示：准备完成后将自动进入「2. 切块复核」，无需手动刷新。</p></aside></div></div>`;
+   return;
+  }
   if(draft.stale){root.innerHTML=`<p class="wc-warning">${esc(draft.stale)}</p>`;renderStart();return;}
   const heading=document.createElement('div');heading.className='wc-heading';heading.innerHTML=`<h2>${draft.step===2?'切块复核':draft.step===3?'特征词确认':'词语共现图'}</h2><span class="wc-heading-sub">${draft.step===2?'检查并微调话题讨论边界，原文内容保持不变':draft.step===3?'勾选有研究意义的词作为共现节点':''}</span>`;root.append(heading);
   if(draft.step===3){

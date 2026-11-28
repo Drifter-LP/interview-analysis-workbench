@@ -22,3 +22,16 @@
 #wordCooccurrence .fw-empty-state .fw-switch-all{margin-top:12px;height:36px;padding:0 16px;font-weight:600;}
 #wordCooccurrence .fw-settings>#wcNext{height:34px;min-height:34px;padding:0 14px;border-radius:7px;background:#00938c;border-color:#00938c;color:#fff;font-weight:600;}
 #wordCooccurrence .fw-settings>#wcNext:disabled{opacity:.48;cursor:not-allowed;}
+
+/* Word Exploration UI Redesign: Step 3 Feature Words */
+.fw-grid { grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; }
+.fw-candidates { border-radius: 14px; border-color: #dce7e5; }
+.fw-selected { border-radius: 14px; border: 0; background: #f7faf9; }
+.fw-page h3 { font-size: var(--text-lg, 16px); font-weight: 600; color: #142d36; }
+.fw-word { min-height: 34px; padding: 4px 11px; border-radius: 8px; border-color: #dce6e4; gap: 7px; font-size: var(--text-base, 14px); }
+.fw-word.selected { background: #eaf7f4; border-color: #6bc4ba; color: #095b54; font-weight: 600 !important; }
+.fw-word small { background: transparent; color: #7c9299; padding: 0; font-size: var(--text-xs, 12px); font-variant-numeric: tabular-nums; }
+.fw-selected-tags { display: block; }
+.fw-selected-tags button { display: inline-block; white-space: nowrap; height: 28px; line-height: 26px; padding: 0 10px; margin: 0 6px 6px 0; border-radius: 999px; background: #fff; border: 1px solid #b8ded9; color: #0b5d57; font-size: var(--text-sm, 13px); }
+.fw-preview { background: #fff; border: 1px solid #e0ecea; border-radius: 12px; padding: 14px 15px; margin-top: 12px; }
+@media(max-width:950px){#wordCooccurrence .fw-grid{grid-template-columns:minmax(0,1fr)}}

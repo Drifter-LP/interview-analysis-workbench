@@ -8,10 +8,11 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.route('**/auth/changelog',r=>r.fulfill({json:{items:[]}}));
   const projects=[{id:'scope-a',name:'社区服务研究',interviews:[],interview_ids:[]},{id:'scope-b',name:'社区活动参与研究',interviews:[],interview_ids:[]}];
   const fixtures=id=>['甲','乙'].map((letter,i)=>{const text='受访者：这是隔离测试原文 '+id+letter;return {id:id+'-'+i,name:'社区服务访谈稿'+letter,text,issues:[],blocks:[{id:id+'-block-'+i,start:0,end:Array.from(text).length,include:true,kind:'content'}]};});
-  let fail=false,allWords=false,recommendAttempts=0;const wordRequests=[];
+  let fail=false,allWords=false,running=false,recommendAttempts=0;const wordRequests=[];
   await p.route(/\/api\/research-projects\/scope-[ab]\/word-cooccurrence/,async r=>{
    const [,id,action='']=new URL(r.request().url()).pathname.match(/research-projects\/(scope-[ab])\/word-cooccurrence(.*)/);reads.push([id,action]);
    if(fail&&id==='scope-b'){fail=false;return r.fulfill({status:503,json:{detail:'模拟读取失败'}});}
+   if(running&&id==='scope-b'&&!action)return r.fulfill({json:{status:'running',step:1,revision:3,interviews:fixtures(id)}});
    const candidates=[{word:'社区',blocks:2},{word:'服务',blocks:1}];
    if(id==='scope-a'&&action==='/recommend'){
     recommendAttempts++;
@@ -88,6 +89,13 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.locator('.fw-word input[data-word="社区"]').waitFor();
   assert.deepEqual(wordRequests.map(x=>[x.mode,x.revision]),[['answers',1],['all',1]]);
   await p.setViewportSize({width:390,height:800});await trigger.click();const m=await menu.boundingBox();assert.ok(m.x>=0&&m.x+m.width<=391,JSON.stringify(m));
+  const mobileColumns=locator=>locator.evaluate(el=>getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length);
+  assert.equal(await mobileColumns(p.locator('.fw-grid')),1);
+  await trigger.click();running=true;await p.evaluate(()=>window.wordCooccurrence.activate());
+  await p.locator('.wc-running-center').getByRole('heading',{name:/正在准备话题块/}).waitFor();
+  assert.equal(await mobileColumns(p.locator('.wc-selection-grid')),1);
+  assert.equal(await p.getByRole('button',{name:'返回重选',exact:true}).count(),0);
+  await p.screenshot({path:path.resolve(__dirname,'../outputs/word-running-mobile.png')});
   assert.deepEqual(errors,[]);console.log('PASS: compact scope, five characters, local switch, history, unsaved guard, failure recovery and mobile bounds');
  }finally{await b.close();}
 })().catch(e=>{console.error(e.stack);process.exitCode=1});

@@ -50,7 +50,7 @@
 #wordCooccurrence .wc-pane-compact .wc-issues{max-height:360px;}
 #wordCooccurrence .wc-pane-compact .wc-collapsed-rail{flex-direction:row;padding:8px 12px;}
 #wordCooccurrence:has(.wc-layout){background:#fff;}
-.workspace-main #focused.word-co-active:has(.wc-layout){padding:10px 8px!important;}
+.workspace-main #focused.word-co-active:has(.wc-layout){padding:0 8px 10px!important;}
 #wordCooccurrence:has(.wc-layout){padding:0!important;}
 #wordCooccurrence .wc-pane-collapsed .wc-collapsed-rail{padding-top:10px;gap:10px;}
 #wordCooccurrence .wc-pane-collapsed .wc-collapsed-rail button{display:flex;align-items:center;justify-content:center;gap:2px;width:100%;height:28px;padding:2px;}
@@ -73,7 +73,7 @@
 #wordCooccurrence .wc-heading-actions{margin-left:auto;display:flex;align-items:center;gap:8px;}
 #wordCooccurrence .wc-heading-actions button{height:34px;padding:0 14px;border:1px solid #d2e2e4;border-radius:8px;background:#fff;color:#1d4b53;font-size:13px;font-weight:500;}
 #wordCooccurrence .wc-heading-actions button.primary{background:#00938c;border-color:#00938c;color:#fff;font-weight:600;}
-#wordCooccurrence:has(.wc-layout)>.wc-heading{padding:10px 14px 6px;margin:0;background:#fff;border-bottom:1px solid #e7eff1;}
+#wordCooccurrence:has(.wc-layout)>.wc-heading{padding:13px 14px;margin:0;background:#fff;border-bottom:1px solid #e7eff1;}
 #wordCooccurrence .wc-selection-title{display:flex;align-items:baseline;gap:14px;margin:0 0 12px;flex-wrap:wrap;}
 #wordCooccurrence .wc-selection-intro{margin:0!important;font-size:var(--text-base,14px)!important;color:#687f88;}
 #wordCooccurrence .wc-selection-actions{display:flex;align-items:center;gap:10px;}
@@ -98,18 +98,4 @@
   border-color: #008f86 !important;
   color: #fff !important;
   font-weight: 600 !important;
-
-/* Chunk Review UI Redesign: Symmetric top bar & 3-col gap */
-#wordCooccurrence:has(.wc-layout) > .wc-heading {
-  padding: 14px 16px !important;
-  margin: 0 !important;
-  align-items: center !important;
-  min-height: 0 !important;
-}
-#wordCooccurrence .wc-layout {
-  gap: 14px !important;
-  padding: 14px 16px 16px;
-}
-#wordCooccurrence .wc-divider {
-  width: 0 !important;
 }

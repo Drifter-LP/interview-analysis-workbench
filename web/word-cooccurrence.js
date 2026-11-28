@@ -1,6 +1,6 @@
 /* Independent review gate. Text is immutable; only offsets are edited. */
 (() => {
- const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=chunk-review-1';document.head.append(css);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=chunk-heading-spacing-1';document.head.append(css);
  const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=word-ui-layout-1';document.head.append(selectionCss);
  const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=chunk-review-1';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);

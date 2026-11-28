@@ -51,6 +51,14 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.keyboard.press('Escape');assert.equal(await menu.isVisible(),false);assert.ok(await trigger.evaluate(n=>n===document.activeElement));
   if(await p.getByLabel('关闭操作指引',{exact:true}).isVisible())await p.getByLabel('关闭操作指引',{exact:true}).click();
   assert.ok(await p.getByRole('button',{name:'保存进度',exact:true}).isVisible());
+  const reviewHeader=p.locator('#wordCooccurrence > .wc-heading');
+  const spacing=await reviewHeader.evaluate(row=>{
+   const bar=row.getBoundingClientRect(),tabs=document.querySelector('.workspace-header').getBoundingClientRect();
+   const action=row.querySelector('.wc-heading-actions').getBoundingClientRect(),title=row.querySelector('h2').getBoundingClientRect();
+   return {above:action.top-tabs.bottom,below:bar.bottom-action.bottom-parseFloat(getComputedStyle(row).borderBottomWidth),titleOffset:(title.top+title.bottom-action.top-action.bottom)/2};
+  });
+  await reviewHeader.screenshot({path:path.resolve(__dirname,'../outputs/chunk-review-heading-verified.png')});
+  assert.ok(Math.abs(spacing.above-spacing.below)<=1&&Math.abs(spacing.titleOffset)<=1,JSON.stringify(spacing));
   await p.screenshot({path:path.resolve(__dirname,'../outputs/cross-scope-verified.png')});
   await trigger.click();await p.screenshot({path:path.resolve(__dirname,'../outputs/cross-scope-menu-verified.png')});
   await menu.getByRole('button',{name:/服务可及性/}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('服务可及性'));assert.ok(await save.isDisabled());

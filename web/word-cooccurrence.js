@@ -2,7 +2,7 @@
 (() => {
  const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=chunk-heading-spacing-1';document.head.append(css);
  const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=word-ui-layout-1';document.head.append(selectionCss);
- const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=chunk-no-list-filter-1';document.head.append(reviewCss);
+ const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=chunk-coding-aligned-1';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
  const picker=document.createElement('select'),status=document.createElement('span'),save=document.createElement('button'),next=document.createElement('button');
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';
@@ -149,7 +149,8 @@
    document.addEventListener('scroll',()=>closeInlineSplit(),{capture:true,signal:controller.signal});window.addEventListener('resize',()=>closeInlineSplit(),{signal:controller.signal});
   };
  }
- let panePrefs={left:240,right:290,collapsed:false};
+ const reviewPaneDefaults={left:240,right:320};
+ let panePrefs={...reviewPaneDefaults,collapsed:false};
  try{Object.assign(panePrefs,JSON.parse(localStorage.getItem('wc-pane-widths')||'{}'));}catch{}
  function setupPanes(layout){
   const list=layout.querySelector('.wc-list'),middle=layout.querySelector('.wc-middle'),right=layout.querySelector('.wc-issues');
@@ -165,17 +166,16 @@
    layout.classList.toggle('wc-pane-compact',compact);
    layout.classList.toggle('wc-pane-collapsed',panePrefs.collapsed);
    const available=Math.max(0,width-16);
-   let left=panePrefs.collapsed?44:Math.min(Math.max(Number(panePrefs.left)||240,180),Math.max(180,available-560));
-   let rw=Math.min(Math.max(Number(panePrefs.right)||290,240),Math.max(240,available-left-320));
+   let left=panePrefs.collapsed?44:Math.min(Math.max(Number(panePrefs.left)||reviewPaneDefaults.left,180),Math.max(180,available-560));
+   let rw=Math.min(Math.max(Number(panePrefs.right)||reviewPaneDefaults.right,240),Math.max(240,available-left-320));
    layout.classList.toggle('wc-review-closed',!reviewOpen);
    layout.style.gridTemplateColumns=compact?'minmax(0,1fr)':reviewOpen?`${left}px 8px minmax(320px,1fr) 8px ${rw}px`:`${left}px 8px minmax(320px,1fr)`;
    toggle.textContent='‹';toggle.title='收起访谈列表';toggle.setAttribute('aria-label','收起访谈列表');
-   const leftHeader=middle.querySelector('header'),rightHeader=right.querySelector('.wc-side-heading');if(leftHeader&&rightHeader)rightHeader.style.height=leftHeader.getBoundingClientRect().height+'px';
   }
   toggle.onclick=()=>{panePrefs.collapsed=true;store();apply();};expand.onclick=()=>{panePrefs.collapsed=false;store();apply();};
   function divider(side,before){
    const handle=document.createElement('div');handle.className='wc-divider wc-divider-'+side;handle.tabIndex=0;handle.setAttribute('role','separator');handle.setAttribute('aria-orientation','vertical');handle.setAttribute('aria-label',side==='left'?'调整访谈列表宽度':'调整复核栏宽度');handle.title='拖动调整宽度，双击恢复默认';layout.insertBefore(handle,before);
-   handle.ondblclick=()=>{panePrefs.left=240;panePrefs.right=290;store();apply();};
+   handle.ondblclick=()=>{Object.assign(panePrefs,reviewPaneDefaults);store();apply();};
    handle.onkeydown=e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();if(side==='left'&&panePrefs.collapsed)return;panePrefs[side]+=(e.key==='ArrowRight'?1:-1)*(side==='right'?-20:20);store();apply();};
    handle.onpointerdown=e=>{
     if(e.button!==0||layout.classList.contains('wc-pane-compact')||(side==='left'&&panePrefs.collapsed))return;
@@ -196,7 +196,7 @@
   const scroller=root.querySelector('.wc-cards');
   const anchor=anchorId?document.getElementById('wc-'+anchorId):scroller?[...scroller.querySelectorAll('.wc-card')].find(c=>c.getBoundingClientRect().bottom>scroller.getBoundingClientRect().top):null;
   const saved=scroller?{top:scroller.scrollTop,id:anchor?.id,offset:anchor?anchor.getBoundingClientRect().top-scroller.getBoundingClientRect().top:null}:null;
-  const sideScroll=[...root.querySelectorAll('.wc-interviews,.wc-issues')].map(e=>[e.classList.contains('wc-issues')?'.wc-issues':'.wc-interviews',e.scrollTop]);
+  const sideScroll=['.wc-interviews','.wc-issue-content'].map(selector=>[selector,root.querySelector(selector)?.scrollTop||0]);
   dirty=true;draft.step=2;draft.confirmed=false;delete draft.graph;status.textContent='未保存';render();
   const nextScroller=root.querySelector('.wc-cards');
   if(saved&&nextScroller){nextScroller.scrollTop=saved.top;const nextAnchor=saved.id?document.getElementById(saved.id):null;if(nextAnchor&&saved.offset!==null)nextScroller.scrollTop+=nextAnchor.getBoundingClientRect().top-nextScroller.getBoundingClientRect().top-saved.offset;}
@@ -250,6 +250,7 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
  function manual(t,b){const c=document.createElement('div');c.innerHTML='<p>点击一句的开头，在该位置拆分；原文不会改变。</p>';const re=/[。！？!?；;\n]+/g;let m,a=0;const starts=[0];while((m=re.exec(text(t,b))))starts.push(m.index+m[0].length);starts.push(text(t,b).length);for(let i=0;i+1<starts.length;i++){const button=document.createElement('button');button.className='wc-sentence';button.textContent=text(t,b).slice(starts[i],starts[i+1]);button.disabled=i===0;button.onclick=()=>{split(t,b,[b.start+starts[i]]);d.close();mark();};c.append(button);}const d=dialog('手动拆分',c);}
  let disposeWords=()=>{};
  function render(){
+  const enteringReview=!root.querySelector('.wc-cards');
   disposeWords();disposeWords=()=>{};
   closeInlineSplit();
   const currentStep=selecting||!draft||draft.status==='failed'?1:draft.step;
@@ -285,26 +286,34 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   const t=selected();if(reviewInterview!==t.id){reviewInterview=t.id;reviewBlock=null;issueIndex=0;reviewOpen=t.issues.some(x=>!x.resolved);}
   const pendingIssues=t.issues.filter(x=>!x.resolved).sort((a,b)=>a.start-b.start);
   const blockFor=x=>t.blocks.find(b=>b.start<=x.start&&x.start<b.end);
+  function locateReviewBlock(block){
+   const area=root.querySelector('.wc-cards'),card=block&&document.getElementById('wc-'+block.id);
+   if(!area||!card)return;
+   const viewport=area.getBoundingClientRect(),head=card.querySelector('.wc-card-head').getBoundingClientRect();
+   if(head.top<viewport.top+8||head.bottom>viewport.bottom-8)area.scrollTop+=head.top-viewport.top-18;
+  }
   function jumpToIssue(target,focusDirection){
    const block=target&&blockFor(target);if(!block)return;
    reviewBlock=block.id;reviewOpen=true;issueIndex=pendingIssues.filter(x=>blockFor(x)===block).indexOf(target);
    refreshReviewPane();
-   const card=document.getElementById('wc-'+block.id);card?.scrollIntoView({block:'nearest',behavior:'instant'});
+   locateReviewBlock(block);
    if(focusDirection!=null){const buttons=root.querySelectorAll('.wc-review-nav button');(buttons[focusDirection]?.disabled?buttons[1-focusDirection]:buttons[focusDirection])?.focus({preventScroll:true});}
   }
-  if(reviewOpen&&!reviewBlock&&pendingIssues.length)reviewBlock=blockFor(pendingIssues[0])?.id||null;
+  const locateInitial=reviewOpen&&!reviewBlock&&pendingIssues.length>0;
+  if(locateInitial)reviewBlock=blockFor(pendingIssues[0])?.id||null;
   const scope=reviewBlock?t.blocks.find(b=>b.id===reviewBlock):null;
   if(reviewBlock&&!scope){reviewBlock=null;reviewOpen=false;}
   const issues=pendingIssues.filter(x=>!scope||(scope.start<=x.start&&x.start<scope.end));issueIndex=Math.max(0,Math.min(issueIndex,issues.length-1));const issue=issues[issueIndex]||(scope?t.issues.findLast(x=>x.resolved&&scope.start<=x.start&&x.start<scope.end):null);
-  const layout=document.createElement('div');layout.className='wc-layout';layout.innerHTML=`<aside class="wc-list"><h3>访谈稿 (${draft.interviews.length})</h3><div class="wc-interviews"></div></aside><div class="wc-middle"><header><h3>${esc(cleanInterviewName(t.name))}</h3><button data-filter>${onlyIssues?'查看全部块':'仅待复核'}</button></header><div class="wc-cards"></div></div><aside class="wc-issues"><h3>待核对问题 <span>${issues.length}</span></h3><div class="wc-issue-content"></div><details class="wc-rules-fold"><summary>复核规则说明</summary><p>只调整边界，原文保持不变。排除仅影响统计，不删除材料。超过500字是提醒，不是强制切分；有含义的确认或否定保留，纯填充语可排除统计。</p></details></aside>`;root.append(layout);
+  const layout=document.createElement('div');layout.className='wc-layout';layout.innerHTML=`<aside class="wc-list"><h3>访谈稿 <small>${draft.interviews.length}</small></h3><div class="wc-interviews"></div></aside><div class="wc-middle"><header><h3>访谈原文</h3><button data-filter></button></header><div class="wc-cards"></div></div><aside class="wc-issues"><div class="wc-issue-content"></div><div class="wc-issue-footer"><details class="wc-rules-fold"><summary>复核规则说明</summary><p>只调整边界，原文保持不变。排除仅影响统计，不删除材料。超过500字是提醒，不是强制切分；有含义的确认或否定保留，纯填充语可排除统计。</p></details><div class="wc-issue-actions" hidden></div></div></aside>`;root.append(layout);
   const interviewList=layout.querySelector('.wc-interviews');
   for(const x of draft.interviews){
    const n=x.issues.filter(y=>!y.resolved).length,b=document.createElement('button');
-   b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);
-   b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">共${x.blocks.length}块${n?` · 待核对${n}`:''}</small>`;
+   b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);b.setAttribute('aria-pressed',String(x.id===t.id));
+   b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">${x.blocks.length} 块${n?` · ${n} 项待核对`:''}</small>`;
    b.onclick=()=>{tid=x.id;issueIndex=0;render();};interviewList.append(b);
   }
   const sideHead=document.createElement('div');sideHead.className='wc-side-heading';sideHead.innerHTML='<h2>复核建议</h2>';
+  const reviewStatus=document.createElement('span');reviewStatus.className='wc-pending-count';reviewStatus.classList.toggle('wc-reviewed',!issue||!!issue.resolved);reviewStatus.textContent=issue?(issue.resolved?'已核对':'待复核'):'无待复核';sideHead.append(reviewStatus);
   const hideReview=document.createElement('button');hideReview.className='wc-hide-review';hideReview.textContent='×';hideReview.setAttribute('aria-label','收起复核栏');hideReview.onclick=()=>{reviewOpen=false;refreshReviewPane();};sideHead.append(hideReview);
   layout.querySelector('.wc-issues').prepend(sideHead);
   layout.querySelector('[data-filter]').setAttribute('aria-pressed',String(onlyIssues));
@@ -312,8 +321,8 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   const oldFilter=layout.querySelector('[data-filter]'),filter=document.createElement('label');filter.className='wc-review-toggle';
   const titleGroup=document.createElement('div');titleGroup.className='wc-interview-title-group';
   const interviewTitle=layout.querySelector('.wc-middle>header h3');
-  const cleanTitleEl=document.createElement('strong');cleanTitleEl.className='wc-middle-clean-title';cleanTitleEl.textContent=shortInterview(t.name,5);cleanTitleEl.title=t.name;
-  interviewTitle.replaceWith(titleGroup);titleGroup.append(cleanTitleEl);
+  const cleanTitleEl=document.createElement('span');cleanTitleEl.className='wc-middle-clean-title';cleanTitleEl.textContent=shortInterview(t.name,5);cleanTitleEl.title=t.name;
+  interviewTitle.replaceWith(titleGroup);titleGroup.append(interviewTitle,cleanTitleEl);
   const pendingTotal=t.issues.filter(x=>!x.resolved).length;
   const hadReviewHints=t.issues.length>0;
   const pendingCount=document.createElement(pendingTotal?'button':'span');pendingCount.className='wc-pending-count';pendingCount.textContent=pendingTotal?`待核对${pendingTotal}项`:hadReviewHints?'已核对':'无待核对';pendingCount.classList.toggle('wc-reviewed',pendingTotal===0&&hadReviewHints);pendingCount.classList.toggle('wc-no-review',!hadReviewHints);
@@ -374,7 +383,6 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   const blockNumStr=blockIndex>=0?String(blockIndex+1).padStart(2,'0'):'01';
   const blockCharLen=sourceBlock?text(t,sourceBlock).replace(/\s/g,'').length:0;
   const pillLabel=issue.resolved?'已核对':blockCharLen>500?'超过 500 字':`待核对 ${issues.length} 项`;
-  const issueHeading=layout.querySelector('.wc-issues>h3');if(issueHeading)issueHeading.hidden=true;
   const sourceChars=Array.from(t.text),sentenceStarts=[0];
   for(const match of t.text.matchAll(/[。！？!?；;\n]+/g)){const offset=Array.from(t.text.slice(0,match.index+match[0].length)).length;if(offset<sourceChars.length)sentenceStarts.push(offset);}
   const blockLabel=sid=>{const start=sentenceStarts[Number(sid.slice(1))-1],index=t.blocks.findIndex(b=>b.start<=start&&start<b.end);return index>=0?`块 ${index+1}`:'当前片段';};
@@ -384,15 +392,24 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   if(issue.action==='merge_previous')applyLabel='合并到前一块';
   else if(issue.action==='merge_next')applyLabel='与后一块合并';
   else if(issue.action==='split')applyLabel='按建议拆分';
-  panel.innerHTML=`<div class="wc-suggest-card"><div class="wc-suggest-meta"><strong>第 ${blockNumStr} 块 · ${blockCharLen} 字</strong><span class="wc-len-pill">${esc(pillLabel)}</span></div><p class="wc-reason-text">核查理由：${esc(summaryReason)}</p></div><div class="wc-issue-actions">${issue.action!=='keep'?`<button class="primary" data-apply>${esc(applyLabel)}</button>`:''}</div>`;
+  panel.innerHTML=`<div class="wc-suggest-card"><div class="wc-suggest-meta"><strong>第 ${blockNumStr} 块 · ${blockCharLen} 字</strong><span class="wc-len-pill">${esc(pillLabel)}</span></div><p class="wc-reason-text">核查理由：${esc(summaryReason)}</p></div>`;
+  const actions=layout.querySelector('.wc-issue-actions');actions.hidden=false;
+  if(!issue.resolved&&issue.action!=='keep')actions.innerHTML=`<button type="button" class="primary" data-apply>${esc(applyLabel)}</button>`;
   const position=pendingIssues.indexOf(issue);
   if(position>=0){
    const nav=document.createElement('div');nav.className='wc-review-nav';nav.setAttribute('aria-label','复核建议导航');
    const counter=document.createElement('span');counter.textContent=`第 ${position+1} / ${pendingIssues.length} 项`;nav.append(counter);
-   for(const [i,label,delta] of [[0,'上一项',-1],[1,'下一项',1]]){const b=document.createElement('button');b.type='button';b.textContent=label;b.disabled=!pendingIssues[position+delta];b.onclick=()=>jumpToIssue(pendingIssues[position+delta],i);nav.append(b);}
+   for(const [i,label,delta] of [[0,'上一项',-1],[1,'下一项',1]]){const b=document.createElement('button');b.type='button';b.textContent=i?'›':'‹';b.title=label;b.setAttribute('aria-label',label);b.disabled=!pendingIssues[position+delta];b.onclick=()=>jumpToIssue(pendingIssues[position+delta],i);nav.append(b);}
    panel.prepend(nav);
   }
-  if(reviewOpen&&sourceBlock)document.getElementById('wc-'+sourceBlock.id)?.classList.add('wc-current-review');
+  if(reviewOpen&&sourceBlock){
+   const card=document.getElementById('wc-'+sourceBlock.id);
+   if(card){
+    card.classList.add('wc-current-review');
+    const label=document.createElement('strong');label.className='wc-current-label';label.textContent='当前复核';card.querySelector('.wc-block-number').after(label);
+   }
+   if(locateInitial||enteringReview)locateReviewBlock(sourceBlock);
+  }
   if(sourceBlock){
    const previous=issue.action==='merge_previous'||/前文|前一|上一|前块/.test(rawReason),following=issue.action==='merge_next'||/后续|后文|后一|下一|后块/.test(rawReason);
    const neighbors=(previous&&!following?[t.blocks[blockIndex-1]]:following&&!previous?[t.blocks[blockIndex+1]]:[t.blocks[blockIndex-1],t.blocks[blockIndex+1]]).filter(Boolean);
@@ -401,17 +418,16 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
     const pair=[sourceBlock,...neighbors].sort((a,b)=>a.start-b.start);
     for(const block of pair){const card=document.getElementById('wc-'+block.id);if(card?.classList.contains('wc-excluded-collapsed'))card.querySelector('.wc-excluded-toggle')?.click();card?.classList.add('wc-neighbor-highlight');}
     document.getElementById('wc-'+pair[0].id)?.scrollIntoView({behavior:'smooth',block:'start'});
-   };const actBox=panel.querySelector('.wc-issue-actions')||panel;const apply=actBox.querySelector('[data-apply]');if(apply)apply.before(view);else actBox.append(view);}
+   };panel.append(view);}
   }
-  const keep=document.createElement('button');keep.type='button';keep.dataset.dismiss='';keep.textContent=issue.resolved?'已核对':['merge_previous','merge_next'].includes(issue.action)?'保持分开':issue.action==='split'?'保持此块完整':'保持当前分块';keep.disabled=!!issue.resolved;keep.classList.toggle('wc-reviewed',!!issue.resolved);keep.onclick=()=>{issue.resolved=true;mark();};(panel.querySelector('.wc-issue-actions')||panel).append(keep);
-  if(issue.resolved)panel.querySelector('[data-apply]')?.remove();
+  const keep=document.createElement('button');keep.type='button';keep.dataset.dismiss='';keep.textContent=issue.resolved?'已核对':['merge_previous','merge_next'].includes(issue.action)?'保持分开':issue.action==='split'?'保持此块完整':'保持当前分块';keep.disabled=!!issue.resolved;keep.classList.toggle('wc-reviewed',!!issue.resolved);keep.onclick=()=>{issue.resolved=true;mark();};actions.append(keep);
   if(issue.resolved&&sourceBlock){
    const pendingBlocks=t.blocks.filter(b=>t.issues.some(x=>!x.resolved&&b.start<=x.start&&x.start<b.end));
    const nextBlock=pendingBlocks.find(b=>b.start>sourceBlock.start)||pendingBlocks[0];
-   if(nextBlock){const go=document.createElement('button');go.type='button';go.className='wc-next-review';go.textContent=`→ 下一个复核块 · 块 ${t.blocks.indexOf(nextBlock)+1}`;go.onclick=()=>{reviewBlock=nextBlock.id;reviewOpen=true;issueIndex=0;refreshReviewPane();const card=document.getElementById('wc-'+nextBlock.id);if(card?.classList.contains('wc-excluded-collapsed'))card.querySelector('.wc-excluded-toggle')?.click();card?.scrollIntoView({behavior:'smooth',block:'start'});};(panel.querySelector('.wc-issue-actions')||panel).append(go);}
+   if(nextBlock){const go=document.createElement('button');go.type='button';go.className='wc-next-review';go.textContent=`→ 下一个复核块 · 块 ${t.blocks.indexOf(nextBlock)+1}`;go.onclick=()=>{reviewBlock=nextBlock.id;reviewOpen=true;issueIndex=0;refreshReviewPane();const card=document.getElementById('wc-'+nextBlock.id);if(card?.classList.contains('wc-excluded-collapsed'))card.querySelector('.wc-excluded-toggle')?.click();locateReviewBlock(nextBlock);};actions.append(go);}
    else{const done=document.createElement('p');done.className='wc-review-done';done.textContent='本篇复核已完成';panel.append(done);}
   }
-  panel.querySelector('[data-apply]')?.addEventListener('click',()=>{const i=t.blocks.findIndex(b=>b.start<=issue.start&&issue.start<b.end),b=t.blocks[i];if(issue.action==='split')split(t,b,issue.cuts||[]);else if(issue.action==='merge_previous'){if(i===0){toast('没有相邻前块');return;}if(!merge(t,i-1))return;}else if(issue.action==='merge_next'){if(i+1===t.blocks.length){toast('没有相邻后块');return;}if(!merge(t,i))return;}else if(issue.action==='filler')b.include=false;issue.resolved=true;mark();});
+  actions.querySelector('[data-apply]')?.addEventListener('click',()=>{const i=t.blocks.findIndex(b=>b.start<=issue.start&&issue.start<b.end),b=t.blocks[i];if(issue.action==='split')split(t,b,issue.cuts||[]);else if(issue.action==='merge_previous'){if(i===0){toast('没有相邻前块');return;}if(!merge(t,i-1))return;}else if(issue.action==='merge_next'){if(i+1===t.blocks.length){toast('没有相邻后块');return;}if(!merge(t,i))return;}else if(issue.action==='filler')b.include=false;issue.resolved=true;mark();});
  }
  function renderStart(){
   const project=researchProjects.find(x=>x.id===pid),rows=[];

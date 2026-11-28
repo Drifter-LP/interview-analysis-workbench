@@ -1,10 +1,10 @@
 #workspace .overview-grid{display:flex;align-items:center;gap:24px;margin:0 0 24px;padding:0;background:none;font-size:14px;color:#647b87}
-#workspace .overview-grid strong{font-size:17px;color:#142d36;margin-left:10px}
+#workspace .overview-grid strong{font-size:var(--text-lg,16px);font-weight:700;color:#142d36;margin-left:10px}
 #workspace .library-activity{margin-left:auto;display:flex;align-items:center;gap:8px}
 #workspace .library-activity i{width:8px;height:8px;border-radius:50%;background:#12c78a}
 #workspace .library-activity.is-busy i{background:#f59e0b}
 #workspace .section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
-#workspace .section-head h2{font-size:24px;margin:0}
+#workspace .section-head h2{font-size:var(--text-xl,18px);font-weight:600;line-height:1.35;margin:0}
 #workspace .library-tools{display:flex;gap:10px;flex-wrap:wrap}
 #workspace .library-tools input,#workspace .library-tools select{height:38px;border:1px solid #d7e3e7;border-radius:8px;background:white;padding:0 12px;font:inherit;color:#314a57;width:auto;margin:0}
 #workspace .library-tools input{width:230px;max-width:100%}
@@ -14,10 +14,10 @@
 .library-group.open .library-group-head{background:#f0f9f8;border-radius:14px 14px 0 0}
 .library-folder{font-size:0;color:#008c88;width:28px;height:28px;flex-shrink:0;background:currentColor;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 6h6l2 3h10v12H3zM3 6V3h6l2 3h10v3' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
 .library-group-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;min-width:0}
-.library-group-title strong{font-size:17px;overflow-wrap:anywhere}
+.library-group-title strong{font-size:var(--text-lg,16px);font-weight:600;overflow-wrap:anywhere}
 .library-group-title small{color:#708692;font-size:13px}
 .library-group-title .library-last{flex-basis:100%}
-.library-chevron{margin-left:auto;font-size:22px;color:#008d87}
+.library-chevron{margin-left:auto;font-size:var(--text-xl,18px);color:#008d87}
 .library-table{padding:0 20px 12px}
 .library-columns,.library-row{display:grid;grid-template-columns:minmax(160px,1fr) 150px 110px 110px;align-items:center;gap:16px}
 .library-columns{padding:14px 4px 10px;color:#576c7a;font-size:13px}
@@ -35,11 +35,11 @@
 .library-row-name>span{font-size:0;width:18px;height:21px;flex-shrink:0;background:#607b86;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 2h9l5 5v15H5zM14 2v6h5M8 12h8M8 16h8' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
 .library-row-name strong{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .library-row time{font-size:13px;color:#576c7a}
-.library-row-status{color:#687d87;white-space:nowrap;font-size:13px}
+.library-row-status{color:#687d87;white-space:nowrap;font-size:var(--text-xs,12px);font-weight:500}
 .library-row-status.completed:before{content:'✓';display:inline-grid;place-items:center;width:16px;height:16px;background:#12c78a;color:white;border-radius:50%;margin-right:7px;font-size:13px}
 .library-row-actions{display:flex;align-items:center;justify-content:space-between;position:relative;gap:12px}
 .library-row-actions button,.library-more-rows{border:0;background:transparent;color:#008e89;font:inherit;cursor:pointer;padding:5px}
-.library-row-actions .library-dots{color:#617782;font-size:21px;line-height:20px}
+.library-row-actions .library-dots{color:#617782;font-size:var(--text-xl,18px);line-height:20px}
 .library-row-actions button:disabled{opacity:.4;cursor:not-allowed}
 .library-menu{position:absolute;right:0;top:32px;z-index:20;padding:5px;background:white;border:1px solid #dae4e7;box-shadow:0 4px 16px #17333e15;border-radius:8px;min-width:120px}
 .library-menu button{color:#b64040;width:100%;text-align:left;font-size:14px}

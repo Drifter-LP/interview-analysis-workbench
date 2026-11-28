@@ -8,7 +8,7 @@ async function restoreThemeRetryNotice(){
   installThemeIntegrationRetry(data.retry);
  }catch{/* Recovery lookup must not interrupt normal result browsing. */}
 }
-const themePickerCss=document.createElement('link');themePickerCss.rel='stylesheet';themePickerCss.href='/assets/theme-picker.css?v=20261006-compact';document.head.append(themePickerCss);
+const themePickerCss=document.createElement('link');themePickerCss.rel='stylesheet';themePickerCss.href='/assets/theme-picker.css?v=type-scale-1';document.head.append(themePickerCss);
 let themePickerOriginal=null,themePickerBusy=false,themePickerQuestion='';
 const themePickerDrafts=new Map();
 const themePicker=$('#themeDialog');themePicker.classList.add('theme-picker-dialog');
@@ -320,7 +320,7 @@ document.body.append(navigationScript);
 
 const comparisonStyle = document.createElement('link');
 comparisonStyle.rel = 'stylesheet';
-comparisonStyle.href = '/assets/comparison.css?v=20261004-3';
+comparisonStyle.href = '/assets/comparison.css?v=type-scale-1';
 document.head.append(comparisonStyle);
 const comparisonScript = document.createElement('script');
 comparisonScript.async = false;
@@ -333,7 +333,7 @@ sharedComparisonScript.src = '/assets/shared-comparison.js?v=20261015-statement-
 const findingReviewScript=document.createElement('script');findingReviewScript.src='/assets/finding-review.js?v=20261019-ds-independent-1';document.body.append(findingReviewScript);
 sharedComparisonScript.addEventListener('load', () => {
   const networkScript = document.createElement('script');
-  networkScript.src = '/assets/network-view.js?v=20261013-focus-curves-4';
+  networkScript.src = '/assets/network-view.js?v=type-scale-1';
 networkScript.addEventListener('load',()=>{const script=document.createElement('script');script.src='/assets/coding-tree.js?v=20261018-boundary-review';script.addEventListener('load',()=>{const navigation=document.createElement('script');navigation.src='/assets/research-navigation.js?v=word-clean-1';document.body.append(navigation);});document.body.append(script);});
   document.body.append(networkScript);
 });

@@ -1,7 +1,7 @@
 // Coding review presentation; source text and existing workspace data remain authoritative.
 (()=>{
  const panel=$('#coding'),grid=$('#codingGrid'),source=$('#codingText'),side=grid.querySelector('.coding-side');
- const style=document.createElement('link');style.rel='stylesheet';style.href='/assets/coding-review.css?v=20261009-1';document.head.append(style);
+ const style=document.createElement('link');style.rel='stylesheet';style.href='/assets/coding-review.css?v=type-scale-1';document.head.append(style);
  const rawSet=setCodingText;let raw=source.textContent||'',mode='pending',hit=null,busy=false;
  setCodingText=function(text){raw=String(text||'');hit=null;rawSet(text);};
  codingTextValue=()=>raw;

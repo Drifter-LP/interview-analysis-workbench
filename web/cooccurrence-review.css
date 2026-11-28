@@ -1,4 +1,4 @@
-#wordCooccurrence .wc-list h3{font-size:17px;margin:0;padding:18px 16px 14px;}
+#wordCooccurrence .wc-list h3{font-size:var(--text-lg,16px);margin:0;padding:18px 16px 14px;}
 #wordCooccurrence .wc-list>select{font-size:14px;padding:8px 10px;min-height:36px;margin:0 12px 12px;}
 #wordCooccurrence .wc-interviews button{padding:18px 14px;font-size:14px;min-height:64px;}
 #wordCooccurrence .wc-interviews small{font-size:12px;}
@@ -17,14 +17,14 @@
 #wordCooccurrence .wc-card-head>span{font-size:13px;}
 #wordCooccurrence .wc-side-heading{gap:8px;align-items:center;}
 #wordCooccurrence .wc-side-heading>small{flex-basis:100%;color:#6b7e8b;font-size:12px;}
-#wordCooccurrence .wc-side-heading h2{font-size:20px;}
+#wordCooccurrence .wc-side-heading h2{font-size:var(--text-xl,18px);}
 #wordCooccurrence .wc-side-heading select{margin-left:auto;background:#fff;padding:6px 10px;font-size:12px;min-height:30px;}
 #wordCooccurrence .wc-side-heading>span{font-size:13px;margin-top:4px;}
 #wordCooccurrence .wc-issues>h3{font-size:18px;margin:16px 0 10px;}
 #wordCooccurrence .wc-pagination{justify-content:flex-end;font-size:13px;margin:8px 0 14px;}
 #wordCooccurrence .wc-pagination button{border:1px solid #dce5e9;background:#fff;border-radius:6px;padding:3px 9px;color:#345664;}
 #wordCooccurrence .wc-ai-badge{display:inline-block;font-size:12px;padding:4px 8px;color:#aa6d19;background:#fff2d9;border-radius:14px;}
-#wordCooccurrence .wc-issue-content h3{font-size:17px;margin:14px 0 10px;line-height:1.5;}
+#wordCooccurrence .wc-issue-content h3{font-size:var(--text-lg,16px);margin:14px 0 10px;line-height:1.5;}
 #wordCooccurrence .wc-issue-content p{font-size:14px;line-height:1.7;margin:10px 0;}
 #wordCooccurrence .wc-review-excerpt{background:#f3f6f8;padding:10px 12px;border-radius:7px;margin:14px 0;}
 #wordCooccurrence .wc-review-excerpt small{font-size:12px;color:#6b818d;}
@@ -112,7 +112,7 @@
 #wordCooccurrence .wc-pending-text{background:#fff0d9;color:inherit;border-radius:3px;padding:1px 0;cursor:pointer;}
 #wordCooccurrence button.wc-block-pending{border:0;cursor:pointer;}
 #wordCooccurrence button.wc-block-pending:hover{background:#ffe5bf;}
-#wordCooccurrence .wc-hide-review{border:0;background:transparent;color:#759099;font-size:20px;padding:0 4px;cursor:pointer;}
+#wordCooccurrence .wc-hide-review{border:0;background:transparent;color:#759099;font-size:var(--text-xl,18px);padding:0 4px;cursor:pointer;}
 #wordCooccurrence .wc-issues>h3{display:flex;align-items:center;gap:8px;font-size:15px;margin:18px 0;}
 #wordCooccurrence .wc-issues>h3>span{font-size:13px;padding:2px 7px;}
 #wordCooccurrence .wc-reason-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
@@ -125,7 +125,7 @@
 #wordCooccurrence .wc-review-excerpt p{font-size:14px;line-height:1.85;white-space:pre-wrap;max-height:none;overflow:visible;color:#36515b;margin:0;overflow-wrap:anywhere;}
 #wordCooccurrence .wc-issues{padding:0 16px 16px;}
 #wordCooccurrence .wc-issues .wc-side-heading{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;min-height:64px;box-sizing:border-box;padding:16px 0;margin:0;border-bottom:1px solid #e5edef;}
-#wordCooccurrence .wc-side-heading h2{font-size:17px;line-height:1.5;white-space:nowrap;margin:0;}
+#wordCooccurrence .wc-side-heading h2{font-size:var(--text-lg,16px);line-height:1.5;white-space:nowrap;margin:0;}
 #wordCooccurrence .wc-side-heading select{min-width:0;max-width:100px;padding:5px 6px;font-size:12px;margin-left:auto;}
 #wordCooccurrence .wc-side-heading .wc-hide-review{flex:0 0 24px;padding:0;width:24px;height:28px;line-height:28px;border-radius:5px;}
 #wordCooccurrence .wc-hide-review:hover{background:#f0f5f5;}

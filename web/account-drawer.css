@@ -13,7 +13,7 @@
 .wb-account-close svg{width:20px;height:20px}
 .wb-account-person{display:flex;gap:12px;align-items:center;min-height:44px;margin:0 0 14px}
 .wb-account-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#e2f2ed;color:var(--wb-account-teal);font-size:15px;font-weight:700}
-.wb-account-person strong{display:block;font-size:15px}
+.wb-account-person strong{display:block;font-size:var(--text-base,14px);font-weight:600}
 .wb-account-person-actions{position:relative;margin-left:auto;align-self:center;padding-bottom:5px;margin-bottom:-5px}
 .wb-account-account-toggle{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--wb-account-muted);padding:6px}
 .wb-account-account-toggle svg{width:20px;height:20px}
@@ -26,7 +26,7 @@
 .wb-account-tabs{display:flex;gap:28px;border-bottom:1px solid var(--wb-account-line);margin-bottom:12px}
 .wb-account-tabs button{border:0;border-bottom:3px solid transparent;padding:0 0 8px;background:none;color:var(--wb-account-muted);font-size:15px}
 .wb-account-tabs button[aria-selected=true]{color:var(--wb-account-teal);border-color:var(--wb-account-teal);font-weight:700}
-.account-drawer h3{font-size:15px;font-weight:700}
+.account-drawer h3{font-size:var(--text-lg,16px);font-weight:600}
 .wb-account-quota-head{display:flex;align-items:center;gap:4px}
 .wb-account-quota-help{position:relative;display:inline-flex}
 .wb-account-quota-help-button{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:6px;padding:4px;background:transparent;color:var(--wb-account-muted);touch-action:manipulation}
@@ -79,7 +79,7 @@
 .wb-account-admin .wb-account-back{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0;border:0;background:none;color:var(--wb-account-muted);font-size:13px;line-height:24px}
 .wb-account-back svg{width:15px;height:15px;flex:none}
 .wb-account-back:hover{color:var(--wb-account-teal)}
-.wb-account-invite h3{font-size:19px;line-height:1.4;margin:13px 0 5px}
+.wb-account-invite h3{font-size:var(--text-lg,16px);font-weight:600;line-height:1.4;margin:13px 0 5px}
 .wb-account-invite .wb-account-invite-intro{color:var(--wb-account-muted);font-size:13px}
 .wb-account-invite form{margin:22px 0 0;padding:0}
 .wb-account-invite label{font-size:14px;font-weight:600;gap:8px;margin:0}
@@ -121,7 +121,7 @@
 .wb-account-preset-swatch:hover{transform:translateY(-1px)}
 .wb-account-preset-swatch.is-active{border-color:var(--wb-account-teal);box-shadow:0 0 0 2px rgba(0,139,129,.2)}
 .wb-account-avatar-actions{display:grid;gap:6px;padding-top:10px;border-top:1px solid #edf3f2}
-.wb-account-avatar-upload,.wb-account-avatar-reset{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:32px;padding:0 10px;border:1px solid #d5e4e2;border-radius:7px;background:#f7fbfa;color:#23484c;font-size:12.5px;transition:background-color 140ms ease,border-color 140ms ease}
+.wb-account-avatar-upload,.wb-account-avatar-reset{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:32px;padding:0 10px;border:1px solid #d5e4e2;border-radius:7px;background:#f7fbfa;color:#23484c;font-size:var(--text-sm,13px);transition:background-color 140ms ease,border-color 140ms ease}
 .wb-account-avatar-upload svg{width:14px;height:14px;color:var(--wb-account-teal)}
 .wb-account-avatar-upload:hover{background:#edf7f4;border-color:#b6d8d3;color:var(--wb-account-teal)}
 .wb-account-avatar-reset{border-color:transparent;background:transparent;color:var(--wb-account-muted);height:28px;font-size:12px}
@@ -133,7 +133,7 @@
 .wb-account-edit-name svg{width:13px;height:13px}
 .wb-account-edit-name:hover{background:#edf5f2;color:var(--wb-account-teal);opacity:1}
 .wb-account-name-form{display:flex;align-items:center;gap:6px;margin:0}
-.wb-account-name-input{width:142px;height:26px;padding:0 8px;border:1px solid #b5d6d2;border-radius:6px;font-size:13.5px;color:var(--wb-account-ink);background:#fff}
+.wb-account-name-input{width:142px;height:26px;padding:0 8px;border:1px solid #b5d6d2;border-radius:6px;font-size:var(--text-base,14px);color:var(--wb-account-ink);background:#fff}
 .wb-account-name-input:focus{outline:none;border-color:var(--wb-account-teal);box-shadow:0 0 0 2px rgba(0,139,129,.14)}
 .wb-account-name-save{height:26px;padding:0 9px;border:0;border-radius:6px;background:var(--wb-account-teal);color:#fff;font-size:12px;font-weight:600;flex:none}
 .wb-account-name-cancel{height:26px;padding:0 8px;border:1px solid var(--wb-account-line);border-radius:6px;background:#fff;color:var(--wb-account-muted);font-size:12px;flex:none}
@@ -144,10 +144,10 @@
 .wb-account-member-count{font-size:13px;color:var(--wb-account-muted);font-weight:400}
 .wb-account-table{border:0}
 .wb-account-table th,.wb-account-table td{border-left:0;border-right:0;padding:11px 6px}
-.wb-account-table th{background:#f7faf9;font-weight:400;font-size:12.5px}
+.wb-account-table th{background:#f7faf9;font-weight:400;font-size:var(--text-sm,13px)}
 .wb-account-cell-user{display:table-cell;vertical-align:middle}
 .wb-account-cell-user .wb-account-role-tag{margin-left:7px;display:inline-block}
-.wb-account-role-tag{font-size:11.5px;color:var(--wb-account-teal);font-weight:400}
+.wb-account-role-tag{font-size:var(--text-xs,12px);color:var(--wb-account-teal);font-weight:400}
 .wb-account-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#c44747;margin-right:6px;vertical-align:1px;flex:none}
 .wb-account-status-dot.is-active{background:#22b47a}
 .wb-account-op-muted{color:#aebfc2;padding:4px}
@@ -159,7 +159,7 @@
 .wb-account-status-pill{display:inline-flex;align-items:center;height:26px;padding:0 11px;border:1px solid #d8eae6;border-radius:999px;background:#f2f9f7;color:#3a565c;font-size:12px;font-weight:400;white-space:nowrap}
 
 .wb-account-form-group{margin:0 0 24px!important;padding:0}
-.wb-account-field-label{display:block!important;margin:0 0 8px!important;font-size:13.5px!important;font-weight:400!important;color:#233e44;line-height:1.4}
+.wb-account-field-label{display:block!important;margin:0 0 8px!important;font-size:var(--text-base,14px)!important;font-weight:400!important;color:#233e44;line-height:1.4}
 .wb-account-inline-row{display:flex;align-items:center;gap:10px}
 .wb-account-inline-row input{flex:1;min-width:0;height:40px!important;padding:0 12px!important;border:1px solid #c0d6d4!important;border-radius:8px!important;background:#fff;color:var(--wb-account-ink);font-size:14px!important}
 .wb-account-inline-row input:focus{outline:none;border-color:var(--wb-account-teal)!important;box-shadow:0 0 0 3px rgba(0,139,129,.12)}
@@ -168,15 +168,15 @@
 
 .wb-account-surface-card{margin:0 0 24px;border:1px solid #e2eeec;border-radius:10px;background:#f7fbfa}
 .wb-account-invite-rules{padding:16px;display:grid;gap:8px}
-.wb-account-invite-rules p{font-size:12.5px;color:#587076;line-height:1.6;margin:0}
+.wb-account-invite-rules p{font-size:var(--text-sm,13px);color:#587076;line-height:1.6;margin:0}
 
 .wb-account-setting-list{padding:0 16px}
 .wb-account-setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0}
 .wb-account-setting-row+.wb-account-setting-row{border-top:1px solid #e6f0ee}
 .wb-account-setting-info{min-width:0}
-.wb-account-setting-info strong{display:block;font-size:13.5px;font-weight:400;color:#18343a;line-height:1.4}
-.wb-account-setting-info small{display:block;margin-top:4px;font-size:11.5px;color:#74888c;line-height:1.45}
-.wb-account-setting-btn{display:inline-flex;align-items:center;justify-content:center;min-width:120px;height:34px;padding:0 12px;border:1px solid #c4dad8;border-radius:7px;background:#fff;color:var(--wb-account-teal);font-size:12.5px;font-weight:400;white-space:nowrap;flex:none;transition:background-color 140ms ease,border-color 140ms ease}
+.wb-account-setting-info strong{display:block;font-size:var(--text-base,14px);font-weight:400;color:#18343a;line-height:1.4}
+.wb-account-setting-info small{display:block;margin-top:4px;font-size:var(--text-xs,12px);color:#74888c;line-height:1.45}
+.wb-account-setting-btn{display:inline-flex;align-items:center;justify-content:center;min-width:120px;height:34px;padding:0 12px;border:1px solid #c4dad8;border-radius:7px;background:#fff;color:var(--wb-account-teal);font-size:var(--text-sm,13px);font-weight:400;white-space:nowrap;flex:none;transition:background-color 140ms ease,border-color 140ms ease}
 .wb-account-setting-btn:hover{background:#eff8f6;border-color:#9fc9c3}
 .wb-account-setting-btn.wb-account-danger{background:#fef5f4;border-color:#eec6c2;color:#ba3a34}
 .wb-account-setting-btn.wb-account-danger:hover{background:#fdeceb;border-color:#e3a8a2}

@@ -153,7 +153,7 @@ body.cm-guide-enabled .quick-guide-card {
 .cm-tour-title {
   margin: 0 0 6px;
   color: #10282e;
-  font-size: 15.5px;
+  font-size: var(--text-lg,16px);
   font-weight: 700;
   line-height: 1.4;
 }
@@ -178,7 +178,7 @@ body.cm-guide-enabled .quick-guide-card {
   border-radius: 6px;
   background: transparent;
   color: #7c9296;
-  font-size: 12.5px;
+  font-size: var(--text-sm,13px);
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
@@ -198,7 +198,7 @@ body.cm-guide-enabled .quick-guide-card {
   border-radius: 999px;
   background: #00968c;
   color: #ffffff;
-  font-size: 12.5px;
+  font-size: var(--text-sm,13px);
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 150, 140, 0.22);

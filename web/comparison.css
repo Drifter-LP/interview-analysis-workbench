@@ -47,14 +47,14 @@
 .comparison-view-meta{color:#71878a;font-size:14px;margin:-15px 0 26px}
 .comparison-dimension{margin:0 0 36px}
 .comparison-dimension h3{display:flex;gap:15px;align-items:baseline;font-size:24px;line-height:1.5;margin:0 0 20px;color:#102d34}
-.comparison-dimension h3 span{font-size:28px}
+.comparison-dimension h3 span{font-size:var(--text-2xl,24px)}
 .comparison-view-head,.comparison-view-row{display:grid;grid-template-columns:minmax(0,41fr) minmax(0,59fr)}
 .comparison-view-head{background:#e2f0ed;border-radius:10px 10px 0 0;font-weight:600}
 .comparison-view-head span{padding:17px 23px}
 .comparison-view-row{background:#fff;border-bottom:1px solid #d7e5e2}
 .comparison-view-cell{min-width:0;padding:22px 23px;line-height:1.7;overflow-wrap:anywhere}
 .comparison-view-cell:first-child{border-right:1px solid #e0ebe8}
-.comparison-view-cell h4{font-size:17px;line-height:1.5;margin:0 0 9px}
+.comparison-view-cell h4{font-size:var(--text-lg,16px);line-height:1.5;margin:0 0 9px}
 .comparison-view-cell p{margin:0 0 8px;color:#385358}
 .comparison-coverage{margin-top:13px;color:#087774;font-size:13px}
 .comparison-no-diff{padding-top:15px;color:#72888b!important}

@@ -79,7 +79,7 @@
 .research-source-dialog{width:min(1100px,94vw);height:min(780px,88vh);border:1px solid #dce7e8;border-radius:12px;padding:0;color:#193740}
 .research-source-dialog::backdrop{background:#19374038}
 .research-source-dialog>header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #e4eded}
-.research-source-dialog>header button{border:0;background:transparent;font-size:22px;color:#597177;cursor:pointer}
+.research-source-dialog>header button{border:0;background:transparent;font-size:var(--text-xl,18px);color:#597177;cursor:pointer}
 .research-source-controls{display:flex;gap:10px;padding:12px 20px;align-items:center;border-bottom:1px solid #e4eded}
 .research-source-controls input{flex:1;min-width:100px;height:34px;padding:0 10px;border:1px solid #dce7e8;border-radius:7px;font:inherit}
 .research-source-controls select,.research-source-controls button{height:34px;border:1px solid #dce7e8;border-radius:7px;background:#fff;color:inherit;padding:0 10px;font:inherit;max-width:260px}

@@ -1,8 +1,8 @@
 /* Independent review gate. Text is immutable; only offsets are edited. */
 (() => {
- const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-clean-2';document.head.append(css);
- const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=20261010-5';document.head.append(selectionCss);
- const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=33';document.head.append(reviewCss);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=type-scale-1';document.head.append(css);
+ const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=type-scale-1';document.head.append(selectionCss);
+ const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=type-scale-1';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
  const picker=document.createElement('select'),status=document.createElement('span'),save=document.createElement('button'),next=document.createElement('button');
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';

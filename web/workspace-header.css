@@ -6,7 +6,7 @@
 .audio-pair-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:160px;padding:5px;background:white;border:1px solid #dce5e9;border-radius:8px;box-shadow:0 8px 24px #17313d18;z-index:40}
 .workspace-header .audio-pair-menu button{display:block;text-align:left;width:100%;border:0}
 .audio-pair-dialog{width:min(520px,calc(100vw - 32px));padding:24px;max-height:90vh;overflow:auto;color:#17313d}
-.ap-head{display:flex;align-items:center;justify-content:space-between}.ap-head h2{margin:0;font-size:21px}.ap-head button{border:0;background:none;font-size:24px;color:#67838b}
+.ap-head{display:flex;align-items:center;justify-content:space-between}.ap-head h2{margin:0;font-size:var(--text-xl,18px);font-weight:600}.ap-head button{border:0;background:none;font-size:var(--text-xl,18px);color:#67838b}
 .audio-pair-dialog p{font-size:14px;color:#617983}.ap-tabs,.ap-manage{display:flex;gap:12px;margin:16px 0}.ap-tabs button,.ap-manage button,.ap-footer button{padding:10px 16px;border:1px solid #d8e5e7;background:white;border-radius:8px;color:#008d83;cursor:pointer}
 .ap-upload{display:block;padding:22px;text-align:center;border:1px dashed #adcdd0;border-radius:8px;background:#f7fbfa}.ap-upload input{display:block;font-weight:400}.ap-upload small{display:block;color:#597177;margin-top:6px}
 .audio-pair-dialog audio{width:100%;height:42px;margin:12px 0}.ap-confirm{display:flex;align-items:center;gap:8px;font-weight:400;font-size:14px}.ap-confirm input{width:auto;margin:0;accent-color:#009e96}.ap-note{background:#f1f8f8;border-radius:8px;padding:12px;margin-top:16px;color:#587982;font-size:13px;line-height:1.8}.ap-footer{display:flex;justify-content:flex-end;gap:12px;margin-top:20px}.ap-footer .primary{background:#009e96;color:white;border-color:#009e96}.audio-pair-dialog button:disabled{opacity:.45;cursor:default}.audio-pair-dialog [hidden],.audio-pair-menu[hidden]{display:none!important}
@@ -100,12 +100,12 @@ body .workspace-main>.workspace-legacy-topbar{display:none!important}
 
 /* Match the cross-interview research header across all workspace pages. */
 .workspace-header:not(.cross-header) .workspace-header-row{min-height:0;padding:8px 20px;gap:12px;box-sizing:border-box}
-.workspace-header:not(.cross-header) .workspace-breadcrumb{font-size:14px;line-height:22px;gap:8px}
+.workspace-header:not(.cross-header) .workspace-breadcrumb{font-size:var(--text-lg,16px);line-height:24px;gap:8px}
 .workspace-header:not(.cross-header) .workspace-header-right,.workspace-header:not(.cross-header) .workspace-selector-slot,.workspace-header:not(.cross-header) .workspace-status-slot,.workspace-header:not(.cross-header) .workspace-action-slot{gap:8px}
 .workspace-header:not(.cross-header) select,.workspace-header:not(.cross-header) .workspace-selector-slot .memo-selector-control{width:205px;max-width:100%;height:32px;font-size:14px}
 .workspace-header:not(.cross-header) #memoInterviewSelect{width:264px}
 .workspace-header:not(.cross-header) button,.workspace-header:not(.cross-header) .workspace-action-slot button{height:32px;padding:0 10px;font-size:14px}
-.workspace-header:not(.cross-header) .workspace-status-slot{font-size:14px}
+.workspace-header:not(.cross-header) .workspace-status-slot{font-size:var(--text-sm,13px)}
 .workspace-header:not(.cross-header) .workspace-tab-slot{height:44px;padding:0 20px;gap:24px}
 .workspace-header:not(.cross-header) .workspace-tab-slot button{height:44px;padding:0 4px}
 .workspace-header:not(.cross-header) .workspace-tab-slot button.workspace-tab-action{height:32px;padding:0 10px}

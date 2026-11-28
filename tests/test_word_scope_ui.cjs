@@ -12,7 +12,7 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await p.route(/\/api\/research-projects\/scope-[ab]\/word-cooccurrence/,async r=>{
    const [,id,action='']=new URL(r.request().url()).pathname.match(/research-projects\/(scope-[ab])\/word-cooccurrence(.*)/);reads.push([id,action]);
    if(fail&&id==='scope-b'){fail=false;return r.fulfill({status:503,json:{detail:'模拟读取失败'}});}
-   return r.fulfill({json:action==='/history'?[{id:'saved-one',name:'服务可及性',saved_at:1764050000}]:{status:'completed',step:2,confirmed:true,revision:1,history_id:action? 'saved-one':null,interviews:fixtures(id),candidates:[{word:'社区',blocks:2},{word:'服务',blocks:1}]}});
+   return r.fulfill({json:action==='/history'?[{id:'saved-one',name:'服务可及性',saved_at:1764050000}]:{status:'completed',step:2,confirmed:true,revision:1,history_id:action? 'saved-one':null,interviews:fixtures(id),candidates:id==='scope-b'?[]:[{word:'社区',blocks:2},{word:'服务',blocks:1}]}});
   });
   await p.goto(origin+'/',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>!!window.researchNavigation);
   await p.evaluate(list=>{researchProjects=list;selectedResearchProject=list[0];switchView('analysis','focused');},projects);
@@ -32,9 +32,9 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   await trigger.click();await p.screenshot({path:path.resolve(__dirname,'../outputs/cross-scope-menu-verified.png')});
   await menu.getByRole('button',{name:/服务可及性/}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('服务可及性'));assert.ok(await save.isDisabled());
   await trigger.click();await menu.getByRole('button',{name:'当前草稿',exact:true}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('当前草稿'));
-  assert.equal(await p.locator('.wc-stepper .wc-stepper-item').count(),4);
+  assert.equal(await p.locator('.workspace-tab-slot .wc-stepper .wc-stepper-item').count(),4);
   const requestsBeforeDraftReturn=reads.length;
-  await p.locator('.wc-stepper-new').click();
+  await p.getByRole('button',{name:'+ 新建探索',exact:true}).click();
   await p.locator('.wc-selection-page').waitFor();
   await p.getByRole('button',{name:'返回当前草稿',exact:true}).click();
   await local.waitFor();
@@ -56,6 +56,8 @@ const origin=process.env.WORD_SCOPE_QA_ORIGIN||'http://127.0.0.1:9919';
   fail=true;await trigger.click();p.once('dialog',dialog=>dialog.accept());await menu.getByRole('button',{name:'社区活动参与研究',exact:true}).click();
   await p.locator('#toast').filter({hasText:'模拟读取失败'}).waitFor();assert.match(await trigger.textContent(),/社区服务研究/);
   await trigger.click();p.once('dialog',dialog=>dialog.accept());await menu.getByRole('button',{name:'社区活动参与研究',exact:true}).click();await p.waitForFunction(()=>document.querySelector('.wc-scope-trigger').textContent.includes('社区活动参与研究'));
+  await p.locator('.wc-stepper [data-step="3"]').click();
+  await p.getByRole('button',{name:/切换为.*整块原文.*并提取词语/}).waitFor();assert.ok(await generate.isDisabled());
   await p.setViewportSize({width:390,height:800});await trigger.click();const m=await menu.boundingBox();assert.ok(m.x>=0&&m.x+m.width<=391,JSON.stringify(m));
   assert.deepEqual(errors,[]);console.log('PASS: compact scope, five characters, local switch, history, unsaved guard, failure recovery and mobile bounds');
  }finally{await b.close();}

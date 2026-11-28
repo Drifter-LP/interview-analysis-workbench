@@ -33,7 +33,7 @@
   const sizing=new ResizeObserver(sizePanels);sizing.observe(heading);window.addEventListener('resize',sizePanels);
   function setMode(next){const changed=mode!==next;mode=next;if(next!=='network'){stopMotion();const state=getState();if(!state.focus&&state.visibleNodes.length){const first=state.visibleNodes.slice().sort((a,b)=>b.count-a.count)[0];selectNode(first.id);}}refresh();if(changed)window.animateWorkspaceTransition?.(next==='network'?layout:pane);}
   function refresh(){
-   const state=getState();for(const [id,b]of tabButtons)b.setAttribute('aria-pressed',String(id===mode));const network=mode==='network';layout.hidden=!network;pane.hidden=network;networkViews.hidden=!network;fit.hidden=exportButton.hidden=!network;sortSelect.hidden=download.hidden=network;page.classList.toggle('we-active',!network);page.querySelector('.wn-note').hidden=!network;
+   const state=getState();for(const [id,b]of tabButtons)b.setAttribute('aria-pressed',String(id===mode));const network=mode==='network';layout.hidden=!network;pane.hidden=network;networkViews.hidden=!network;exportButton.hidden=!network;fit.hidden=!network&&!fit.textContent.includes('特征词');sortSelect.hidden=download.hidden=network;page.classList.toggle('we-active',!network);page.querySelector('.wn-note').hidden=!network;
    graphCounts.hidden=!network;if(network){lastLeft=null;if(state.networkCountText)graphCounts.textContent=state.networkCountText;return;}
    const stamp=[mode,sort,state.focus,matrixLimit,zerosOpen];
    if(lastLeft&&lastLeft.visible===state.visible&&lastLeft.nodes===state.nodes&&stamp.every((v,i)=>v===lastLeft.stamp[i])){

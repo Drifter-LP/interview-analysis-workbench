@@ -1,20 +1,42 @@
 /* Independent review gate. Text is immutable; only offsets are edited. */
 (() => {
- const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-redesign-1';document.head.append(css);
+ const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=word-clean-1';document.head.append(css);
  const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=20261010-5';document.head.append(selectionCss);
  const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=33';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
  const picker=document.createElement('select'),status=document.createElement('span'),save=document.createElement('button'),next=document.createElement('button');
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';
  let draft=null,pid='',tid='',dirty=false,issueIndex=0,onlyIssues=false,active=false,poll=null,busy=false,loading=false,selecting=false;
- let nextBlocked=false;
- const historyPicker=document.createElement('select'),saveResult=document.createElement('button'),newExploration=document.createElement('button');historyPicker.setAttribute('aria-label','词语探索历史结果');historyPicker.title='分析记录：未选择历史结果时显示当前草稿';historyPicker.append(new Option('分析记录',''));saveResult.textContent='保存结果';saveResult.className='wc-save-result';newExploration.type='button';newExploration.textContent='+ 新建探索';newExploration.className='wc-new-exploration';
+ let nextBlocked=false,stepperSignature='';
+ const historyPicker=document.createElement('select'),saveResult=document.createElement('button'),newExploration=document.createElement('button'),stepperNav=document.createElement('nav');historyPicker.setAttribute('aria-label','词语探索历史结果');historyPicker.title='分析记录：未选择历史结果时显示当前草稿';historyPicker.append(new Option('分析记录',''));saveResult.textContent='保存结果';saveResult.className='wc-save-result';newExploration.type='button';newExploration.textContent='+ 新建探索';newExploration.className='wc-new-exploration';stepperNav.className='wc-stepper';stepperNav.setAttribute('aria-label','词语探索流程步骤');
  function startNewExploration(){
   if(busy||loading)return;
   if(draft?.status==='running'){toast('话题块仍在准备中，请完成后再新建探索');return;}
   closeScope();selecting=true;scopeSignature='';render();window.workspaceHeader?.refresh();
  }
  newExploration.onclick=startNewExploration;
+ function refreshStepper(){
+  const currentStep=selecting||!draft||draft.status==='failed'?1:(draft.step||1);
+  const hasBlocks=!!(draft&&draft.interviews?.length&&draft.status!=='running'&&draft.status!=='failed');
+  const items=[
+   [1,'1. 选择访谈稿'+(hasBlocks?` (${draft.interviews.length}篇)`:''),true],
+   [2,'2. 切块复核',hasBlocks&&!draft?.history_id],
+   [3,'3. 特征词确认',hasBlocks&&!!draft?.confirmed&&!draft?.history_id],
+   [4,'4. 词语共现图',hasBlocks&&!!draft?.graph]
+  ];
+  const signature=JSON.stringify([currentStep,items]);
+  if(signature===stepperSignature)return stepperNav;
+  stepperSignature=signature;
+  stepperNav.replaceChildren();
+  for(const [idx,[s,label,enabled]] of items.entries()){
+   if(idx>0){const arrow=document.createElement('span');arrow.className='wc-stepper-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';stepperNav.append(arrow);}
+   const btn=document.createElement('button');btn.type='button';btn.className='wc-stepper-item'+(currentStep===s?' active':enabled?' done':'');btn.dataset.step=String(s);btn.textContent=label;btn.disabled=!enabled&&currentStep!==s;
+   if(currentStep===s)btn.setAttribute('aria-current','step');
+   btn.onclick=()=>{if(currentStep!==s)window.wordCooccurrence.setStep(s);};
+   stepperNav.append(btn);
+  }
+  return stepperNav;
+ }
  save.hidden=next.hidden=true;saveResult.disabled=true;
  const scopeControl=document.createElement('div'),scopeTrigger=document.createElement('button'),scopeMenu=document.createElement('div');
  scopeControl.className='wc-scope-control';scopeTrigger.type='button';scopeTrigger.className='wc-scope-trigger';scopeTrigger.setAttribute('aria-label','项目与分析记录');scopeTrigger.setAttribute('aria-expanded','false');scopeTrigger.setAttribute('aria-controls','wcScopeMenu');scopeTrigger.textContent='项目 · 当前草稿';
@@ -189,7 +211,7 @@
   try{if(pid)await reload();else{draft=null;historyPicker.replaceChildren(new Option('分析记录',''));render();}}
   catch(error){({pid,draft,tid,dirty,issueIndex,selecting}=previous);picker.value=pid;historyPicker.replaceChildren(...history);historyPicker.value=draft?.history_id||'';render();window.workspaceHeader?.refresh();throw error;}
  });
-window.wordCooccurrence={scopeControl:refreshScope,get loading(){return loading;},historyPicker,saveResult,newExploration,startNewExploration,get active(){return active;},get projectId(){return pid;},get step(){return selecting||!draft||draft.status==='failed'?1:draft?.step;},get hasDraft(){return !!draft&&draft.status!=='failed';},get isHistory(){return !!draft?.history_id;},get hasResult(){return !!draft?.graph;},get materials(){return draft?.interviews||[];},controls:[picker,status,save,next],activate:()=>tab?.click(),leave:()=>{closeScope();active=false;root.hidden=true;document.querySelector('#focused').classList.remove('word-co-active');},setStep:step=>{if(busy||loading)return;if(step===1){startNewExploration();return;}if(draft?.history_id){toast('历史结果只读，请先切换到当前草稿或点击“+ 新建探索”');return;}if(!draft||![2,3,4].includes(step))return;if(step===3&&!draft.confirmed)return;if(step===4&&!draft.graph)return;selecting=false;draft.step=step;scopeSignature='';render();window.workspaceHeader?.refresh();}};
+window.wordCooccurrence={scopeControl:refreshScope,stepperControl:refreshStepper,get loading(){return loading;},historyPicker,saveResult,newExploration,startNewExploration,get active(){return active;},get projectId(){return pid;},get step(){return selecting||!draft||draft.status==='failed'?1:draft?.step;},get hasDraft(){return !!draft&&draft.status!=='failed';},get isHistory(){return !!draft?.history_id;},get hasResult(){return !!draft?.graph;},get materials(){return draft?.interviews||[];},controls:[picker,status,save,next],activate:()=>tab?.click(),leave:()=>{closeScope();active=false;root.hidden=true;document.querySelector('#focused').classList.remove('word-co-active');},setStep:step=>{if(busy||loading)return;if(step===1){startNewExploration();return;}if(draft?.history_id){toast('历史结果只读，请先切换到当前草稿或点击“+ 新建探索”');return;}if(!draft||![2,3,4].includes(step))return;if(step===3&&!draft.confirmed)return;if(step===4&&!draft.graph)return;selecting=false;draft.step=step;scopeSignature='';render();window.workspaceHeader?.refresh();}};
 function activate(){active=true;root.hidden=false;document.querySelector('#focused').classList.add('word-co-active');document.querySelectorAll('.network-tabs button').forEach(b=>b.classList.toggle('active',b===tab));picker.replaceChildren(new Option('请选择研究项目',''),...researchProjects.map(p=>new Option(p.name,p.id)));pid=dirty?pid:(selectedResearchProject?.id||pid||researchProjects[0]?.id||'');picker.value=pid;window.workspaceHeader?.refresh();if(pid&&!dirty)guard(reload)();else render();}
  let tab;
  const installer=new MutationObserver(()=>{const tabs=document.querySelector('.network-tabs');if(!tabs)return;if(tab){if(tabs.lastElementChild!==tab)tabs.append(tab);return;}tab=document.createElement('button');tab.type='button';tab.textContent='词语共现图';tab.onclick=activate;tabs.append(tab);tabs.addEventListener('click',e=>{if(e.target.closest('button')!==tab){active=false;root.hidden=true;document.querySelector('#focused').classList.remove('word-co-active');window.workspaceHeader?.refresh();}});});installer.observe(document.body,{subtree:true,childList:true});
@@ -225,27 +247,6 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
  }
  function manual(t,b){const c=document.createElement('div');c.innerHTML='<p>点击一句的开头，在该位置拆分；原文不会改变。</p>';const re=/[。！？!?；;\n]+/g;let m,a=0;const starts=[0];while((m=re.exec(text(t,b))))starts.push(m.index+m[0].length);starts.push(text(t,b).length);for(let i=0;i+1<starts.length;i++){const button=document.createElement('button');button.className='wc-sentence';button.textContent=text(t,b).slice(starts[i],starts[i+1]);button.disabled=i===0;button.onclick=()=>{split(t,b,[b.start+starts[i]]);d.close();mark();};c.append(button);}const d=dialog('手动拆分',c);}
  let disposeWords=()=>{};
- function renderStepper(currentStep){
-  const nav=document.createElement('nav');nav.className='wc-stepper';nav.setAttribute('aria-label','词语探索流程步骤');
-  const hasBlocks=!!(draft&&draft.interviews?.length&&draft.status!=='running'&&draft.status!=='failed');
-  const items=[
-   [1,'1. 选择访谈稿'+(hasBlocks?` (${draft.interviews.length}篇)`:''),true],
-   [2,'2. 切块复核',hasBlocks&&!draft?.history_id],
-   [3,'3. 特征词确认',hasBlocks&&!!draft?.confirmed&&!draft?.history_id],
-   [4,'4. 词语共现图',hasBlocks&&!!draft?.graph]
-  ];
-  for(const [idx,[s,label,enabled]] of items.entries()){
-   if(idx>0){const arrow=document.createElement('span');arrow.className='wc-stepper-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='→';nav.append(arrow);}
-   const btn=document.createElement('button');btn.type='button';btn.className='wc-stepper-item'+(currentStep===s?' active':enabled?' done':'');btn.dataset.step=String(s);btn.textContent=label;btn.disabled=!enabled&&currentStep!==s;
-   if(currentStep===s)btn.setAttribute('aria-current','step');
-   btn.onclick=()=>{if(currentStep!==s)window.wordCooccurrence.setStep(s);};
-   nav.append(btn);
-  }
-  if(hasBlocks&&currentStep!==1){
-   const newBtn=document.createElement('button');newBtn.type='button';newBtn.className='wc-stepper-new';newBtn.textContent='+ 新建探索';newBtn.onclick=startNewExploration;nav.append(newBtn);
-  }
-  root.prepend(nav);
- }
  function render(){
   disposeWords();disposeWords=()=>{};
   closeInlineSplit();
@@ -253,32 +254,33 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   nextBlocked=false;next.disabled=busy;
   root.replaceChildren();save.hidden=next.hidden=!draft||selecting||draft.status==='running'||draft.status==='failed';save.hidden=save.hidden||currentStep!==2;next.hidden=next.hidden||currentStep===4||currentStep===1;next.textContent=currentStep===3?'确认特征词并生成 →':'确认切块并继续 →';
   saveResult.disabled=selecting||!draft?.graph||!!draft?.history_id||!!draft?.stale||draft?.status==='running'||draft?.status==='failed';status.textContent=selecting?'选择访谈稿':draft?.history_id?'历史结果 · 只读':dirty?'未保存':draft?.stale?'原文已更新':draft?.status==='running'?draft.progress||'AI正在切块…':draft?'草稿已保存':'';
+  refreshStepper();
   if(!pid){root.textContent='请先选择研究项目。';return;}
-  if(!draft||draft.status==='failed'||selecting){renderStart();renderStepper(1);return;}
-  if(draft.status==='running'){root.innerHTML='<div class="wc-empty">正在准备话题块：优先复用索引，缺少索引时新建。可切换到其它页面，任务继续运行。</div>';renderStepper(2);return;}
-  if(draft.stale){root.innerHTML=`<p class="wc-warning">${esc(draft.stale)}</p>`;renderStart();renderStepper(1);return;}
-  const heading=document.createElement('div');heading.className='wc-heading';heading.innerHTML=`<h2>${draft.step===2?'切块复核':draft.step===3?'特征词确认':'词语共现图'}</h2><select aria-label="流程步骤"><option value="2">第 2/4 步 · 切块复核</option>${draft.confirmed?'<option value="3">第 3/4 步 · 特征词确认</option>':''}${draft.graph?'<option value="4">第 4/4 步 · 共现图</option>':''}</select><span>调整讨论边界，保留访谈原文。</span>`;root.append(heading);heading.querySelector('select').value=draft.step;heading.querySelector('select').onchange=e=>{draft.step=Number(e.target.value);render();};
+  if(!draft||draft.status==='failed'||selecting){renderStart();return;}
+  if(draft.status==='running'){root.innerHTML='<div class="wc-empty">正在准备话题块：优先复用索引，缺少索引时新建。可切换到其它页面，任务继续运行。</div>';return;}
+  if(draft.stale){root.innerHTML=`<p class="wc-warning">${esc(draft.stale)}</p>`;renderStart();return;}
+  const heading=document.createElement('div');heading.className='wc-heading';heading.innerHTML=`<h2>${draft.step===2?'切块复核':draft.step===3?'特征词确认':'词语共现图'}</h2><span class="wc-heading-sub">${draft.step===2?'检查并微调话题讨论边界，原文内容保持不变':draft.step===3?'勾选有研究意义的词作为共现节点':''}</span>`;root.append(heading);
   if(draft.step===3){
-   heading.querySelector('span').remove();
    const help=document.createElement('span');help.className='wc-count-help fw-heading-help';
    const helpButton=document.createElement('button');helpButton.type='button';helpButton.textContent='?';helpButton.setAttribute('aria-label','特征词确认说明');
    const tip=document.createElement('span');tip.className='wc-count-tooltip';tip.id='fw-heading-tooltip';tip.setAttribute('role','tooltip');tip.textContent='选择有研究意义的词，作为共现分析的节点。每个文本块中的同一词只计一次；统计范围以当前设置为准。';helpButton.setAttribute('aria-describedby',tip.id);help.append(helpButton,tip);heading.querySelector('h2').append(help);
    helpButton.onclick=()=>help.classList.toggle('open');helpButton.onkeydown=e=>{if(e.key==='Escape')help.classList.remove('open');};
-   disposeWords=window.renderFeatureWords({root,heading,draft,notify:toast,showSource:showSourceDrawer,recommend:body=>request('/recommend','POST',body),setPending:value=>{nextBlocked=value;next.disabled=value||busy;},apply:async({mode,stopwords,keep})=>{
+   disposeWords=window.renderFeatureWords({root,heading,nextButton:next,draft,notify:toast,showSource:showSourceDrawer,recommend:body=>request('/recommend','POST',body),setPending:value=>{nextBlocked=value;next.disabled=value||busy;},apply:async({mode,stopwords,keep})=>{
     if(busy)throw Error('正在处理，请稍后再试');busy=true;next.disabled=true;
     try{await request('/words','POST',{mode,stopwords});draft=await request('');const available=new Set(draft.candidates.map(x=>x.word));const removed=keep.filter(w=>!available.has(w)),notApplied=stopwords.filter(w=>!draft.stopwords.includes(w));draft.selected_words=keep.filter(w=>available.has(w));render();toast('重新分词完成'+(removed.length?'；不再出现的已选词已移除：'+removed.join('、'):'，已保留仍出现的已选词')+(notApplied.length?'；受保护词未加入停用词：'+notApplied.join('、'):''));}
     finally{busy=false;next.disabled=nextBlocked;}
-   }});renderStepper(3);return;
-  }if(draft.step===4){heading.querySelector('select').remove();heading.querySelector('span').remove();disposeWords=window.renderWordNetwork({root,heading,draft,showSource:showSourceDrawer});renderStepper(4);return;}
+   }});return;
+  }if(draft.step===4){heading.querySelector('span')?.remove();disposeWords=window.renderWordNetwork({root,heading,draft,showSource:showSourceDrawer});return;}
+  const step2Actions=document.createElement('div');step2Actions.className='wc-heading-actions';step2Actions.append(save,next);heading.append(step2Actions);
   const t=selected();if(reviewInterview!==t.id){reviewInterview=t.id;reviewBlock=null;reviewOpen=t.issues.some(x=>!x.resolved);}
   const scope=reviewBlock?t.blocks.find(b=>b.id===reviewBlock):null;
   if(reviewBlock&&!scope){reviewBlock=null;reviewOpen=false;}
   const issues=t.issues.filter(x=>!x.resolved&&(!scope||(scope.start<=x.start&&x.start<scope.end)));issueIndex=Math.min(issueIndex,Math.max(0,issues.length-1));const issue=issues[issueIndex]||(scope?t.issues.findLast(x=>x.resolved&&scope.start<=x.start&&x.start<scope.end):null);
   const layout=document.createElement('div');layout.className='wc-layout';layout.innerHTML=`<aside class="wc-list"><h3>访谈稿 · ${draft.interviews.length}</h3><select aria-label="筛选访谈"><option value="all">全部访谈</option><option value="pending">仅待复核</option></select><div class="wc-interviews"></div></aside><div class="wc-middle"><header><h3>${esc(t.name)}</h3><button data-filter>${onlyIssues?'查看全部块':'仅待复核'}</button></header><div class="wc-cards"></div></div><aside class="wc-issues"><h3>待核对问题 <span>${issues.length}</span></h3><div class="wc-issue-content"></div><details open><summary>复核规则</summary><p>只调整边界，原文保持不变。排除仅影响统计，不删除材料。超过500字是提醒，不是强制切分。</p></details><details><summary>超短回答如何处理</summary><p>有含义的确认或否定保留；按相邻语境合并。纯填充语可排除统计。</p></details></aside>`;root.append(layout);
   function list(pending=false){const list=layout.querySelector('.wc-interviews');list.replaceChildren();for(const x of draft.interviews){const n=x.issues.filter(y=>!y.resolved).length;if(pending&&!n)continue;const b=document.createElement('button');b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">共${x.blocks.length}块${n?` · 待核对${n}`:''}</small>`;b.onclick=()=>{tid=x.id;issueIndex=0;render();};list.append(b);}}list();layout.querySelector('.wc-list select').onchange=e=>list(e.target.value==='pending');layout.querySelector('[data-filter]').onclick=()=>{onlyIssues=!onlyIssues;render();};
-  heading.classList.add('wc-side-heading');
-  layout.querySelector('.wc-issues').prepend(heading);
-  const hideReview=document.createElement('button');hideReview.className='wc-hide-review';hideReview.textContent='×';hideReview.setAttribute('aria-label','收起复核栏');hideReview.onclick=()=>{reviewOpen=false;refreshReviewPane();};heading.append(hideReview);
+  const sideHead=document.createElement('div');sideHead.className='wc-side-heading';sideHead.innerHTML='<h2>复核建议</h2>';
+  const hideReview=document.createElement('button');hideReview.className='wc-hide-review';hideReview.textContent='×';hideReview.setAttribute('aria-label','收起复核栏');hideReview.onclick=()=>{reviewOpen=false;refreshReviewPane();};sideHead.append(hideReview);
+  layout.querySelector('.wc-issues').prepend(sideHead);
   layout.querySelector('[data-filter]').setAttribute('aria-pressed',String(onlyIssues));
   setupPanes(layout);
   const oldFilter=layout.querySelector('[data-filter]'),filter=document.createElement('label');filter.className='wc-review-toggle';
@@ -308,9 +310,6 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   help.append(helpButton,explanation);titleGroup.append(pendingCount,help);
   filter.innerHTML='<span>仅待复核</span><input type="checkbox" role="switch" aria-label="仅待复核"><i aria-hidden="true"></i>';
   filter.querySelector('input').checked=onlyIssues;filter.querySelector('input').onchange=e=>{onlyIssues=e.target.checked;render();};oldFilter.replaceWith(filter);
-  heading.querySelector('select')?.remove();
-  heading.querySelector('span')?.remove();
-  heading.querySelectorAll('option').forEach(o=>{o.textContent=o.textContent.split(' · ')[0];});
   const cards=layout.querySelector('.wc-cards');t.blocks.forEach((b,i)=>{const own=t.issues.filter(x=>b.start<=x.start&&x.start<b.end&&!x.resolved);if(onlyIssues&&!own.length)return;const c=document.createElement('article');c.className='wc-card';c.id='wc-'+b.id;c.innerHTML=`<div class="wc-card-head"><span>块 ${i+1} · 字符 ${b.start}—${b.end}</span><select aria-label="是否纳入统计"><option value="yes">纳入统计</option><option value="no">排除统计</option></select></div><p class="wc-kind">${b.kind==='content'?'正文块':b.kind==='background'?'背景／资料块':'接话块'} · ${text(t,b).replace(/\s/g,'').length} 字</p><div class="wc-original"></div><footer><button data-split>✂ 手动拆分</button><button data-source>▤ 查看原文</button><span>${own.length?'待核对 '+own.length:''}</span></footer>`;const original=c.querySelector('.wc-original');const cuts=own.flatMap(x=>x.cuts||[]).filter(p=>b.start<p&&p<b.end).sort((a,z)=>a-z);let from=b.start;for(const cut of [...new Set(cuts)]){original.append(document.createTextNode(text(t,{start:from,end:cut})));const marker=document.createElement('div');marker.className='wc-cut-marker';marker.textContent='建议拆分位置';original.append(marker);from=cut;}original.append(document.createTextNode(text(t,{start:from,end:b.end})));c.querySelector('select').value=b.include?'yes':'no';c.querySelector('select').onchange=e=>{b.include=e.target.value==='yes';mark();};c.querySelector('[data-split]').onclick=()=>manual(t,b);c.querySelector('[data-source]').onclick=()=>{const pre=document.createElement('pre');pre.textContent=t.text;const d=dialog(t.name+' · 完整原文',pre);d.scrollTop=0;};cards.append(c);if(i+1<t.blocks.length&&!onlyIssues){const m=document.createElement('button');m.className='wc-merge';m.textContent='⌁ 合并相邻块';m.onclick=()=>merge(t,i);cards.append(m);}});
   cards.querySelectorAll('.wc-card').forEach(card=>{
    const meta=card.querySelector('.wc-card-head>span'),kind=card.querySelector('.wc-kind');
@@ -346,7 +345,6 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
    card.querySelector('[data-split]').hidden=false;
    const readonly=document.createElement('span');readonly.className='wc-readonly';readonly.textContent='点击正文任意字也可直接拆分';card.querySelector('footer').append(readonly);
   });
-  renderStepper(2);
   cards.querySelectorAll('.wc-merge').forEach(button=>{
    const before=button.previousElementSibling,after=button.nextElementSibling;
    const a=t.blocks.findIndex(x=>'wc-'+x.id===before?.id),b=t.blocks.findIndex(x=>'wc-'+x.id===after?.id);
@@ -397,10 +395,10 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
    rows.push({name:x.name,upload:index,previewId:x.workspace_project_id});
   }
   const fileIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l5 5v15H6zM14 2v6h5"/></svg>';
-  const gearIcon='<svg class="wc-gear-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  const gearIcon='<svg class="wc-gear-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
   const hasExistingDraft=!!(draft&&draft.interviews?.length&&draft.status!=='failed');
   const page=document.createElement('div');page.className='wc-selection-page';
-page.innerHTML=`<div class="wc-selection-title"><h2>选择访谈稿</h2><span class="wc-step-badge">第 1 / 4 步</span></div><p class="wc-selection-intro">选择用于分析的访谈稿，优先复用已有索引切块，缺少索引时新建；确认后进入分词与统计。</p>${draft?.error?`<p class="wc-warning">${esc(draft.error)}</p>`:''}<div class="wc-selection-grid"><section class="wc-material-card"><div class="wc-material-search"><label><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input type="search" placeholder="搜索访谈稿" aria-label="搜索访谈稿"></label><span>共 ${rows.length} 份</span></div><div class="wc-select-all"><label><input type="checkbox" data-all checked>全选</label><span data-count></span></div><div class="wc-material-rows"></div><p class="wc-material-empty" hidden>没有匹配的访谈稿</p><footer><span data-summary></span><div class="wc-selection-actions">${hasExistingDraft?'<button type="button" class="wc-resume-draft" data-resume>返回当前草稿</button>':''}<button type="button" class="primary" data-start>准备话题块 <span aria-hidden="true">→</span></button></div></footer></section><aside class="wc-followup"><h3>后续流程（共 4 步）</h3><ol><li><span class="wc-step-number">2</span><div><strong>按话题切块与复核</strong><p>复用话题索引并检查讨论边界，支持拆分与合并。</p></div></li><li><span class="wc-step-number">3</span><div><strong>确认特征词</strong><p>剔除停用词，勾选有研究意义的特征词。</p></div></li><li><span class="wc-step-number">4</span><div><strong>生成词语共现图</strong><p>查看词对共现关系、矩阵与原文证据。</p></div></li></ol><details class="wc-processing-settings"><summary>${gearIcon} 处理设置</summary><div>最多同时处理2篇访谈。已有索引不重复切块；正文默认纳入统计，资料头默认排除。长块仅提示人工检查，支持拆分、合并。</div></details><p class="wc-model-label">切块：优先复用千问话题索引</p></aside></div><p class="wc-selection-note">开始前可随时调整材料选择。</p>`;
+page.innerHTML=`<div class="wc-selection-title"><h2>选择访谈稿</h2><p class="wc-selection-intro">优先复用已有话题索引切块，缺少索引时新建；确认后进入切块复核与分词统计。</p></div>${draft?.error?`<p class="wc-warning">${esc(draft.error)}</p>`:''}<div class="wc-selection-grid"><section class="wc-material-card"><div class="wc-material-search"><label><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input type="search" placeholder="搜索访谈稿" aria-label="搜索访谈稿"></label><span>共 ${rows.length} 份</span></div><div class="wc-select-all"><label><input type="checkbox" data-all checked>全选</label><span data-count></span></div><div class="wc-material-rows"></div><p class="wc-material-empty" hidden>没有匹配的访谈稿</p><footer><span data-summary></span><div class="wc-selection-actions">${hasExistingDraft?'<button type="button" class="wc-resume-draft" data-resume>返回当前草稿</button>':''}<button type="button" class="primary" data-start>准备话题块 <span aria-hidden="true">→</span></button></div></footer></section><aside class="wc-followup"><h3>后续流程说明</h3><ol><li><span class="wc-step-number">2</span><div><strong>切块复核</strong><p>检查话题讨论边界，支持拆分与合并。</p></div></li><li><span class="wc-step-number">3</span><div><strong>特征词确认</strong><p>剔除停用词，勾选有研究意义的核心词。</p></div></li><li><span class="wc-step-number">4</span><div><strong>词语共现图</strong><p>查看关联排行、共现矩阵、和弦图与原文证据。</p></div></li></ol><details class="wc-processing-settings"><summary>${gearIcon} 处理设置</summary><div>最多同时处理2篇访谈。已有索引不重复切块；正文默认纳入统计，资料头默认排除。长块仅提示人工检查，支持拆分、合并。</div></details><p class="wc-model-label">切块：优先复用千问话题索引</p></aside></div>`;
   root.append(page);
   const list=page.querySelector('.wc-material-rows'),all=page.querySelector('[data-all]'),start=page.querySelector('[data-start]');
   for(const row of rows){

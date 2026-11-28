@@ -1,5 +1,5 @@
 /* Feature selection UI. Stopword edits stay local until explicitly applied. */
-window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSource,notify,setPending=()=>{}}) {
+window.renderFeatureWords = function({root,heading,nextButton,draft,apply,recommend,showSource,notify,setPending=()=>{}}) {
  const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
  const button=(text,cls='')=>{const n=el('button',cls,text);n.type='button';return n;};
  const page=el('div','fw-page');root.append(page);
@@ -8,10 +8,10 @@ window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSou
  const initial=new Set(draft.stopwords||[]);let stops=new Set(initial),saving=false,focusWord='';
  const changed=()=>stops.size!==initial.size||[...stops].some(w=>!initial.has(w));
  const stopButton=button(`停用词 · ${initial.size} 个`,'fw-stop-trigger');stopButton.setAttribute('aria-expanded','false');
- const rerun=button('重新分词');settings.append(scope,stopButton,rerun);if(heading){heading.classList.add('fw-heading');heading.append(settings);}else page.append(settings);
+ const rerun=button('重新分词');rerun.hidden=true;settings.append(scope,stopButton,rerun);if(nextButton)settings.append(nextButton);if(heading){heading.classList.add('fw-heading');heading.append(settings);}else page.append(settings);
  const grid=el('div','fw-grid'),main=el('section','fw-candidates'),side=el('aside','fw-selected');grid.append(main,side);page.append(grid);
  const toolbar=el('div','fw-toolbar'),title=el('h3','',`候选词 · ${(draft.candidates||[]).length}`),search=el('input'),sort=el('select'),clear=button('清空选择');
- search.type='search';search.placeholder='搜索候选词';search.setAttribute('aria-label','搜索候选词');sort.setAttribute('aria-label','候选词排序');sort.append(new Option('按词频排序','frequency'),new Option('按名称排序','name'));const ai=button('✧ AI推荐','fw-ai'),toolbarActions=el('div','fw-toolbar-actions');toolbarActions.append(search,sort,ai,clear);toolbar.append(title,toolbarActions);main.append(toolbar);
+ search.type='search';search.placeholder='搜索候选词';search.setAttribute('aria-label','搜索候选词');sort.setAttribute('aria-label','候选词排序');sort.append(new Option('按词频排序','frequency'),new Option('按名称排序','name'));const ai=button('AI 推荐','fw-ai');ai.innerHTML='<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin-right:4px"><path d="M8 1.5 9.6 6.4 14.5 8 9.6 9.6 8 14.5 6.4 9.6 1.5 8 6.4 6.4Z"/></svg><span>AI 推荐</span>',toolbarActions=el('div','fw-toolbar-actions');toolbarActions.append(search,sort,ai,clear);toolbar.append(title,toolbarActions);main.append(toolbar);
  const recommendationBox=el('section','fw-recommendation');recommendationBox.hidden=true;main.append(recommendationBox);
  const objective=el('input');objective.placeholder='研究关注点（可选，例如：医保政策如何影响诊疗）';objective.maxLength=1000;objective.setAttribute('aria-label','AI推荐研究关注点');
  const run=button('开始推荐','primary'),dismiss=button('收起'),actions=el('div','fw-recommend-actions'),recommendations=el('div','fw-recommend-results');run.title='使用 DeepSeek Flash；仅发送项目名称、候选词及块频和填写的关注点，不发送访谈原文或录音。';actions.append(run,dismiss);recommendationBox.append(objective,actions,recommendations);
@@ -28,9 +28,9 @@ window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSou
   }catch(e){notify(e.message);recommendations.append(el('p','fw-note','推荐失败，已选词未改变。可重试或继续手动选择。'));}
   finally{recommending=false;if(page.isConnected){run.disabled=false;run.textContent='重新推荐';rerun.disabled=stopButton.disabled=mode.disabled=false;}}
  };
- const list=el('div','fw-word-list');main.append(list);const empty=el('p','fw-note','没有匹配的候选词');main.append(empty);
+ const list=el('div','fw-word-list');main.append(list);const empty=el('div','fw-empty-state');main.append(empty);
  const valid=new Set((draft.candidates||[]).map(x=>x.word)),chosen=new Set((draft.selected_words||[]).filter(w=>valid.has(w)));draft.selected_words=[...chosen];
- const summary=el('p','fw-note');page.append(summary);
+ const summary=el('p','fw-note');summary.hidden=true;page.append(summary);
  function preview(word){
   side.querySelector('.fw-preview')?.remove();if(!word)return;
   const box=el('section','fw-preview');box.append(el('h3','','原文示例'));
@@ -40,17 +40,31 @@ window.renderFeatureWords = function({root,heading,draft,apply,recommend,showSou
   side.append(box);
  }
  function sync(){
-  draft.selected_words=[...chosen];side.replaceChildren(el('h3','',`已选特征词 · ${chosen.size}`),el('p','fw-note','将用于生成共现网络'));
+  draft.selected_words=[...chosen];
+  const sideHead=el('div','fw-side-head'),sideTitle=el('h3','',`已选特征词 · ${chosen.size}`),sideHint=el('span','fw-side-hint',chosen.size<2?'请至少勾选 2 个词':'将用于生成共现网络');
+  sideHint.classList.toggle('is-warn',chosen.size<2);sideHead.append(sideTitle,sideHint);
+  side.replaceChildren(sideHead);
   const tags=el('div','fw-selected-tags');for(const word of chosen){const tag=button(word+' ×');tag.setAttribute('aria-label','取消选择 '+word);tag.onclick=()=>{chosen.delete(word);draw();};tags.append(tag);}side.append(tags);
-  if(!chosen.size)side.append(el('p','fw-note','点击左侧词语进行选择。'));
-  summary.textContent=chosen.size<2?`已选 ${chosen.size} 个特征词（请至少勾选 2 个特征词以生成共现图）`:`已选 ${chosen.size} 个特征词`;
+  if(!chosen.size)side.append(el('p','fw-note','在左侧勾选有研究意义的候选词（至少 2 个），点击词语可在此预览对应原文。'));
+  summary.textContent=`已选 ${chosen.size} 个特征词`;
   pending();
   preview(focusWord||[...chosen][0]);
  }
  function draw(){
-  list.replaceChildren();const q=search.value.trim().toLowerCase(),rows=(draft.candidates||[]).filter(x=>x.word.toLowerCase().includes(q)).slice();
+  list.replaceChildren();const q=search.value.trim().toLowerCase(),allCandidates=draft.candidates||[],rows=allCandidates.filter(x=>x.word.toLowerCase().includes(q)).slice();
   rows.sort(sort.value==='name'?(a,b)=>a.word.localeCompare(b.word,'zh-CN'):(a,b)=>b.blocks-a.blocks);
   for(const x of rows){const label=el('label','fw-word'),input=el('input');input.type='checkbox';input.dataset.word=x.word;input.checked=chosen.has(x.word);label.classList.toggle('selected',input.checked);label.append(input,el('span','',x.word),el('small','',String(x.blocks)));input.onchange=()=>{input.checked?chosen.add(x.word):chosen.delete(x.word);focusWord=x.word;label.classList.toggle('selected',input.checked);sync();};list.append(label);}
+  empty.replaceChildren();
+  if(!rows.length){
+   if(!allCandidates.length&&mode.value==='answers'){
+    const msg=el('p','fw-note','按「仅受访者回答」统计时没有候选词。可切换为整块原文重新提取，统计将包括提问。');
+    const switchBtn=button('切换为「整块原文（包含提问）」并提取词语','primary fw-switch-all');
+    switchBtn.onclick=()=>{mode.value='all';mode.dispatchEvent(new Event('change'));};
+    empty.append(msg,switchBtn);
+   }else{
+    empty.append(el('p','fw-note','没有匹配的候选词'));
+   }
+  }
   empty.hidden=!!rows.length;sync();
  }
  search.oninput=draw;sort.onchange=draw;clear.onclick=()=>{chosen.clear();draw();};draw();

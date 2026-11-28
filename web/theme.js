@@ -334,7 +334,7 @@ const findingReviewScript=document.createElement('script');findingReviewScript.s
 sharedComparisonScript.addEventListener('load', () => {
   const networkScript = document.createElement('script');
   networkScript.src = '/assets/network-view.js?v=20261013-focus-curves-4';
-networkScript.addEventListener('load',()=>{const script=document.createElement('script');script.src='/assets/coding-tree.js?v=20261018-boundary-review';script.addEventListener('load',()=>{const navigation=document.createElement('script');navigation.src='/assets/research-navigation.js?v=word-redesign-1';document.body.append(navigation);});document.body.append(script);});
+networkScript.addEventListener('load',()=>{const script=document.createElement('script');script.src='/assets/coding-tree.js?v=20261018-boundary-review';script.addEventListener('load',()=>{const navigation=document.createElement('script');navigation.src='/assets/research-navigation.js?v=word-clean-1';document.body.append(navigation);});document.body.append(script);});
   document.body.append(networkScript);
 });
 document.body.append(sharedComparisonScript);

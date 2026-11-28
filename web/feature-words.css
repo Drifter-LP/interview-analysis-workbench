@@ -6,3 +6,15 @@
 @container(max-width:560px){.fw-toolbar{grid-template-columns:1fr;gap:8px}.fw-toolbar-actions{justify-content:flex-start;flex-wrap:wrap}.fw-toolbar-actions input{max-width:none;flex:1 1 140px}}
 #wordCooccurrence .fw-heading .fw-settings select{background-color:white;color:#193740;border-color:#dce5e9;font-size:13px;height:34px;min-height:34px;padding:0 26px 0 10px}
 @media(max-width:1150px){#wordCooccurrence .fw-heading>.fw-settings{flex:1 1 100%;justify-content:flex-end;margin-left:0}}@media(max-width:700px){#wordCooccurrence .fw-heading>.fw-settings{justify-content:flex-start}.fw-settings label{flex-wrap:wrap}}
+#wordCooccurrence:has(.fw-page){padding:12px 18px 16px;min-height:calc(100dvh - 122px);box-sizing:border-box;display:flex;flex-direction:column;}
+#wordCooccurrence .fw-page{flex:1;display:flex;flex-direction:column;min-height:0;}
+#wordCooccurrence .fw-grid{flex:1;min-height:calc(100dvh - 205px);align-items:stretch;}
+#wordCooccurrence .fw-candidates,#wordCooccurrence .fw-selected{display:flex;flex-direction:column;min-height:0;box-shadow:0 2px 8px rgba(18,52,58,.03);}
+#wordCooccurrence .fw-word-list{flex:1;max-height:none;align-content:flex-start;}
+#wordCooccurrence .fw-side-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e8eff1;}
+#wordCooccurrence .fw-side-hint{font-size:12px;color:#008a82;}
+#wordCooccurrence .fw-side-hint.is-warn{color:#b87520;}
+#wordCooccurrence .fw-empty-state{padding:28px 16px;text-align:center;background:#f8fbfb;border:1px dashed #cfe2e0;border-radius:10px;margin:8px 0;}
+#wordCooccurrence .fw-empty-state .fw-switch-all{margin-top:12px;height:36px;padding:0 16px;font-weight:600;}
+#wordCooccurrence .fw-settings>#wcNext{height:34px;min-height:34px;padding:0 14px;border-radius:7px;background:#00938c;border-color:#00938c;color:#fff;font-weight:600;}
+#wordCooccurrence .fw-settings>#wcNext:disabled{opacity:.48;cursor:not-allowed;}

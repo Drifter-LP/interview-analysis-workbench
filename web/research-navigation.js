@@ -16,7 +16,7 @@
  renderFocusedAnalysis=function(){rememberTheme();if(currentThemeAnalysis?._researchProjectId!==selectedResearchProject?.id)currentThemeAnalysis=themeRecords.get(selectedResearchProject?.id)||null;previousFocusedRender();};
  $('#themePanel').addEventListener('input',()=>{if(currentThemeAnalysis){currentThemeAnalysis._saved=false;rememberTheme();window.workspaceHeader?.refresh();}});
  const tasks=make('div','research-task-tabs');tasks.setAttribute('role','group');tasks.setAttribute('aria-label','跨访谈研究任务');
- const themeViews=make('div','research-view-controls'),wordSettings=button('分析设置',()=>{const step=window.wordCooccurrence.step;window.wordCooccurrence.setStep(step===4?3:4);});
+ const themeViews=make('div','research-view-controls');
  const themeButtons=new Map(),taskButtons=new Map();
  const themeSegments=make('div','research-view-segments');themeViews.append(themeSegments);
  const resultPicker=make('div','research-result-picker');
@@ -139,10 +139,9 @@
   if(task==='words'){
    const wordProject=researchProjects.find(p=>p.id===window.wordCooccurrence?.projectId);if(wordProject)selectedResearchProject=wordProject;
    const words=window.wordCooccurrence,step=words?.step;
-   textIfChanged(wordSettings,step===4?'← 调整特征词':'查看已有结果 →');
-   hiddenIfChanged(wordSettings,Boolean(words?.loading||words?.isHistory||(step!==4&&!(step===3&&words?.hasResult))));
    if(words?.newExploration)hiddenIfChanged(words.newExploration,Boolean(words?.loading||!words?.hasDraft||step===1));
-   config.selector=[words.scopeControl()];config.status=[];config.actions=[words.saveResult];config.toolsLeft=[words.controls[2],words.controls[3]];config.toolsRight=[...(words?.newExploration?[words.newExploration]:[]),wordSettings];scopeText.hidden=true;
+   config.tabs=[tasks,...(words?.stepperControl?[words.stepperControl()]:[])];
+   config.selector=[words.scopeControl()];config.status=[];config.actions=[...(words?.newExploration?[words.newExploration]:[]),words.saveResult];config.toolsLeft=[];config.toolsRight=[];scopeText.hidden=true;
   }else{
    const options=researchProjects.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');if(projectPicker.dataset.options!==options){projectPicker.innerHTML='<option value="">请选择项目</option>'+options;projectPicker.dataset.options=options;}
    const projectValue=selectedResearchProject?.id||'';if(projectPicker.value!==projectValue)projectPicker.value=projectValue;

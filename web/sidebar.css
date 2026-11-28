@@ -178,14 +178,18 @@
 .sb-notify-bell:hover,.sb-notify-bell[aria-expanded="true"]{background:#14464e;border-color:#2ea8a0;color:#fff}
 .sb-notify-dot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#24d0a8;box-shadow:0 0 0 2px #0c3035}
 .sb-notify-dot[hidden]{display:none!important}
-@keyframes wb-bell-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}55%{transform:rotate(12deg)}80%{transform:rotate(-6deg)}}
-.sb-notify-bell.is-ringing svg{animation:wb-bell-shake 340ms ease}
+@keyframes wb-bell-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-16deg)}55%{transform:rotate(14deg)}80%{transform:rotate(-7deg)}}
+@keyframes wb-bell-catch{0%,100%{transform:scale(1)}35%{transform:scale(0.88)}70%{transform:scale(1.12)}}
+.sb-notify-bell.is-ringing{animation:wb-bell-catch 360ms cubic-bezier(.22,1,.36,1)}
+.sb-notify-bell.is-ringing svg{animation:wb-bell-shake 360ms ease}
 .shell.collapsed .sb-notify-bell{position:relative;right:auto;bottom:auto;align-self:center}
 @media(max-width:850px){.sidebar:has(>.sb-notify-bell){position:relative}.sb-notify-bell{right:14px;bottom:14px}.shell.collapsed .sb-notify-bell{position:absolute;right:14px;bottom:14px}.shell.collapsed .sidebar:has(>.sb-notify-bell)>.sidebar-settings{width:calc(100% - 38px)}}
 
 .wb-cl-backdrop{position:fixed;inset:0;z-index:1120;display:grid;place-items:center;padding:16px;background:rgba(14,42,47,.26);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity 220ms ease;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",-apple-system,BlinkMacSystemFont,sans-serif}
 .wb-cl-backdrop[hidden]{display:none!important}
-.wb-cl-card{width:min(428px,calc(100vw - 32px));padding:24px 28px 20px;border:1px solid #d5e6e4;border-radius:16px;background:#fff;color:#163238;box-shadow:0 18px 48px rgba(10,36,40,.16),0 4px 12px rgba(10,36,40,.06);transition:transform 240ms cubic-bezier(.22,1,.36,1),opacity 220ms ease;box-sizing:border-box}
+.wb-cl-backdrop[inert]{pointer-events:none}
+@media(prefers-reduced-motion:reduce){.wb-cl-backdrop{transition:none}.sb-notify-bell.is-ringing,.sb-notify-bell.is-ringing svg{animation:none}}
+.wb-cl-card{width:min(428px,calc(100vw - 32px));padding:24px 28px 20px;border:1px solid #d5e6e4;border-radius:16px;background:#fff;color:#163238;box-shadow:0 18px 48px rgba(10,36,40,.16),0 4px 12px rgba(10,36,40,.06);transition:transform 240ms cubic-bezier(.22,1,.36,1),opacity 220ms ease;box-sizing:border-box;will-change:transform,clip-path,opacity;transform-origin:50% 50%}
 .wb-cl-card [hidden]{display:none!important}
 .wb-cl-card{max-height:calc(100dvh - 32px);overflow:auto}
 .wb-cl-head{display:flex;align-items:center;justify-content:space-between;gap:12px}

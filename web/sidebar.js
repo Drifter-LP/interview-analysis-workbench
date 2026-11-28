@@ -333,56 +333,68 @@
       row.append(d,p);return row;
     }));
   }
-  function openChangelogModal(mode='read',item=getActiveChangelog()){
-    if(clClosing||!clBackdrop.hidden)return;
-    previousFocus=document.activeElement;
-    if(shell)shell.inert=true;
-    clCard.style.transition='none';
-    clCard.style.transform='translate(0,0) scale(1)';
-    clCard.style.opacity='1';
-    clBackdrop.style.opacity='1';
-    clBackdrop.hidden=false;
-    notifyBell.setAttribute('aria-expanded','true');
-    requestAnimationFrame(()=>{clCard.style.transition='';});
-    if(mode==='compose'&&isAdminUser()){
-      showComposeView();
-    }else{
-      renderChangelogReadView(item);
-      clOkBtn.focus();
+  let changelogMotion=null;
+  const motionDuration=320;
+  function stopChangelogMotion(){
+    changelogMotion?.cancel();changelogMotion=null;
+  }
+  function playChangelogMotion(closing){
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||typeof clCard.animate!=='function'){
+      stopChangelogMotion();return false;
     }
+    if(!changelogMotion){
+      const cr=clCard.getBoundingClientRect(),br=notifyBell.getBoundingClientRect();
+      if(!br.width||!cr.width)return false;
+      const dx=br.left+br.width/2-cr.left-cr.width/2;
+      const dy=br.top+br.height/2-cr.top-cr.height/2;
+      changelogMotion=clCard.animate([
+        {transform:`perspective(760px) translate(${dx}px, ${dy}px) rotateX(26deg) rotateY(-22deg) skewX(-22deg) scale(.04,.06)`,clipPath:'polygon(8% 72%, 24% 72%, 14% 100%, 6% 100%)',opacity:0},
+        {transform:`perspective(760px) translate(${dx*.34}px, ${dy*.42}px) rotateX(14deg) rotateY(-12deg) skewX(-12deg) scale(.68,.78)`,clipPath:'polygon(0% 0%, 100% 0%, 46% 100%, 6% 100%)',opacity:.92,offset:.52},
+        {transform:'perspective(760px) translate(0px, 0px) rotateX(0deg) rotateY(0deg) skewX(0deg) scale(1,1)',clipPath:'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)',opacity:1}
+      ],{duration:motionDuration,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'});
+      changelogMotion.currentTime=closing?motionDuration:0;
+    }
+    const anim=changelogMotion;
+    anim.updatePlaybackRate(closing?-1:1);
+    anim.onfinish=()=>{
+      if(changelogMotion!==anim)return;
+      stopChangelogMotion();
+      if(clClosing)finishChangelogClose(true);
+    };
+    anim.play();
+    return true;
+  }
+  function openChangelogModal(mode='read',item=getActiveChangelog()){
+    if(!clClosing&&!clBackdrop.hidden)return;
+    const reversing=clClosing;
+    if(!reversing)previousFocus=document.activeElement;
+    clClosing=false;clBackdrop.hidden=false;clBackdrop.inert=false;
+    clBackdrop.style.opacity='1';
+    if(shell)shell.inert=true;
+    notifyBell.setAttribute('aria-expanded','true');
+    notifyBell.classList.remove('is-ringing');
+    if(!reversing){
+      if(mode==='compose'&&isAdminUser())showComposeView();
+      else renderChangelogReadView(item);
+    }
+    (clComposeView.hidden?clOkBtn:clTextInput).focus();
+    playChangelogMotion(false);
+  }
+  function finishChangelogClose(ring=false){
+    clBackdrop.hidden=true;clBackdrop.inert=false;
+    clBackdrop.style.opacity='';clClosing=false;
+    if(ring)notifyBell.classList.add('is-ringing');
   }
   function dismissChangelogToBell(){
     if(clBackdrop.hidden||clClosing||clSubmitBtn.disabled)return;
     if(currentClItem?.id&&currentClItem.date<=localDateStr())setSeenId(currentClItem.id);
     syncUnreadDot();
+    clClosing=true;clBackdrop.inert=true;clBackdrop.style.opacity='0';
     notifyBell.setAttribute('aria-expanded','false');
-    const cr=clCard.getBoundingClientRect(),br=notifyBell.getBoundingClientRect();
-    const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const finish=()=>{
-      clBackdrop.hidden=true;
-      if(shell)shell.inert=false;
-      if(previousFocus?.isConnected)previousFocus.focus();
-    };
-    if(!reducedMotion&&br.width>0&&cr.width>0){
-      clClosing=true;
-      const dx=(br.left+br.width/2)-(cr.left+cr.width/2);
-      const dy=(br.top+br.height/2)-(cr.top+cr.height/2);
-      clCard.style.transform=`translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(0.08)`;
-      clCard.style.opacity='0';
-      clBackdrop.style.opacity='0';
-      notifyBell.classList.remove('is-ringing');
-      void notifyBell.offsetWidth;
-      notifyBell.classList.add('is-ringing');
-      setTimeout(()=>{
-        finish();
-        clCard.style.transform='';
-        clCard.style.opacity='';
-        clBackdrop.style.opacity='';
-        clClosing=false;
-      },240);
-    }else{
-      finish();
-    }
+    if(shell)shell.inert=false;
+    if(previousFocus?.isConnected&&previousFocus!==document.body)previousFocus.focus();
+    else notifyBell.focus();
+    if(!playChangelogMotion(true))finishChangelogClose();
   }
   function showComposeView(editItem=null){
     editingClId=editItem?.id||'';
@@ -403,17 +415,19 @@
 
   notifyBell.onclick=e=>{
     e.stopPropagation();
-    if(!clBackdrop.hidden)dismissChangelogToBell();
+    if(clClosing)openChangelogModal('read');
+    else if(!clBackdrop.hidden)dismissChangelogToBell();
     else{openChangelogModal('read');void initChangelog(false);}
   };
+  notifyBell.addEventListener('animationend',e=>{if(e.animationName==='wb-bell-catch')notifyBell.classList.remove('is-ringing');});
   clOkBtn.onclick=()=>dismissChangelogToBell();
   clBackdrop.onclick=e=>{if(e.target===clBackdrop)dismissChangelogToBell();};
   document.addEventListener('keydown',e=>{
-    if(e.key==='Escape'&&!clBackdrop.hidden){
+    if(e.key==='Escape'&&!clBackdrop.hidden&&!clClosing){
       e.preventDefault();
       dismissChangelogToBell();
     }
-    if(e.key==='Tab'&&!clBackdrop.hidden){
+    if(e.key==='Tab'&&!clBackdrop.hidden&&!clClosing){
       const controls=Array.from(clCard.querySelectorAll('button:not(:disabled),input,textarea')).filter(el=>el.getClientRects().length);
       const index=controls.indexOf(document.activeElement);
       if(controls.length&&(index<0||(e.shiftKey?index===0:index===controls.length-1))){

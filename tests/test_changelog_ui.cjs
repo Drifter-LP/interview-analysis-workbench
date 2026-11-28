@@ -70,7 +70,27 @@ async function login(context, username, password) {
     assert.equal(await memberNotice.getByRole('button',{name:/拟定新通知/}).count(),0);
     assert.ok(!(await (await member.request.get(origin+'/auth/changelog')).text()).includes(data.content));
     const bounds=await memberNotice.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=390);
+    assert.equal(await m.locator('#wbChangelogCard').evaluate(card=>card.getAnimations().length),0);
+    const animated=await browser.newContext({reducedMotion:'no-preference',viewport:{width:1280,height:900}});
+    await login(animated,'qa_owner','temporary-qa-login-123');
+    const motionPage=await animated.newPage();motionPage.on('pageerror',error=>errors.push(error.message));
+    await motionPage.route('**/auth/changelog',r=>r.fulfill({json:{items:[]}}));
+    await motionPage.goto(origin+'/',{waitUntil:'domcontentloaded'});
+    const reversed=await motionPage.evaluate(()=>{
+      const bell=document.querySelector('#sbNotifyBell'),card=document.querySelector('#wbChangelogCard'),backdrop=document.querySelector('#wbChangelogBackdrop');
+      bell.focus();bell.click();const flight=card.getAnimations()[0];
+      flight.currentTime=140;
+      window.workbenchChangelog.dismiss();
+      const sameClosing=card.getAnimations()[0]===flight&&backdrop.inert;
+      bell.click();
+      return sameClosing&&card.getAnimations()[0]===flight&&!backdrop.inert&&document.activeElement.id==='wbClOkBtn';
+    });
+    assert.ok(reversed,'reverses the current animation without losing focus');
+    await motionPage.waitForFunction(()=>!document.querySelector('#wbChangelogCard').getAnimations().length);
+    await motionPage.keyboard.press('Escape');
+    await motionPage.locator('#wbChangelogBackdrop').waitFor({state:'hidden'});
+    assert.ok(await motionPage.locator('#sbNotifyBell').evaluate(el=>el===document.activeElement&&!document.querySelector('.shell').inert));
     assert.deepEqual(errors,[]);
-    console.log('PASS: changelog role, CSRF, invalid date, failed save & retry, schedule visibility, mobile and keyboard');
+    console.log('PASS: role, scheduling, save retry, mobile, reduced motion, animation reversal and keyboard focus');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error.stack);process.exitCode=1;});

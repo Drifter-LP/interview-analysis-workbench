@@ -2,7 +2,7 @@
 (() => {
  const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/word-cooccurrence.css?v=chunk-heading-spacing-1';document.head.append(css);
  const selectionCss=document.createElement('link');selectionCss.rel='stylesheet';selectionCss.href='/assets/cooccurrence-selection.css?v=word-ui-layout-1';document.head.append(selectionCss);
- const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=chunk-review-1';document.head.append(reviewCss);
+ const reviewCss=document.createElement('link');reviewCss.rel='stylesheet';reviewCss.href='/assets/cooccurrence-review.css?v=chunk-no-list-filter-1';document.head.append(reviewCss);
  const root=document.createElement('section');root.id='wordCooccurrence';root.hidden=true;document.querySelector('#focused').append(root);
  const picker=document.createElement('select'),status=document.createElement('span'),save=document.createElement('button'),next=document.createElement('button');
  picker.setAttribute('aria-label','选择共现分析项目');save.textContent='保存进度';next.id='wcNext';next.textContent='确认切块并继续 →';next.className='primary';
@@ -297,13 +297,13 @@ function activate(){active=true;root.hidden=false;document.querySelector('#focus
   if(reviewBlock&&!scope){reviewBlock=null;reviewOpen=false;}
   const issues=pendingIssues.filter(x=>!scope||(scope.start<=x.start&&x.start<scope.end));issueIndex=Math.max(0,Math.min(issueIndex,issues.length-1));const issue=issues[issueIndex]||(scope?t.issues.findLast(x=>x.resolved&&scope.start<=x.start&&x.start<scope.end):null);
   const layout=document.createElement('div');layout.className='wc-layout';layout.innerHTML=`<aside class="wc-list"><h3>访谈稿 (${draft.interviews.length})</h3><div class="wc-interviews"></div></aside><div class="wc-middle"><header><h3>${esc(cleanInterviewName(t.name))}</h3><button data-filter>${onlyIssues?'查看全部块':'仅待复核'}</button></header><div class="wc-cards"></div></div><aside class="wc-issues"><h3>待核对问题 <span>${issues.length}</span></h3><div class="wc-issue-content"></div><details class="wc-rules-fold"><summary>复核规则说明</summary><p>只调整边界，原文保持不变。排除仅影响统计，不删除材料。超过500字是提醒，不是强制切分；有含义的确认或否定保留，纯填充语可排除统计。</p></details></aside>`;root.append(layout);
-  function list(pending=false){const list=layout.querySelector('.wc-interviews');list.replaceChildren();for(const x of draft.interviews){const n=x.issues.filter(y=>!y.resolved).length;if(pending&&!n)continue;const b=document.createElement('button');b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">共${x.blocks.length}块${n?` · 待核对${n}`:''}</small>`;b.onclick=()=>{tid=x.id;issueIndex=0;render();};list.append(b);}}list();layout.querySelector('[data-filter]').onclick=()=>{onlyIssues=!onlyIssues;render();};
-  const listFilter=document.createElement('div');listFilter.className='wc-interview-filter';
-  for(const [name,pending] of [['全部访谈',false],['有待复核',true]]){
-   const filter=document.createElement('button');filter.type='button';filter.textContent=name;filter.setAttribute('aria-pressed',String(!pending));
-   filter.onclick=()=>{for(const item of listFilter.children)item.setAttribute('aria-pressed',String(item===filter));list(pending);};listFilter.append(filter);
+  const interviewList=layout.querySelector('.wc-interviews');
+  for(const x of draft.interviews){
+   const n=x.issues.filter(y=>!y.resolved).length,b=document.createElement('button');
+   b.className=x.id===t.id?'active':'';b.title=x.name;b.setAttribute('aria-label',x.name);
+   b.innerHTML=`<span>${esc(shortInterview(x.name))}</span><small class="wc-total-blocks">共${x.blocks.length}块${n?` · 待核对${n}`:''}</small>`;
+   b.onclick=()=>{tid=x.id;issueIndex=0;render();};interviewList.append(b);
   }
-  layout.querySelector('.wc-interviews').before(listFilter);
   const sideHead=document.createElement('div');sideHead.className='wc-side-heading';sideHead.innerHTML='<h2>复核建议</h2>';
   const hideReview=document.createElement('button');hideReview.className='wc-hide-review';hideReview.textContent='×';hideReview.setAttribute('aria-label','收起复核栏');hideReview.onclick=()=>{reviewOpen=false;refreshReviewPane();};sideHead.append(hideReview);
   layout.querySelector('.wc-issues').prepend(sideHead);

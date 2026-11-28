@@ -198,12 +198,10 @@
 #wordCooccurrence .wc-issues details.wc-rules-fold { margin-top: auto; padding: 12px 0 0; border-top: 1px solid #e2ecea; }
 #wordCooccurrence .wc-issues details.wc-rules-fold summary { font-size: var(--text-sm, 13px); font-weight: 500; color: #142d36; }
 #wordCooccurrence .wc-cards .wc-card.wc-current-review{border-color:#86c5bb;box-shadow:inset 3px 0 #008f86;background:#f7fcfb;scroll-margin:10px}
-#wordCooccurrence .wc-review-nav,#wordCooccurrence .wc-interview-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-#wordCooccurrence .wc-interview-filter{padding:8px 10px 0}
+#wordCooccurrence .wc-review-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 #wordCooccurrence .wc-review-nav span{margin-right:auto;font-size:var(--text-xs,12px);color:#58757c}
-#wordCooccurrence .wc-review-nav button,#wordCooccurrence .wc-interview-filter button{width:auto;display:inline-flex;margin:0;border:1px solid #d2e4e2;border-radius:7px;background:#fff;padding:4px 8px;font-size:var(--text-xs,12px);color:#175a57}
+#wordCooccurrence .wc-review-nav button{width:auto;display:inline-flex;margin:0;border:1px solid #d2e4e2;border-radius:7px;background:#fff;padding:4px 8px;font-size:var(--text-xs,12px);color:#175a57}
 #wordCooccurrence .wc-review-nav button:disabled{opacity:.45}
-#wordCooccurrence .wc-interview-filter button[aria-pressed=true]{background:#e7f4f1;border-color:#b4dbd4;font-weight:600}
 #wordCooccurrence button.wc-pending-count{border:0;background:#fff0da;color:#9a510c}
 #wordCooccurrence .wc-issue-actions [data-dismiss]{border:1px solid #cbdedf;background:#fff;color:#23535a}
 #wordCooccurrence .wc-issue-actions [data-dismiss]:hover:not(:disabled){background:#edf7f5;border-color:#a4d1ca}
